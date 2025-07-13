@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TAXIA CIMCO - Conectamos Trayectos, Cuidamos Personas</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <header>
+        <h1>TAXIA</h1>
+        <nav id="nav-menu">
+            <ul>
+                <li><a href="#inicio">Inicio</a></li>
+                <li><a href="#quienes-somos">¿Quiénes Somos?</a></li>
+                <li><a href="#servicios">Servicios</a></li>
+                <li><a href="#afiliacion">Afiliación</a></li>
+                <li><a href="#galeria">Galería</a></li>
+                <li><a href="#contacto">Contacto</a></li>
+            </ul>
+        </nav>
+        <div class="menu-toggle" id="menu-toggle">
+            <i class="fas fa-bars"></i>
+        </div>
+    </header>
+
+    <section id="inicio" class="hero">
+        <h1>Conectamos trayectos, cuidamos personas.</h1>
+        <p>Una plataforma cooperativa de mototaxis desde La Jagua de Ibirico para el mundo.</p>
+        <a href="#afiliacion" class="btn">¡Afíliate Ahora!</a>
+    </section>
+
+    <section id="servicios">
+        <h2>Nuestros Servicios</h2>
+        <div class="servicios-grid">
+            <div class="servicio-item">
+                <i class="fas fa-mobile-alt"></i> 
+                <h3>App para Pasajeros</h3>
+                <p>Solicita tu mototaxi desde tu celular de forma rápida y segura.</p>
+            </div>
+            <div class="servicio-item">
+                <i class="fas fa-handshake"></i> 
+                <h3>Afiliación a Conductores</h3>
+                <p>Únete a nuestra cooperativa y accede a beneficios exclusivos y reales.</p>
+            </div>
+            <div class="servicio-item">
+                <i class="fas fa-shield-alt"></i> 
+                <h3>Rutas Seguras</h3>
+                <p>Conductor siempre identificado y seguimiento GPS para tu tranquilidad.</p>
+            </div>
+            <div class="servicio-item">
+                <i class="fas fa-motorcycle"></i> 
+                <h3>MotoTaxi</h3>
+                <p>Tu transporte rápido y eficiente dentro de La Jagua de Ibirico.</p>
+            </div>
+            <div class="servicio-item">
+                <i class="fas fa-user-friends"></i> 
+                <h3>Moto Parrillero</h3>
+                <p>Viajes cómodos y seguros para un pasajero adicional.</p>
+            </div>
+            <div class="servicio-item">
+                <i class="fas fa-truck-pickup"></i> 
+                <h3>MotoCarga</h3>
+                <p>Transporte ligero de carga liviana con agilidad.</p>
+            </div>
+            <div class="servicio-item">
+                <i class="fas fa-road"></i> 
+                <h3>Viajes Intermunicipal</h3>
+                <p>Conexión segura y confiable.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="quienes-somos">
+        <h2>¿Quiénes Somos?</h2>
+        <p>TAXIA CIMCO es una iniciativa cooperativa nacida en La Jagua de Ibirico que busca **organizar, dignificar y tecnificar** el servicio de mototaxis. Nos comprometemos a ofrecer un servicio de transporte seguro, eficiente y de calidad, beneficiando tanto a nuestros usuarios como a nuestros conductores afiliados.</p>
+    </section>
+
+    <section id="afiliacion">
+        <h2>Formulario de Afiliación para Conductores</h2>
+        <form id="my-form" action="https://formspree.io/f/mrbknvza" method="POST"> 
+            <input type="hidden" name="_subject" value="Nueva Solicitud de Afiliación - TAXIA CIMCO" />
+
+            <label for="nombre">Nombre completo:</label>
+            <input type="text" id="nombre" name="nombre_completo" placeholder="Tu nombre completo" required /> 
+
+            <label for="telefono">Teléfono:</label>
+            <input type="tel" id="telefono" name="telefono" placeholder="Ej: 3001234567 (10 dígitos)" pattern="[0-9]{10}" required />
+
+            <label for="correo">Correo electrónico:</label>
+            <input type="email" id="correo" name="email" placeholder="tu_correo@ejemplo.com" required />
+            
+            <label for="servicio">Servicio de interés:</label>
+            <select id="servicio" name="servicio_interes" required>
+                <option value="">Selecciona uno</option>
+                <option value="mototaxi">MotoTaxi</option>
+                <option value="motoparrillero">Moto Parrillero</option>
+                <option value="motocarga">MotoCarga</option>         
+                <option value="afiliacion-conductor">Afiliación de Conductor</option>
+                <option value="otro">Otro (especificar en mensaje)</option>
+            </select>
+
+            <label for="mensaje">Mensaje (opcional):</label>
+            <textarea id="mensaje" name="message" placeholder="Déjanos tus comentarios o preguntas aquí..."></textarea>
+
+            <button type="submit">Enviar Solicitud</button>
+            
+            <div id="mensajeValidacion"></div> 
+            </form>
+    </section>
+
+    <section id="galeria">
+        <h2>📸 Nuestra Flota y Servicios</h2>
+        <div class="galeria-contenedor">
+            <div class="imagen-galeria">
+                <a href="https://wa.me/573001234567?text=Quisiera%20solicitar%20un%20servicio%20de%20MotoTaxi%20Urbano." target="_blank">
+                    <img src="img/motopasajero.jpg" alt="Mototaxi Urbano en La Jagua de Ibirico">
+                    <div class="galeria-overlay">
+                        <h3>MotoTaxi Urbano</h3>
+                        <p>Rápido y eficiente en la ciudad.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="imagen-galeria">
+                <a href="https://wa.me/573001234567?text=Quisiera%20solicitar%20un%20servicio%20de%20Moto%20Parrillero." target="_blank">
+                    <img src="img/motoparrillero.jpg" alt="Moto Parrillero para pasajero adicional">
+                    <div class="galeria-overlay">
+                        <h3>Moto Parrillero</h3>
+                        <p>Cómodo para un pasajero.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="imagen-galeria">
+                <a href="https://wa.me/573001234567?text=Quisiera%20solicitar%20un%20servicio%20de%20MotoCarga." target="_blank">
+                    <img src="img/motocarga.jpg" alt="Motocarga para transporte de paquetes">
+                    <div class="galeria-overlay">
+                        <h3>MotoCarga</h3>
+                        <p>Transporte ligero de carga liviana.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="imagen-galeria">
+                <a href="https://wa.me/573001234567?text=Quisiera%20solicitar%20un%20viaje%20intermunicipal." target="_blank">
+                    <img src="img/municipal1.jpg" alt="Viaje Intermunicipal">
+                    <div class="galeria-overlay">
+                        <h3>Viaje Intermunicipal</h3>
+                        <p>Conexión segura y confiable.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="imagen-galeria">
+                <a href="#contacto">
+                    <img src="img/appcliente.png" alt="Plataforma Tecnológica TAXIA, descarga nuestra App">
+                    <div class="galeria-overlay">
+                        <h3>Descarga Nuestra App Pasajeros</h3>
+                        <p>Pide tu servicio al instante.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="imagen-galeria">
+                <a href="#afiliacion">
+                    <img src="img/equipo.png" alt="Conductor Afiliado TAXIA, únete al equipo">
+                    <div class="galeria-overlay">
+                        <h3>Afiliación Conductores</h3>
+                        <p>¡Únete a nuestro equipo!</p>
+                    </div>
+                </a>
+            </div>         
+        </div>
+    </section>
+
+    <section id="contacto">
+        <h2>Contáctanos y Pide tu Servicio</h2>
+        <p>¿Listo para viajar con TAXIA CIMCO? ¡Contáctanos al instante!</p>
+
+        <div class="contact-buttons">
+            <a href="https://wa.me/573001234567?text=Hola%2C%20quisiera%20solicitar%20un%20servicio%20de%20Taxi%20Moto." target="_blank" class="btn-social whatsapp" aria-label="Contactar por WhatsApp">
+                <i class="fab fa-whatsapp"></i> WhatsApp
+            </a>
+            <a href="https://www.facebook.com/share/16Wmp4yaaa/" target="_blank" class="btn-social messenger" aria-label="Enviar mensaje por Messenger">
+                <i class="fab fa-facebook-messenger"></i> Messenger
+            </a>
+            <a href="https://t.me/taxia_cimco" target="_blank" class="btn-social telegram" aria-label="Unirse al canal de Telegram">
+                <i class="fab fa-telegram-plane"></i> Telegram
+            </a>
+            <a href="https://www.instagram.com/taxia_cimco?igsh=eXgxY2Eydw4Z3M2" target="_blank" class="btn-social instagram" aria-label="Ver perfil de Instagram">
+                <i class="fab fa-instagram"></i> Instagram
+            </a>
+        </div>
+
+        <p class="contact-info">O si prefieres, escríbenos a:</p>
+        <p>📧 Correo: <a href="mailto:taxiacimco@gmail.com">taxiacimco@gmail.com</a></p>
+        <p>📍 Ubicación: La Jagua de Ibirico, Cesar, Colombia</p>
+    </section>
+
+    <footer>
+        <p>© 2025 TAXIA CIMCO. Todos los derechos reservados.</p>
+        <div class="social-icons">
+            <a href="https://www.facebook.com/share/16Wmp4yaaa/" target="_blank" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+            <a href="https://www.instagram.com/taxia_cimco?igsh=eXgxY2Eydw4Z3M2" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="https://twitter.com/tupagina" target="_blank" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+            <a href="https://www.linkedin.com/company/tuempresa" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+        </div>
+    </footer>
+
+    <div class="floating-social">
+        <a href="https://wa.me/573001234567?text=Hola%2C%20quisiera%20consultar%20sobre%20los%20servicios%20de%20TAXIA%20CIMCO." class="social-float whatsapp" target="_blank" aria-label="WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+        </a>
+        <a href="https://www.facebook.com/share/16Wmp4yaaa/" class="social-float facebook" target="_blank" aria-label="Facebook">
+            <i class="fab fa-facebook-f"></i>
+        </a>
+        <a href="https://t.me/taxia_cimco" class="social-float telegram" target="_blank" aria-label="Telegram">
+            <i class="fab fa-telegram-plane"></i>
+        </a>
+        <a href="https://www.instagram.com/taxia_cimco?igsh=eXgxY2Eydw4Z3M2" class="social-float instagram" target="_blank" aria-label="Instagram">
+            <i class="fab fa-instagram"></i>
+        </a>
+        <a href="https://m.me/tunombredeusuario" class="social-float messenger" target="_blank" aria-label="Messenger">
+            <i class="fab fa-facebook-messenger"></i>
+        </a>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

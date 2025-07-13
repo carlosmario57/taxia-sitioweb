@@ -147,7 +147,7 @@ header nav a:hover::after {
 /* --------------------------------------------------- */
 .hero {
     /* Fondo con imagen y superposición oscura para que el texto sea legible */
-    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('img/fondo-hero.jpg') no-repeat center center/cover;
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('img/fondo2.png') no-repeat center center/cover;
     color: var(--color-texto-claro);
     text-align: center;
     padding: var(--padding-seccion);

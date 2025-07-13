@@ -184,12 +184,84 @@ section {
     padding: var(--padding-seccion);
     text-align: center;
     background-color: var(--color-fondo-claro);
-    margin: 20px auto; /* Margen superior/inferior y centrado */
-    max-width: 1200px; /* Mismo ancho que el contenedor principal */
+    margin: 20px auto;
+    max-width: 1200px;
     border-radius: var(--borde-redondeado);
     box-shadow: var(--sombra-suave);
-    transition: all 0.3s ease; /* Transición suave para cualquier cambio */
+    transition: all 0.3s ease;
 }
+
+/* Alterna el color de fondo para secciones pares */
+section:nth-of-type(even) {
+    background-color: var(--color-fondo-intermedio);
+}
+
+/* --------------------------------------------------- */
+/* ESTILOS ESPECÍFICOS PARA LA SECCIÓN "¿QUIÉNES SOMOS?" */
+/* --------------------------------------------------- */
+#quienes-somos {
+    /* *** PROPIEDADES PARA LA IMAGEN DE FONDO *** */
+    background-image: url('img/fondo1.png'); /* <<-- ¡CAMBIA ESTA RUTA POR LA DE TU IMAGEN! -->> */
+    background-size: cover;          /* La imagen cubrirá todo el espacio del contenedor */
+    background-repeat: no-repeat;    /* Evita que la imagen se repita en mosaico */
+    background-position: center center; /* Centra la imagen en el contenedor */
+    background-attachment: scroll;   /* La imagen se desplaza con el contenido. (Usa 'fixed' para efecto de paralaje) */
+
+    /* *** SUPERPOSICIÓN (OVERLAY) PARA LEGIBILIDAD DEL TEXTO (RECOMENDADO) *** */
+    /* Estas dos líneas crean una capa semitransparente sobre la imagen */
+    /* para asegurar que el texto sea fácil de leer, especialmente si la imagen es muy brillante. */
+    background-blend-mode: overlay; /* Combina el color de fondo con la imagen */
+    background-color: rgba(0, 0, 0, 0.39); /* Capa negra semi-transparente (ajusta la opacidad 0.1 a 0.9) */
+    /* Si tu imagen es clara y quieres oscurecerla un poco, usa rgba(0,0,0,X) */
+    /* Si tu imagen es oscura y quieres aclararla un poco, usa rgba(255,255,255,X) */
+
+
+    /* *** AJUSTE DEL COLOR DE TEXTO PARA CONTRASTAR CON EL FONDO *** */
+    color: var(--color-texto-claro); /* Cambia el color del texto principal a blanco/gris claro */
+
+    /* Asegúrate de que el título H2 dentro de esta sección también contraste */
+    /* Aunque ya tienes un estilo general para h2, este lo sobrescribirá para esta sección */
+    /* Si ya tienes un #quienes-somos h2 abajo, podrías quitarlo de aquí */
+    /* #quienes-somos h2 {
+        color: var(--color-primario); /* Ejemplo: Haz el título amarillo para que resalte */
+    /* } */
+
+
+    /* *** ESTILOS GENERALES (Mantenidos o ajustados de 'section') *** */
+    /* Puedes mantener estos o eliminarlos si ya están definidos en la regla 'section'
+       y no necesitas un valor diferente para esta sección específica. */
+    /* padding: var(--padding-seccion); */
+    /* text-align: center; */
+    /* margin: 20px auto; */
+    /* max-width: 1200px; */
+    /* border-radius: var(--borde-redondeado); */
+    /* box-shadow: var(--sombra-suave); */
+    /* transition: all 0.3s ease; */
+}
+
+/* *** AJUSTES PARA EL TÍTULO Y PÁRRAFOS DENTRO DE #quienes-somos *** */
+/* Es crucial asegurar que el H2 y los P sean legibles sobre el fondo */
+/* Si ya tienes estos estilos definidos para #quienes-somos, revísalos */
+
+#quienes-somos h2 {
+    color: var(--color-primario); /* Por ejemplo, el amarillo de TAXIA para el título */
+    /* Mantener otros estilos de h2 si los quieres diferentes del global */
+    /* font-size, margin-bottom, font-weight, position, padding-bottom, etc. */
+}
+
+#quienes-somos h2::after {
+    background-color: var(--color-primario); /* Asegura que el subrayado del título también contraste */
+}
+
+#quienes-somos p {
+    color: var(--color-texto-claro); /* Asegura que los párrafos también sean de un color claro */
+    /* Mantener otros estilos de p si los quieres diferentes del global */
+    /* font-size, max-width, margin, etc. */
+}
+
+/* --------------------------------------------------- */
+/* Continúa con el resto de tu CSS (SECCIÓN SERVICIOS, etc.) */
+/* --------------------------------------------------- */
 
 /* Alterna el color de fondo para secciones pares */
 section:nth-of-type(even) {

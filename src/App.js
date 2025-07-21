@@ -1,20 +1,34 @@
-import React, { useState } from 'react'; // ¡Importante: Asegúrate de que useState esté aquí!
-import './App.css'; // Mantenemos la importación de estilos
-import DriverList from './DriverList'; // Importa el componente DriverList
-import DriverForm from './DriverForm'; // Importa el nuevo componente DriverForm
+import React, { useState } from 'react';
+import './App.css';
+import DriverList from './DriverList';
+import DriverForm from './DriverForm';
 
 function App() {
-  // Estado para forzar la actualización de DriverList.
-  // Cada vez que este estado cambie, React "remonta" DriverList,
-  // lo que dispara una nueva petición de datos.
   const [refreshDrivers, setRefreshDrivers] = useState(0);
+  // Nuevo estado para almacenar el conductor que se está editando
+  const [editingDriver, setEditingDriver] = useState(null); 
 
-  // Esta función se pasará a DriverForm.
-  // Se llamará cuando un conductor sea creado exitosamente en el formulario.
+  // Función que se llama cuando se crea un nuevo conductor (desde DriverForm)
   const handleDriverCreated = () => {
-    // Incrementa el estado para forzar la actualización de DriverList.
-    // Usamos 'prev' para asegurar que siempre tomamos el valor más reciente.
-    setRefreshDrivers(prev => prev + 1); 
+    setRefreshDrivers(prev => prev + 1); // Fuerza la actualización de la lista
+    setEditingDriver(null); // Asegura que el formulario vuelva a modo "crear" después de una creación exitosa
+  };
+
+  // Función que se llama cuando un conductor es eliminado (desde DriverList)
+  const handleDriverDeleted = () => {
+    setRefreshDrivers(prev => prev + 1); // Fuerza la actualización de la lista
+    setEditingDriver(null); // Limpia el estado de edición si el conductor editado es eliminado
+  };
+
+  // Nueva función que se llama cuando se hace clic en "Editar" en DriverList
+  const handleEditDriver = (driver) => {
+    setEditingDriver(driver); // Establece el conductor que se va a editar
+    // Podrías añadir un scroll suave al formulario aquí si el formulario está muy abajo
+  };
+
+  // Función para cancelar la edición y volver al modo de creación
+  const handleCancelEdit = () => {
+    setEditingDriver(null);
   };
 
   return (
@@ -49,21 +63,25 @@ function App() {
       <main 
         style={{ 
           display: 'flex', 
-          flexDirection: 'column', // Cambiado a columna para que el formulario y la lista estén uno encima del otro
+          flexDirection: 'column', 
           gap: '40px', 
           justifyContent: 'center',
-          alignItems: 'center' // Centra los elementos horizontalmente
+          alignItems: 'center' 
         }}
       >
-        {/* Renderiza el componente DriverForm y le pasa la función de actualización.
-            Cuando un conductor se crea, DriverForm llamará a handleDriverCreated. */}
-        <DriverForm onDriverCreated={handleDriverCreated} />
+        {/* Pasa el conductor a editar y las funciones de callback al DriverForm */}
+        <DriverForm 
+          onDriverCreated={handleDriverCreated} 
+          editingDriver={editingDriver} // Pasa el conductor que se está editando
+          onCancelEdit={handleCancelEdit} // Pasa la función para cancelar la edición
+        />
 
-        {/* Renderiza el componente DriverList.
-            La prop 'key' se usa para forzar a React a "re-montar" este componente
-            cuando 'refreshDrivers' cambia, lo que a su vez hace que DriverList
-            vuelva a cargar los datos de los conductores. */}
-        <DriverList key={refreshDrivers} />
+        {/* Pasa la función onDriverDeleted y onEditDriver a DriverList */}
+        <DriverList 
+          key={refreshDrivers} 
+          onDriverDeleted={handleDriverDeleted} 
+          onEditDriver={handleEditDriver} // Pasa la función para iniciar la edición
+        />
       </main>
     </div>
   );

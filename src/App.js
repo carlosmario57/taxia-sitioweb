@@ -5,82 +5,48 @@ import DriverForm from './DriverForm';
 
 function App() {
   const [refreshDrivers, setRefreshDrivers] = useState(0);
-  // Nuevo estado para almacenar el conductor que se está editando
   const [editingDriver, setEditingDriver] = useState(null); 
 
-  // Función que se llama cuando se crea un nuevo conductor (desde DriverForm)
   const handleDriverCreated = () => {
-    setRefreshDrivers(prev => prev + 1); // Fuerza la actualización de la lista
-    setEditingDriver(null); // Asegura que el formulario vuelva a modo "crear" después de una creación exitosa
+    setRefreshDrivers(prev => prev + 1);
+    setEditingDriver(null);
   };
 
-  // Función que se llama cuando un conductor es eliminado (desde DriverList)
   const handleDriverDeleted = () => {
-    setRefreshDrivers(prev => prev + 1); // Fuerza la actualización de la lista
-    setEditingDriver(null); // Limpia el estado de edición si el conductor editado es eliminado
+    setRefreshDrivers(prev => prev + 1);
+    setEditingDriver(null);
   };
 
-  // Nueva función que se llama cuando se hace clic en "Editar" en DriverList
   const handleEditDriver = (driver) => {
-    setEditingDriver(driver); // Establece el conductor que se va a editar
-    // Podrías añadir un scroll suave al formulario aquí si el formulario está muy abajo
+    setEditingDriver(driver);
   };
 
-  // Función para cancelar la edición y volver al modo de creación
   const handleCancelEdit = () => {
     setEditingDriver(null);
   };
 
   return (
-    <div 
-      className="App" 
-      style={{ 
-        fontFamily: 'Inter, sans-serif', 
-        maxWidth: '900px', 
-        margin: '20px auto', 
-        padding: '20px', 
-        backgroundColor: '#fff', 
-        borderRadius: '10px', 
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' 
-      }}
-    >
-      <header 
-        style={{ 
-          textAlign: 'center', 
-          marginBottom: '40px', 
-          paddingBottom: '20px', 
-          borderBottom: '1px solid #eee' 
-        }}
-      >
-        <h1 style={{ color: '#333', fontSize: '2.5em', marginBottom: '10px' }}>
+    // Añadimos clases de Tailwind aquí
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 font-inter">
+      <header className="text-center mb-10 pb-5 border-b border-gray-200 w-full max-w-2xl">
+        <h1 className="text-4xl font-bold text-gray-800 mb-2">
           Panel de Control CIMCO - CEO
         </h1>
-        <p style={{ color: '#666', fontSize: '1.1em' }}>
+        <p className="text-lg text-gray-600">
           ¡Bienvenido, Carlos Mario! Aquí gestionarás a tus conductores y servicios.
         </p>
       </header>
 
-      <main 
-        style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '40px', 
-          justifyContent: 'center',
-          alignItems: 'center' 
-        }}
-      >
-        {/* Pasa el conductor a editar y las funciones de callback al DriverForm */}
+      <main className="flex flex-col md:flex-row gap-10 justify-center items-start w-full max-w-4xl px-4">
         <DriverForm 
           onDriverCreated={handleDriverCreated} 
-          editingDriver={editingDriver} // Pasa el conductor que se está editando
-          onCancelEdit={handleCancelEdit} // Pasa la función para cancelar la edición
+          editingDriver={editingDriver} 
+          onCancelEdit={handleCancelEdit} 
         />
-
-        {/* Pasa la función onDriverDeleted y onEditDriver a DriverList */}
         <DriverList 
           key={refreshDrivers} 
           onDriverDeleted={handleDriverDeleted} 
-          onEditDriver={handleEditDriver} // Pasa la función para iniciar la edición
+          onEditDriver={handleEditDriver} 
         />
       </main>
     </div>

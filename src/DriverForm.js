@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Importa useEffect
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 // DriverForm ahora recibe 'editingDriver' y 'onCancelEdit'
@@ -72,77 +72,73 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit }) {
   };
 
   return (
-    <div style={{ marginTop: '30px', padding: '20px', border: '1px solid #ccc', borderRadius: '8px', backgroundColor: '#f9f9f9', width: '100%', maxWidth: '400px' }}>
-      <h2>{editingDriver ? 'Editar Conductor' : 'Crear Nuevo Conductor'}</h2>
+    // Contenedor principal del formulario con estilos Tailwind
+    <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
+        {editingDriver ? 'Editar Conductor' : 'Crear Nuevo Conductor'}
+      </h2>
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label htmlFor="nombre" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Nombre:</label>
+        {/* Campo Nombre */}
+        <div className="mb-4">
+          <label htmlFor="nombre" className="block text-gray-700 text-sm font-bold mb-2">Nombre:</label>
           <input
             type="text"
             id="nombre"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
             required
           />
         </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label htmlFor="telefono" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Teléfono:</label>
+        {/* Campo Teléfono */}
+        <div className="mb-4">
+          <label htmlFor="telefono" className="block text-gray-700 text-sm font-bold mb-2">Teléfono:</label>
           <input
             type="text"
             id="telefono"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
             required
           />
         </div>
-        <div style={{ marginBottom: '20px' }}>
-          <label htmlFor="tipoVehiculo" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Tipo de Vehículo:</label>
+        {/* Campo Tipo de Vehículo */}
+        <div className="mb-6">
+          <label htmlFor="tipoVehiculo" className="block text-gray-700 text-sm font-bold mb-2">Tipo de Vehículo:</label>
           <input
             type="text"
             id="tipoVehiculo"
             value={tipoVehiculo}
             onChange={(e) => setTipoVehiculo(e.target.value)}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
             required
           />
         </div>
-        <button 
-          type="submit" 
-          style={{ 
-            padding: '10px 20px', 
-            backgroundColor: editingDriver ? '#007bff' : '#28a745', // Azul para editar, verde para crear
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '5px', 
-            cursor: 'pointer', 
-            fontSize: '16px',
-            marginRight: '10px' // Espacio entre botones
-          }}
-        >
-          {editingDriver ? 'Actualizar Conductor' : 'Crear Conductor'}
-        </button>
-        {editingDriver && ( // Muestra el botón de cancelar solo en modo edición
-          <button 
-            type="button" // Importante: tipo "button" para que no envíe el formulario
-            onClick={onCancelEdit} 
-            style={{ 
-              padding: '10px 20px', 
-              backgroundColor: '#6c757d', // Gris para cancelar
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '5px', 
-              cursor: 'pointer', 
-              fontSize: '16px'
-            }}
+        {/* Botones de acción */}
+        <div className="flex items-center justify-between">
+          <button
+            type="submit"
+            className={`
+              ${editingDriver ? 'bg-blue-500 hover:bg-blue-700' : 'bg-green-500 hover:bg-green-700'}
+              text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out
+            `}
           >
-            Cancelar Edición
+            {editingDriver ? 'Actualizar Conductor' : 'Crear Conductor'}
           </button>
-        )}
+          {editingDriver && (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
+            >
+              Cancelar Edición
+            </button>
+          )}
+        </div>
       </form>
-      {message && <p style={{ color: 'green', marginTop: '15px' }}>{message}</p>}
-      {error && <p style={{ color: 'red', marginTop: '15px' }}>{error}</p>}
+      {/* Mensajes de éxito o error */}
+      {message && <p className="text-green-500 text-sm mt-4 text-center">{message}</p>}
+      {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
     </div>
   );
 }

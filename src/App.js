@@ -1,77 +1,128 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import DriverForm from './DriverForm';
 import DriverList from './DriverList';
-import TravelForm from './TravelForm'; // Importa el nuevo componente TravelForm
-// import TravelList from './TravelList'; // Descomentar cuando crees TravelList.js
+import TravelForm from './TravelForm'; // <-- Nuevo
+import TravelList from './TravelList'; // <-- Nuevo
+
+import './App.css'; // Asegúrate de que esta línea esté si tienes estilos CSS globales
 
 function App() {
-  // Estado para forzar la recarga de la lista de conductores
-  const [refreshDriverListKey, setRefreshDriverListKey] = useState(0);
-  // Estado para el conductor que se está editando
+  // Estado para los conductores (mantener si ya lo tienes)
+  const [drivers, setDrivers] = useState([]);
   const [editingDriver, setEditingDriver] = useState(null);
+  const [driverMessage, setDriverMessage] = useState('');
+  const [driverError, setDriverError] = useState('');
 
-  // Estado para forzar la recarga de la lista de viajes
-  const [refreshTravelListKey, setRefreshTravelListKey] = useState(0);
+  // Estado para los viajes (NUEVO)
+  const [travels, setTravels] = useState([]);
+  const [travelMessage, setTravelMessage] = useState(''); // Puedes usarlo para mensajes específicos de viajes
+  const [travelError, setTravelError] = useState('');     // Puedes usarlo para errores específicos de viajes
 
-  // Función para recargar la lista de conductores
-  const handleDriverListRefresh = () => {
-    setRefreshDriverListKey(prevKey => prevKey + 1);
-    setEditingDriver(null); // Asegurarse de que el formulario de conductor se resetee
+
+  // Función para obtener conductores (mantener si ya la tienes)
+  const fetchDrivers = async () => {
+    try {
+      const response = await axios.get('http://127.0.0.1:5000/conductores');
+      setDrivers(response.data);
+      setDriverMessage('');
+      setDriverError('');
+    } catch (err) {
+      console.error("Error al obtener conductores:", err);
+      setDriverError('Error al cargar los conductores.');
+      setDriverMessage('');
+    }
   };
 
-  // Función para iniciar la edición de un conductor
+  // Función para obtener viajes (NUEVO)
+  const fetchTravels = async () => {
+    try {
+      const response = await axios.get('http://127.0.0.1:5000/viajes');
+      setTravels(response.data);
+      setTravelMessage('');
+      setTravelError('');
+    } catch (err) {
+      console.error("Error al obtener viajes:", err);
+      setTravelError('Error al cargar los viajes.');
+      setTravelMessage('');
+    }
+  };
+
+  // Cargar conductores y viajes al montar el componente (NUEVO: añadir fetchTravels)
+  useEffect(() => {
+    fetchDrivers();
+    fetchTravels(); // <-- Cargar viajes al inicio
+  }, []); // Se ejecuta una vez al montar
+
+  // Funciones para CRUD de Conductores (mantener si ya las tienes, con posibles ajustes)
+  const handleDriverCreated = () => {
+    setEditingDriver(null); // Limpiar modo de edición
+    fetchDrivers(); // Recargar la lista de conductores
+    setDriverMessage('Conductor guardado exitosamente.'); // Mensaje para el conductor
+  };
+
   const handleEditDriver = (driver) => {
     setEditingDriver(driver);
   };
 
-  // Función para cancelar la edición de un conductor
-  const handleCancelEditDriver = () => {
-    setEditingDriver(null);
+  const handleDeleteDriver = async (driverId) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este conductor?')) {
+      try {
+        await axios.delete(`http://127.0.0.1:5000/conductores/${driverId}`);
+        setDriverMessage('Conductor eliminado exitosamente.'); // Mensaje para el conductor
+        fetchDrivers(); // Recargar la lista
+        setDriverError('');
+      } catch (err) {
+        console.error("Error al eliminar conductor:", err);
+        setDriverError('Error al eliminar el conductor.'); // Error para el conductor
+        setDriverMessage('');
+      }
+    }
   };
 
-  // Función para recargar la lista de viajes
-  const handleTravelListRefresh = () => {
-    setRefreshTravelListKey(prevKey => prevKey + 1);
+  // Función para manejar viaje creado (NUEVO)
+  const handleTravelCreated = () => {
+    fetchTravels(); // Recargar la lista de viajes
+    setTravelMessage('Viaje creado exitosamente.'); // Mensaje para el viaje
   };
 
+  // La estructura principal de tu aplicación (NUEVO: añadido TravelForm y TravelList)
   return (
-    // Contenedor principal de la aplicación
-    <div className="min-h-screen bg-gray-100 p-4 font-sans antialiased">
-      {/* Encabezado de la aplicación */}
-      <header className="py-8 bg-white shadow-md rounded-lg mb-8">
-        <h1 className="text-4xl font-bold text-center text-gray-800 mb-2">Panel de Control CIMCO - CEO</h1>
-        <p className="text-lg text-center text-gray-600">
-          ¡Bienvenido, Carlos Mario! Aquí gestionarás a tus conductores y servicios.
-        </p>
+    <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
+      <header className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6 mb-8 text-center">
+        <h1 className="text-4xl font-extrabold text-purple-700 mb-2">CIMCO Operations</h1>
+        <p className="text-xl text-gray-600">Gestión Centralizada de Conductores y Viajes</p>
       </header>
 
-      {/* Contenedor principal de los formularios y listas */}
-      <main className="container mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <main className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Sección de Conductores */}
-        <section className="md:col-span-1 lg:col-span-1 flex flex-col items-center">
-          <DriverForm 
-            onDriverCreated={handleDriverListRefresh} 
-            editingDriver={editingDriver} 
-            onCancelEdit={handleCancelEditDriver} 
+        <section className="bg-white shadow-md rounded-lg p-6">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Conductores</h2>
+          <DriverForm
+            onDriverCreated={handleDriverCreated}
+            editingDriver={editingDriver}
+            setEditingDriver={setEditingDriver}
+            message={driverMessage} // Pasar el mensaje de conductor
+            setMessage={setDriverMessage}
+            error={driverError}   // Pasar el error de conductor
+            setError={setDriverError}
           />
-          <DriverList 
-            key={refreshDriverListKey} // La clave fuerza la recarga del componente
-            onDriverDeleted={handleDriverListRefresh} 
-            onEditDriver={handleEditDriver} 
+          <DriverList
+            drivers={drivers}
+            onEdit={handleEditDriver}
+            onDelete={handleDeleteDriver}
+            message={driverMessage} // Mostrar mensaje de conductor
+            error={driverError}     // Mostrar error de conductor
           />
         </section>
 
-        {/* Sección de Viajes */}
-        <section className="md:col-span-1 lg:col-span-2 flex flex-col items-center">
-          <TravelForm onTravelCreated={handleTravelListRefresh} />
-          {/*
-            Descomentar la siguiente línea cuando crees el componente TravelList.js.
-            Por ahora, puedes dejar un mensaje para saber dónde irá.
-          */}
-          {/* <TravelList key={refreshTravelListKey} onTravelDeleted={handleTravelListRefresh} /> */}
-          <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-2xl text-center text-gray-500 italic">
-            Aquí irá la lista de viajes (TravelList.js)
-          </div>
+        {/* Sección de Viajes (NUEVO) */}
+        <section className="bg-white shadow-md rounded-lg p-6">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Viajes</h2>
+          <TravelForm onTravelCreated={handleTravelCreated} /> {/* <-- Añade el formulario de viajes */}
+          <TravelList travels={travels} /> {/* <-- Añade la lista de viajes (aún no creada) */}
+          {travelMessage && <p className="text-green-500 text-sm mt-4 text-center">{travelMessage}</p>}
+          {travelError && <p className="text-red-500 text-sm mt-4 text-center">{travelError}</p>}
         </section>
       </main>
     </div>

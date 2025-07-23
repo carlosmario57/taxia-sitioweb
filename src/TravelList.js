@@ -22,12 +22,15 @@ function TravelList({ travels }) {
               <strong className="text-purple-600">Pasajero:</strong> {travel.pasajero_nombre} <br />
               <strong className="text-purple-600">Teléfono:</strong> {travel.pasajero_telefono || 'N/A'} <br />
               <strong className="text-purple-600">Origen (Texto):</strong> {travel.ubicacion_origen_texto || 'N/A'} <br />
+              {/* ¡Línea corregida aquí! Usamos 'travel' y '&&' */}
               {travel.ubicacion_origen_lat && travel.ubicacion_origen_lon && (
                 <strong className="text-purple-600">Origen (GPS):</strong> {travel.ubicacion_origen_lat}, {travel.ubicacion_origen_lon} <br />
               )}
+              {/* ¡Línea corregida aquí! Usamos 'travel' */}
               {travel.ubicacion_destino_texto && (
                 <strong className="text-purple-600">Destino (Texto):</strong> {travel.ubicacion_destino_texto} <br />
               )}
+              {/* ¡Línea corregida aquí! Usamos 'travel' y '&&' */}
               {travel.ubicacion_destino_lat && travel.ubicacion_destino_lon && (
                 <strong className="text-purple-600">Destino (GPS):</strong> {travel.ubicacion_destino_lat}, {travel.ubicacion_destino_lon} <br />
               )}
@@ -38,14 +41,6 @@ function TravelList({ travels }) {
               )}
             </div>
             {/* Aquí puedes añadir botones de Editar/Eliminar para viajes más adelante */}
-            {/* <div className="flex gap-2 mt-auto">
-              <button className="flex-1 py-2 px-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm">
-                Editar
-              </button>
-              <button className="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm">
-                Eliminar
-              </button>
-            </div> */}
           </li>
         ))}
       </ul>

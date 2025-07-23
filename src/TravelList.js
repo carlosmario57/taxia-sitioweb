@@ -1,7 +1,6 @@
 import React from 'react';
 
 function TravelList({ travels }) {
-  // Si no hay viajes, muestra un mensaje
   if (!travels || travels.length === 0) {
     return (
       <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md">
@@ -12,7 +11,6 @@ function TravelList({ travels }) {
   }
 
   return (
-    // Contenedor principal de la lista de viajes con estilos Tailwind
     <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Lista de Viajes</h2>
       <ul className="list-none p-0">
@@ -22,15 +20,15 @@ function TravelList({ travels }) {
               <strong className="text-purple-600">Pasajero:</strong> {travel.pasajero_nombre} <br />
               <strong className="text-purple-600">Teléfono:</strong> {travel.pasajero_telefono || 'N/A'} <br />
               <strong className="text-purple-600">Origen (Texto):</strong> {travel.ubicacion_origen_texto || 'N/A'} <br />
-              {/* ¡Línea corregida aquí! Usamos 'travel' y '&&' */}
+              {/* ATENCIÓN: Escribe estas dos líneas con CUIDADO EXTREMO */}
               {travel.ubicacion_origen_lat && travel.ubicacion_origen_lon && (
                 <strong className="text-purple-600">Origen (GPS):</strong> {travel.ubicacion_origen_lat}, {travel.ubicacion_origen_lon} <br />
               )}
-              {/* ¡Línea corregida aquí! Usamos 'travel' */}
+              {/* Escribe estas dos líneas con CUIDADO EXTREMO */}
               {travel.ubicacion_destino_texto && (
                 <strong className="text-purple-600">Destino (Texto):</strong> {travel.ubicacion_destino_texto} <br />
               )}
-              {/* ¡Línea corregida aquí! Usamos 'travel' y '&&' */}
+              {/* Escribe estas dos líneas con CUIDADO EXTREMO */}
               {travel.ubicacion_destino_lat && travel.ubicacion_destino_lon && (
                 <strong className="text-purple-600">Destino (GPS):</strong> {travel.ubicacion_destino_lat}, {travel.ubicacion_destino_lon} <br />
               )}
@@ -40,7 +38,6 @@ function TravelList({ travels }) {
                 <strong className="text-purple-600">Solicitado:</strong> {new Date(travel.fecha_solicitud._seconds * 1000).toLocaleString()}
               )}
             </div>
-            {/* Aquí puedes añadir botones de Editar/Eliminar para viajes más adelante */}
           </li>
         ))}
       </ul>

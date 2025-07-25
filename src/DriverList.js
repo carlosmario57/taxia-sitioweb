@@ -27,7 +27,7 @@ function DriverList({ onDriverDeleted, onEditDriver }) {
   const handleDelete = async (driverId) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este conductor?')) {
       try {
-        await axios.delete(`http://localhost:5000/drivers/${driverId}`);
+        await axios.get('http://localhost:5000/drivers');
         setDeleteMessage(`Conductor con ID ${driverId} eliminado exitosamente.`);
         if (onDriverDeleted) onDriverDeleted();
         fetchDrivers();

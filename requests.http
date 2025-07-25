@@ -1,0 +1,42 @@
+###
+# 1. GET: Obtener todos los conductores
+# Esta solicitud obtendrá todos los conductores de tu base de datos Firestore.
+GET http://127.0.0.1:5000/drivers
+
+###
+# 2. POST: Crear un nuevo conductor
+# Esta solicitud creará un nuevo conductor en Firestore.
+# Asegúrate de que el Content-Type sea application/json.
+POST http://127.0.0.1:5000/drivers
+Content-Type: application/json
+
+{
+    "nombre": "Conductor de Prueba Final",
+    "telefono": "3009988776",
+    "tipoVehiculo": "Bicicleta"
+}
+
+###
+# 3. GET: Obtener un conductor específico por ID
+# Para probar esta, primero ejecuta la solicitud POST (arriba) y copia el ID
+# que te devuelve en la respuesta. Luego, reemplaza <ID_DEL_CONDUCTOR> con ese ID.
+GET http://127.0.0.1:5000/drivers/r0Py05YhXYxnQ0sGhOB2
+
+###
+# 4. PUT: Actualizar un conductor existente
+# Para probar esta, usa el ID de un conductor existente (puedes obtenerlo del GET ALL o del POST).
+# Reemplaza <ID_DEL_CONDUCTOR> y modifica los campos que quieras actualizar.
+PUT http://127.0.0.1:5000/drivers/r0Py05YhXYxnQ0sGhOB2
+Content-Type: application/json
+
+{
+    "telefono": "3104180514",
+    "estado": "Disponible",
+    "nombre": "Conductor Actualizado"
+}
+
+###
+# 5. DELETE: Eliminar un conductor
+# Para probar esta, usa el ID de un conductor que quieras eliminar.
+# ¡Ten cuidado al eliminar, ya que es permanente!
+DELETE http://127.0.0.1:5000/drivers/r8Y05hYxnXxnQ8GnOB2

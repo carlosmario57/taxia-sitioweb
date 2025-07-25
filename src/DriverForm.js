@@ -1,147 +1,155 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const DriverForm = ({ onDriverCreated, editingDriver, onCancelEdit, message, error }) => {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    apellidos: '',
-    licencia: '',
-    telefono: '',
-    estatus: 'Activo'
-  });
+// Componente DriverForm: Proporciona un formulario para crear o editar conductores.
+// Recibe props de App.js para el manejo global de estados y mensajes.
+function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, setError }) {
+  // Estados internos del formulario para los valores de los campos
+  const [nombre, setNombre] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [tipoVehiculo, setTipoVehiculo] = useState('');
 
-  const [localError, setLocalError] = useState('');
-
+  // useEffect para precargar los datos del conductor si estamos en modo edición
   useEffect(() => {
     if (editingDriver) {
-      setFormData({
-        nombre: editingDriver.nombre || '',
-        apellidos: editingDriver.apellidos || '',
-        licencia: editingDriver.licencia || '',
-        telefono: editingDriver.telefono || '',
-        estatus: editingDriver.estatus || 'Activo'
-      });
+      // Si hay un conductor para editar, precarga sus datos en los estados del formulario
+      setNombre(editingDriver.nombre || '');
+      setTelefono(editingDriver.telefono || '');
+      setTipoVehiculo(editingDriver.tipoVehiculo || '');
+      setMessage(''); // Limpia mensajes globales del padre al iniciar edición
+      setError('');   // Limpia errores globales del padre al iniciar edición
+    } else {
+      // Si no hay conductor para editar (modo creación o edición cancelada), limpia el formulario
+      setNombre('');
+      setTelefono('');
+      setTipoVehiculo('');
     }
-  }, [editingDriver]);
+  }, [editingDriver, setMessage, setError]); // Se ejecuta cuando editingDriver cambia, o cuando los setters globales cambian (por seguridad)
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const validateForm = () => {
-    if (!formData.nombre || !formData.apellidos || !formData.licencia || !formData.telefono) {
-      setLocalError('Todos los campos son obligatorios');
-      return false;
-    }
-    setLocalError('');
-    return true;
-  };
-
+  /**
+   * Maneja el envío del formulario, ya sea para crear o actualizar un conductor.
+   * @param {Event} e - El evento de envío del formulario.
+   */
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
+    e.preventDefault(); // Previene el comportamiento por defecto del formulario (recargar la página)
+
+    setMessage(''); // Limpia mensajes globales del padre
+    setError('');   // Limpia errores globales del padre
+
+    // Validación básica de los campos obligatorios
+    if (!nombre || !telefono || !tipoVehiculo) {
+      setError('Todos los campos son obligatorios.');
+      return;
+    }
 
     try {
+      // Objeto con los datos del conductor a enviar
+      const driverData = {
+        nombre,
+        telefono,
+        tipoVehiculo
+      };
+
       if (editingDriver) {
-        await axios.put(`http://localhost:3001/api/conductores/${editingDriver.id}`, formData);
+        // Si estamos en modo edición, enviamos una petición PUT para actualizar
+        await axios.put(`http://localhost:5000/drivers/${editingDriver.id}`, driverData);
+        setMessage(`Conductor "${nombre}" (ID: ${editingDriver.id}) actualizado exitosamente.`);
+        onCancelEdit(); // Vuelve al modo de creación después de actualizar
       } else {
-        await axios.post('http://localhost:3001/api/conductores', formData);
+        // Si estamos creando, enviamos una petición POST para añadir
+        const response = await axios.post('http://localhost:5000/drivers', driverData);
+        setMessage(`Conductor "${response.data.id}" creado exitosamente.`);
       }
 
-      setFormData({
-        nombre: '',
-        apellidos: '',
-        licencia: '',
-        telefono: '',
-        estatus: 'Activo'
-      });
+      // Limpia el formulario después de un envío/actualización exitosa
+      setNombre('');
+      setTelefono('');
+      setTipoVehiculo('');
 
-      onDriverCreated();
+      // Notifica al componente padre (App.js) para que recargue la lista de conductores
+      // App.js se encargará de que DriverList recargue sus propios datos.
+      if (onDriverCreated) {
+        onDriverCreated();
+      }
+
     } catch (err) {
-      setLocalError(err.response?.data?.message || 'Error al procesar la solicitud');
+      console.error("Error al procesar conductor:", err);
+      // Extrae el mensaje de error del backend si está disponible, sino usa un mensaje genérico
+      const backendErrorMessage = err.response?.data?.error || err.message;
+      setError(`Error al ${editingDriver ? 'actualizar' : 'crear'} el conductor: ${backendErrorMessage}.`);
     }
   };
 
   return (
-    <div className="driver-form">
-      <h2>{editingDriver ? 'Editar Conductor' : 'Nuevo Conductor'}</h2>
+    // Contenedor principal del formulario con estilos Tailwind
+    <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
+        {editingDriver ? 'Editar Conductor' : 'Crear Nuevo Conductor'}
+      </h2>
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
+        {/* Campo Nombre */}
+        <div className="mb-4">
+          <label htmlFor="nombre" className="block text-gray-700 text-sm font-bold mb-2">Nombre:</label>
           <input
             type="text"
-            name="nombre"
-            value={formData.nombre}
-            onChange={handleChange}
-            placeholder="Nombre"
+            id="nombre"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
         </div>
-        <div className="form-group">
+        {/* Campo Teléfono */}
+        <div className="mb-4">
+          <label htmlFor="telefono" className="block text-gray-700 text-sm font-bold mb-2">Teléfono:</label>
           <input
             type="text"
-            name="apellidos"
-            value={formData.apellidos}
-            onChange={handleChange}
-            placeholder="Apellidos"
+            id="telefono"
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
         </div>
-        <div className="form-group">
+        {/* Campo Tipo de Vehículo */}
+        <div className="mb-6">
+          <label htmlFor="tipoVehiculo" className="block text-gray-700 text-sm font-bold mb-2">Tipo de Vehículo:</label>
           <input
             type="text"
-            name="licencia"
-            value={formData.licencia}
-            onChange={handleChange}
-            placeholder="Número de Licencia"
+            id="tipoVehiculo"
+            value={tipoVehiculo}
+            onChange={(e) => setTipoVehiculo(e.target.value)}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
         </div>
-        <div className="form-group">
-          <input
-            type="tel"
-            name="telefono"
-            value={formData.telefono}
-            onChange={handleChange}
-            placeholder="Teléfono"
-          />
-        </div>
-        <div className="form-group">
-          <select
-            name="estatus"
-            value={formData.estatus}
-            onChange={handleChange}
+        {/* Botones de acción */}
+        <div className="flex items-center justify-between">
+          <button 
+            type="submit" 
+            className={`
+              ${editingDriver ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'}
+              text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+            `}
           >
-            <option value="Activo">Activo</option>
-            <option value="Inactivo">Inactivo</option>
-          </select>
-        </div>
-        
-        {(localError || error) && (
-          <div className="error-message">
-            {localError || error}
-          </div>
-        )}
-        
-        {message && (
-          <div className="success-message">
-            {message}
-          </div>
-        )}
-
-        <div className="form-actions">
-          <button type="submit">
-            {editingDriver ? 'Actualizar' : 'Crear'}
+            {editingDriver ? 'Actualizar Conductor' : 'Crear Conductor'}
           </button>
-          {editingDriver && (
-            <button type="button" onClick={onCancelEdit}>
-              Cancelar
+          {editingDriver && ( // Muestra el botón de cancelar solo en modo edición
+            <button 
+              type="button" // Importante: tipo "button" para que no envíe el formulario
+              onClick={onCancelEdit} 
+              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              Cancelar Edición
             </button>
           )}
         </div>
       </form>
+      {/* Los mensajes de éxito o error ahora se muestran globalmente en App.js.
+          Si quieres feedback instantáneo aquí, puedes añadir estados locales,
+          pero el global ya se encargará de notificar al usuario. */}
     </div>
   );
-};
+}
 
 export default DriverForm;

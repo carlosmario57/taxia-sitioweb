@@ -2,127 +2,146 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DriverForm from './DriverForm';
 import DriverList from './DriverList';
-import TravelForm from './TravelForm'; // <-- Nuevo
-import TravelList from './TravelList'; // <-- Nuevo
-
-import './App.css'; // Asegúrate de que esta línea esté si tienes estilos CSS globales
+import TravelForm from './TravelForm';
+import TravelList from './TravelList';
+import './App.css';
 
 function App() {
-  // Estado para los conductores (mantener si ya lo tienes)
+  const [globalMessage, setGlobalMessage] = useState('');
+  const [globalError, setGlobalError] = useState('');
+  const [loadingDrivers, setLoadingDrivers] = useState(true);
+  const [loadingTravels, setLoadingTravels] = useState(true);
   const [drivers, setDrivers] = useState([]);
-  const [editingDriver, setEditingDriver] = useState(null);
-  const [driverMessage, setDriverMessage] = useState('');
-  const [driverError, setDriverError] = useState('');
-
-  // Estado para los viajes (NUEVO)
   const [travels, setTravels] = useState([]);
-  const [travelMessage, setTravelMessage] = useState(''); // Puedes usarlo para mensajes específicos de viajes
-  const [travelError, setTravelError] = useState('');     // Puedes usarlo para errores específicos de viajes
+  const [editingDriver, setEditingDriver] = useState(null);
 
+  const clearGlobalMessages = () => {
+    setGlobalMessage('');
+    setGlobalError('');
+  };
 
-  // Función para obtener conductores (mantener si ya la tienes)
   const fetchDrivers = async () => {
+    setLoadingDrivers(true);
+    clearGlobalMessages();
     try {
-      const response = await axios.get('http://127.0.0.1:5000/conductores');
+      const response = await axios.get('http://localhost:5000/drivers');
       setDrivers(response.data);
-      setDriverMessage('');
-      setDriverError('');
     } catch (err) {
       console.error("Error al obtener conductores:", err);
-      setDriverError('Error al cargar los conductores.');
-      setDriverMessage('');
+      setGlobalError("Error al cargar conductores. Asegúrate de que el backend esté funcionando y accesible.");
+    } finally {
+      setLoadingDrivers(false);
     }
   };
 
-  // Función para obtener viajes (NUEVO)
   const fetchTravels = async () => {
+    setLoadingTravels(true);
+    clearGlobalMessages();
     try {
-      const response = await axios.get('http://127.0.0.1:5000/viajes');
+      const response = await axios.get('http://localhost:5000/viajes');
       setTravels(response.data);
-      setTravelMessage('');
-      setTravelError('');
     } catch (err) {
       console.error("Error al obtener viajes:", err);
-      setTravelError('Error al cargar los viajes.');
-      setTravelMessage('');
+      setGlobalError("Error al cargar viajes. Asegúrate de que el backend esté funcionando y accesible.");
+    } finally {
+      setLoadingTravels(false);
     }
   };
 
-  // Cargar conductores y viajes al montar el componente (NUEVO: añadir fetchTravels)
   useEffect(() => {
     fetchDrivers();
-    fetchTravels(); // <-- Cargar viajes al inicio
-  }, []); // Se ejecuta una vez al montar
+    fetchTravels();
+  }, []);
 
-  // Funciones para CRUD de Conductores (mantener si ya las tienes, con posibles ajustes)
-  const handleDriverCreated = () => {
-    setEditingDriver(null); // Limpiar modo de edición
-    fetchDrivers(); // Recargar la lista de conductores
-    setDriverMessage('Conductor guardado exitosamente.'); // Mensaje para el conductor
+  const handleDriverFormSubmit = () => {
+    fetchDrivers();
+    setEditingDriver(null);
+    setGlobalMessage('Operación de conductor exitosa.');
+    setGlobalError('');
   };
 
   const handleEditDriver = (driver) => {
     setEditingDriver(driver);
+    clearGlobalMessages();
   };
 
-  const handleDeleteDriver = async (driverId) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este conductor?')) {
-      try {
-        await axios.delete(`http://127.0.0.1:5000/conductores/${driverId}`);
-        setDriverMessage('Conductor eliminado exitosamente.'); // Mensaje para el conductor
-        fetchDrivers(); // Recargar la lista
-        setDriverError('');
-      } catch (err) {
-        console.error("Error al eliminar conductor:", err);
-        setDriverError('Error al eliminar el conductor.'); // Error para el conductor
-        setDriverMessage('');
-      }
+  const handleCancelEdit = () => {
+    setEditingDriver(null);
+    clearGlobalMessages();
+  };
+
+  const handleDriverDeleted = (message, isError = false) => {
+    fetchDrivers();
+    if (isError) {
+      setGlobalError(message);
+      setGlobalMessage('');
+    } else {
+      setGlobalMessage(message);
+      setGlobalError('');
     }
   };
 
-  // Función para manejar viaje creado (NUEVO)
-  const handleTravelCreated = () => {
-    fetchTravels(); // Recargar la lista de viajes
-    setTravelMessage('Viaje creado exitosamente.'); // Mensaje para el viaje
+  const handleTravelFormSubmit = () => {
+    fetchTravels();
+    setGlobalMessage('Operación de viaje exitosa.');
+    setGlobalError('');
   };
 
-  // La estructura principal de tu aplicación (NUEVO: añadido TravelForm y TravelList)
   return (
-    <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
-      <header className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6 mb-8 text-center">
-        <h1 className="text-4xl font-extrabold text-purple-700 mb-2">CIMCO Operations</h1>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 font-sans antialiased">
+      <header className="w-full max-w-4xl bg-white shadow-lg rounded-lg p-6 mb-8 text-center">
+        <h1 className="text-4xl font-extrabold text-purple-700 mb-2">Panel de Control CIMCO - CEO</h1>
         <p className="text-xl text-gray-600">Gestión Centralizada de Conductores y Viajes</p>
       </header>
 
-      <main className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Sección de Conductores */}
-        <section className="bg-white shadow-md rounded-lg p-6">
+      {globalMessage && (
+        <p className="w-full max-w-4xl px-6 py-3 mb-4 text-center bg-green-100 text-green-700 rounded-lg shadow-sm font-medium">
+          {globalMessage}
+        </p>
+      )}
+      {globalError && (
+        <p className="w-full max-w-4xl px-6 py-3 mb-4 text-center bg-red-100 text-red-700 rounded-lg shadow-sm font-medium">
+          {globalError}
+        </p>
+      )}
+
+      <main className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
+        <section className="bg-white shadow-lg rounded-lg p-6">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Conductores</h2>
           <DriverForm
-            onDriverCreated={handleDriverCreated}
+            onDriverCreated={handleDriverFormSubmit}
             editingDriver={editingDriver}
-            setEditingDriver={setEditingDriver}
-            message={driverMessage} // Pasar el mensaje de conductor
-            setMessage={setDriverMessage}
-            error={driverError}   // Pasar el error de conductor
-            setError={setDriverError}
+            onCancelEdit={handleCancelEdit}
+            setMessage={setGlobalMessage}
+            setError={setGlobalError}
+            message={globalMessage}
+            error={globalError}
           />
           <DriverList
             drivers={drivers}
-            onEdit={handleEditDriver}
-            onDelete={handleDeleteDriver}
-            message={driverMessage} // Mostrar mensaje de conductor
-            error={driverError}     // Mostrar error de conductor
+            loading={loadingDrivers}
+            error={globalError}
+            onEditDriver={handleEditDriver}
+            onDriverDeleted={handleDriverDeleted}
+            deleteMessage={globalMessage}
+            setDeleteMessage={setGlobalMessage}
           />
         </section>
 
-        {/* Sección de Viajes (NUEVO) */}
-        <section className="bg-white shadow-md rounded-lg p-6">
+        <section className="bg-white shadow-lg rounded-lg p-6">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Viajes</h2>
-          <TravelForm onTravelCreated={handleTravelCreated} /> {/* <-- Añade el formulario de viajes */}
-          <TravelList travels={travels} /> {/* <-- Añade la lista de viajes (aún no creada) */}
-          {travelMessage && <p className="text-green-500 text-sm mt-4 text-center">{travelMessage}</p>}
-          {travelError && <p className="text-red-500 text-sm mt-4 text-center">{travelError}</p>}
+          <TravelForm 
+            onTravelCreated={handleTravelFormSubmit}
+            setMessage={setGlobalMessage}
+            setError={setGlobalError}
+            message={globalMessage}
+            error={globalError}
+          />
+          <TravelList 
+            travels={travels}
+            loading={loadingTravels}
+            error={globalError}
+          />
         </section>
       </main>
     </div>

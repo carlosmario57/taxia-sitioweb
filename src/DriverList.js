@@ -1,43 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// DriverList ahora recibe una prop 'onDriverDeleted' para notificar al padre
-// cuando un conductor es eliminado, y 'onEditDriver' para iniciar la edición.
+// DriverList recibe 'onDriverDeleted' y 'onEditDriver' como props
 function DriverList({ onDriverDeleted, onEditDriver }) {
   const [drivers, setDrivers] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [deleteMessage, setDeleteMessage] = useState(''); // Estado para mensajes de eliminación
+  const [deleteMessage, setDeleteMessage] = useState('');
 
-  // Función para obtener los conductores
+  // Obtener conductores desde el backend
   const fetchDrivers = async () => {
-    setLoading(true); // Reinicia el estado de carga antes de cada petición
-    setError(null);    // Limpia errores anteriores
-    setDeleteMessage(''); // Limpia mensajes de eliminación al cargar
+    setLoading(true);
+    setError(null);
+    setDeleteMessage('');
     try {
-      const response = await axios.get('http://127.0.0.1:5000/drivers');
+      const response = await axios.get('http://localhost:5000/drivers');
       setDrivers(response.data);
     } catch (err) {
-      console.error("Error al obtener conductores:", err);
-      // Mensaje más amigable para el usuario
       setError("Error al cargar los conductores. Asegúrate de que el backend esté funcionando y sea accesible.");
     } finally {
-      setLoading(false); // Deja de mostrar el indicador de carga, tanto si hubo éxito como error
+      setLoading(false);
     }
   };
 
-  // Función para manejar la eliminación de un conductor
+  // Eliminar conductor
   const handleDelete = async (driverId) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este conductor?')) { // Confirmación de seguridad
+    if (window.confirm('¿Estás seguro de que quieres eliminar este conductor?')) {
       try {
-        await axios.delete(`http://127.0.0.1:5000/drivers/${driverId}`);
+        await axios.delete(`http://localhost:5000/drivers/${driverId}`);
         setDeleteMessage(`Conductor con ID ${driverId} eliminado exitosamente.`);
-        // Llama a la función del padre para que la lista se actualice
-        if (onDriverDeleted) {
-          onDriverDeleted();
-        }
+        if (onDriverDeleted) onDriverDeleted();
+        fetchDrivers();
       } catch (err) {
-        console.error("Error al eliminar conductor:", err);
         setDeleteMessage(`Error al eliminar conductor con ID ${driverId}.`);
       }
     }
@@ -45,7 +39,8 @@ function DriverList({ onDriverDeleted, onEditDriver }) {
 
   useEffect(() => {
     fetchDrivers();
-  }, []); // Se ejecuta solo una vez al montar, y se recarga si la 'key' del componente padre cambia
+    // eslint-disable-next-line
+  }, []);
 
   if (loading) {
     return <p className="text-center text-gray-600">Cargando conductores...</p>;
@@ -56,7 +51,6 @@ function DriverList({ onDriverDeleted, onEditDriver }) {
   }
 
   return (
-    // Contenedor principal de la lista con estilos Tailwind
     <div className="flex-1 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Lista de Conductores</h2>
       {deleteMessage && (
@@ -76,14 +70,12 @@ function DriverList({ onDriverDeleted, onEditDriver }) {
                 <strong className="text-blue-600">Tipo de Vehículo:</strong> {driver.tipoVehiculo}
               </div>
               <div className="flex gap-2 mt-auto">
-                {/* Botón de Editar */}
                 <button
-                  onClick={() => onEditDriver(driver)} // Llama a la función del padre para editar
+                  onClick={() => onEditDriver(driver)}
                   className="flex-1 py-2 px-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm"
                 >
                   Editar
                 </button>
-                {/* Botón de Eliminar */}
                 <button
                   onClick={() => handleDelete(driver.id)}
                   className="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm"

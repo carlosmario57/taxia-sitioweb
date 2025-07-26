@@ -1,250 +1,153 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import firebase_admin
-from firebase_admin import credentials, firestore
-from firebase_admin import exceptions as firebase_exceptions
-import os
-from datetime import datetime
-import json
+import React, { useState } from 'react'; // Asegúrate de que solo haya imports de React y librerías JS
+import axios from 'axios';
 
-# --- Configuración de Firebase ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, "serviceAccountKey.json")
+import DriverForm from './DriverForm';
+import DriverList from './DriverList';
+import TravelForm from './TravelForm';
+import TravelList from './TravelList';
 
-if not firebase_admin._apps:
-    try:
-        if not os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
-            raise FileNotFoundError(f"El archivo de clave de servicio no se encontró en: {SERVICE_ACCOUNT_KEY_PATH}")
+import './App.css'; // Asegúrate de que este archivo esté vacío o contenga tus estilos globales
 
-        cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
-        firebase_admin.initialize_app(cred)
-        print("Firebase Admin SDK inicializado exitosamente.")
-    except FileNotFoundError as e:
-        print(f"ERROR FATAL: {e}")
-        print(f"POR FAVOR, VERIFICA LA RUTA Y EL NOMBRE EXACTO DEL ARCHIVO: '{SERVICE_ACCOUNT_KEY_PATH}'")
-        print("Asegúrate de que no tenga extensiones dobles como '.json.json' o caracteres invisibles.")
-    except Exception as e:
-        print(f"ERROR FATAL al inicializar Firebase Admin SDK: {e}")
-        print("Verifica tu conexión a internet o la configuración de tu proyecto Firebase.")
+function App() {
+  // --- Estados Globales para Mensajes y Errores ---
+  // Estos estados serán actualizados por los componentes hijos (DriverForm, DriverList, TravelForm, TravelList)
+  // para mostrar retroalimentación al usuario en la parte superior del panel.
+  const [globalMessage, setGlobalMessage] = useState('');
+  const [globalError, setGlobalError] = useState('');
 
-try:
-    db = firestore.client()
-except NameError:
-    print("Firestore client no pudo ser inicializado. Las operaciones de base de datos fallarán.")
-    db = None
+  // --- Estados para Edición ---
+  const [editingDriver, setEditingDriver] = useState(null); // Conductor actualmente en edición
+  const [editingTravel, setEditingTravel] = useState(null);   // Viaje actualmente en edición
 
-app = Flask(__name__)
-CORS(app)
+  // --- Estados para Forzar Recarga de Listas (Actualización Automática) ---
+  // Estos keys se incrementan para forzar un re-render y re-fetch en los useEffect de las listas
+  const [refreshDriversKey, setRefreshDriversKey] = useState(0);
+  const [refreshTravelsKey, setRefreshTravelsKey] = useState(0);
 
-# --- Rutas de API para Conductores ---
+  // --- Funciones de Callback para DriverForm y DriverList ---
 
-@app.route('/drivers', methods=['GET'])
-def get_drivers():
-    if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503
-    try:
-        drivers_ref = db.collection('drivers') # Colección 'drivers'
-        all_drivers = []
-        for doc in drivers_ref.stream():
-            driver_data = doc.to_dict()
-            driver_data['id'] = doc.id
-            all_drivers.append(driver_data)
-        return jsonify(all_drivers), 200
-    except Exception as e:
-        print(f"Error al obtener conductores: {e}")
-        return jsonify({"error": "Error interno del servidor al obtener conductores"}), 500
+  // Se llama cuando se crea o actualiza un conductor desde DriverForm
+  const handleDriverFormSubmit = () => {
+    setEditingDriver(null); // Sale del modo edición en el formulario
+    setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza la recarga de DriverList
+    // Los mensajes globales ya los gestiona DriverForm directamente
+  };
 
-@app.route('/drivers', methods=['POST'])
-def add_driver():
-    if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503
-    try:
-        data = request.json
-        if not data:
-            return jsonify({"error": "No se proporcionaron datos"}), 400
-        required_fields = ['nombre', 'telefono', 'tipoVehiculo']
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return jsonify({"error": f"Falta el campo obligatorio: '{field}' o está vacío"}), 400
+  // Se llama cuando se hace clic en "Editar" en DriverList
+  const handleEditDriver = (driver) => {
+    setEditingDriver(driver); // Establece el conductor a editar en el formulario
+    setGlobalMessage('');      // Limpia mensajes globales al iniciar edición
+    setGlobalError('');        // Limpia errores globales al iniciar edición
+  };
 
-        doc_ref = db.collection('drivers').add(data) # Colección 'drivers'
-        return jsonify({"id": doc_ref[1].id, "message": "Conductor añadido exitosamente"}), 201
-    except Exception as e:
-        print(f"Error al añadir conductor: {e}")
-        return jsonify({"error": "Error interno del servidor al añadir conductor"}), 500
+  // Se llama para cancelar la edición en DriverForm
+  const handleCancelEditDriver = () => { // Renombrado para claridad
+    setEditingDriver(null); // Sale del modo edición en el formulario
+    setGlobalMessage('');    // Limpia mensajes
+    setGlobalError('');      // Limpia errores
+  };
 
-@app.route('/drivers/<string:driver_id>', methods=['PUT'])
-def update_driver(driver_id):
-    if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503
-    try:
-        data = request.json
-        if not data:
-            return jsonify({"error": "No se proporcionaron datos para actualizar"}), 400
+  // Se llama cuando se elimina un conductor desde DriverList
+  const handleDriverDeleted = () => {
+    setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza la recarga de DriverList
+    // Los mensajes globales ya los gestiona DriverList directamente
+  };
 
-        driver_ref = db.collection('drivers').document(driver_id) # Colección 'drivers'
-        if not driver_ref.get().exists:
-            return jsonify({"error": f"Conductor con ID '{driver_id}' no encontrado"}), 404
+  // --- Funciones de Callback para TravelForm y TravelList ---
 
-        driver_ref.update(data)
-        return jsonify({"message": f"Conductor '{driver_id}' actualizado exitosamente"}), 200
-    except Exception as e:
-        print(f"Error al actualizar conductor '{driver_id}': {e}")
-        return jsonify({"error": "Error interno del servidor al actualizar conductor"}), 500
+  // Se llama cuando se crea o actualiza un viaje desde TravelForm
+  const handleTravelFormSubmit = () => {
+    setEditingTravel(null); // Sale del modo edición en el formulario de viajes
+    setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza la recarga de TravelList
+    // Los mensajes globales ya los gestiona TravelForm directamente
+  };
 
-@app.route('/drivers/<string:driver_id>', methods=['DELETE'])
-def delete_driver(driver_id):
-    if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503
-    try:
-        db.collection('drivers').document(driver_id).delete() # Colección 'drivers'
-        return jsonify({"message": f"Conductor '{driver_id}' eliminado exitosamente"}), 200
-    except Exception as e:
-        print(f"Error al eliminar conductor '{driver_id}': {e}")
-        return jsonify({"error": "Error interno del servidor al eliminar conductor"}), 500
+  // Se llama cuando se hace clic en "Editar" en TravelList
+  const handleEditTravel = (travel) => {
+    setEditingTravel(travel); // Establece el viaje a editar en el formulario
+    setGlobalMessage('');      // Limpia mensajes globales al iniciar edición
+    setGlobalError('');        // Limpia errores globales al iniciar edición
+  };
 
-# --- Rutas de API para Viajes (Travels) ---
+  // Se llama para cancelar la edición en TravelForm
+  const handleCancelEditTravel = () => {
+    setEditingTravel(null); // Sale del modo edición en el formulario de viajes
+    setGlobalMessage('');    // Limpia mensajes
+    setGlobalError('');      // Limpia errores
+  };
 
-@app.route('/viajes', methods=['GET'])
-def get_viajes():
-    """
-    Obtiene todos los viajes de la colección 'viajes' en Firestore.
-    Retorna una lista de diccionarios con los datos de los viajes, incluyendo su ID de documento.
-    Maneja la conversión de Timestamps de Firestore a formato legible.
-    """
-    if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503
-    try:
-        viajes_ref = db.collection('viajes')
-        all_viajes = []
-        for doc in viajes_ref.stream():
-            viaje_data = doc.to_dict()
-            viaje_data['id'] = doc.id
+  // Se llama cuando se elimina un viaje desde TravelList
+  const handleTravelDeleted = () => {
+    setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza la recarga de TravelList
+    // Los mensajes globales ya los gestiona TravelList directamente
+  };
 
-            if 'fecha_solicitud' in viaje_data and hasattr(viaje_data['fecha_solicitud'], 'isoformat'):
-                viaje_data['fecha_solicitud'] = viaje_data['fecha_solicitud'].isoformat()
-            if 'fecha_asignacion' in viaje_data and hasattr(viaje_data['fecha_asignacion'], 'isoformat'):
-                viaje_data['fecha_asignacion'] = viaje_data['fecha_asignacion'].isoformat()
-            
-            all_viajes.append(viaje_data)
-        return jsonify(all_viajes), 200
-    except Exception as e:
-        print(f"Error al obtener viajes: {e}")
-        return jsonify({"error": "Error interno del servidor al obtener viajes"}), 500
 
-@app.route('/viajes', methods=['POST'])
-def add_viaje():
-    """
-    Añade un nuevo viaje a la colección 'viajes' en Firestore.
-    Requiere 'pasajero_nombre' y al menos una forma de ubicación de origen
-    (ubicacion_origen_texto o ubicacion_origen_lat/lon).
-    Retorna el ID del nuevo viaje creado.
-    """
-    if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503
-    try:
-        data = request.json
+  // --- Renderizado del Componente Principal ---
+  return (
+    <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center font-sans antialiased">
+      
+      {/* Encabezado del Panel */}
+      <header className="w-full max-w-4xl bg-white shadow-lg rounded-lg p-6 mb-8 text-center">
+        <h1 className="text-4xl font-extrabold text-purple-700 mb-2">CIMCO Operations</h1>
+        <p className="text-xl text-gray-600">Gestión Centralizada de Conductores y Viajes</p>
+      </header>
+
+      {/* Mensajes Globales (éxito/error) */}
+      {globalMessage && (
+        <p className="w-full max-w-4xl px-6 py-3 mb-4 text-center bg-green-100 text-green-700 rounded-lg shadow-sm font-medium">
+          {globalMessage}
+        </p>
+      )}
+      {globalError && (
+        <p className="w-full max-w-4xl px-6 py-3 mb-4 text-center bg-red-100 text-red-700 rounded-lg shadow-sm font-medium">
+          {globalError}
+        </p>
+      )}
+
+      {/* Contenido Principal: Formularios y Listas */}
+      <main className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
         
-        if not data:
-            return jsonify({"error": "No se proporcionaron datos"}), 400
+        {/* Sección de Gestión de Conductores */}
+        <section className="bg-white shadow-lg rounded-lg p-6">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Conductores</h2>
+          <DriverForm
+            onDriverCreated={handleDriverFormSubmit}
+            editingDriver={editingDriver}
+            onCancelEdit={handleCancelEditDriver}
+            setMessage={setGlobalMessage}
+            setError={setGlobalError}
+          />
+          <DriverList
+            key={refreshDriversKey} // ¡IMPORTANTE! Este key fuerza el re-render y re-fetch
+            onEditDriver={handleEditDriver}
+            onDriverDeleted={handleDriverDeleted}
+            setGlobalMessage={setGlobalMessage}
+            setGlobalError={setGlobalError}
+          />
+        </section>
 
-        if not data.get('pasajero_nombre'):
-            return jsonify({"error": "Falta el nombre del pasajero"}), 400
-        
-        if not (data.get('ubicacion_origen_texto') or 
-                (data.get('ubicacion_origen_lat') is not None and data.get('ubicacion_origen_lon') is not None)):
-            return jsonify({"error": "Debe proporcionar una ubicación de origen (texto o coordenadas GPS)"}), 400
+        {/* Sección de Gestión de Viajes */}
+        <section className="bg-white shadow-lg rounded-lg p-6">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Viajes</h2>
+          <TravelForm 
+            onTravelCreated={handleTravelFormSubmit}
+            editingTravel={editingTravel} // Pasa el viaje a editar
+            onCancelEdit={handleCancelEditTravel} // Pasa la función para cancelar la edición
+            setMessage={setGlobalMessage}
+            setError={setGlobalError}
+          />
+          <TravelList 
+            key={refreshTravelsKey} // ¡IMPORTANTE! Este key fuerza el re-render y re-fetch
+            onEditTravel={handleEditTravel} // Pasa la función para editar viajes
+            onTravelDeleted={handleTravelDeleted} // Pasa la función para eliminar viajes
+            setGlobalMessage={setGlobalMessage} 
+            setGlobalError={setGlobalError}     
+          />
+        </section>
+      </main>
+    </div>
+  );
+}
 
-        data['pasajero_telefono'] = data.get('pasajero_telefono', '')
-        data['ubicacion_origen_texto'] = data.get('ubicacion_origen_texto', '')
-        data['ubicacion_origen_lat'] = float(data.get('ubicacion_origen_lat')) if data.get('ubicacion_origen_lat') is not None else None
-        data['ubicacion_origen_lon'] = float(data.get('ubicacion_origen_lon')) if data.get('ubicacion_origen_lon') is not None else None
-        
-        data['ubicacion_destino_texto'] = data.get('ubicacion_destino_texto', '')
-        data['ubicacion_destino_lat'] = float(data.get('ubicacion_destino_lat')) if data.get('ubicacion_destino_lat') is not None else None
-        data['ubicacion_destino_lon'] = float(data.get('ubicacion_destino_lon')) if data.get('ubicacion_destino_lon') is not None else None
-        
-        data['estado'] = data.get('estado', 'pendiente').lower()
-        data['conductor_id'] = data.get('conductor_id', None)
-        data['conductor_nombre'] = data.get('conductor_nombre', None)
-        data['fecha_solicitud'] = firestore.SERVER_TIMESTAMP
-        data['fecha_asignacion'] = data.get('fecha_asignacion', None)
-        data['notas'] = data.get('notas', '')
-
-        doc_ref = db.collection('viajes').add(data)
-        return jsonify({"id": doc_ref[1].id, "message": "Viaje añadido exitosamente"}), 201
-    except ValueError as e:
-        print(f"Error de validación de datos al añadir viaje: {e}")
-        return jsonify({"error": f"Datos de latitud/longitud inválidos: {e}"}), 400
-    except Exception as e:
-        print(f"Error al añadir viaje: {e}")
-        return jsonify({"error": "Error interno del servidor al añadir viaje"}), 500
-
-@app.route('/viajes/<string:viaje_id>', methods=['PUT'])
-def update_viaje(viaje_id):
-    """
-    Actualiza la información de un viaje específico en Firestore.
-    Requiere el ID del viaje en la URL y los datos a actualizar en el cuerpo de la petición JSON.
-    Permite actualizar campos como estado, conductor, ubicaciones, etc.
-    """
-    if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503
-    try:
-        data = request.json
-        if not data:
-            return jsonify({"error": "No se proporcionaron datos para actualizar"}), 400
-
-        viaje_ref = db.collection('viajes').document(viaje_id)
-        if not viaje_ref.get().exists:
-            return jsonify({"error": f"Viaje con ID '{viaje_id}' no encontrado"}), 404
-
-        # Convertir lat/lon a float si están presentes en la actualización
-        if 'ubicacion_origen_lat' in data and data['ubicacion_origen_lat'] is not None:
-            data['ubicacion_origen_lat'] = float(data['ubicacion_origen_lat'])
-        if 'ubicacion_origen_lon' in data and data['ubicacion_origen_lon'] is not None:
-            data['ubicacion_origen_lon'] = float(data['ubicacion_origen_lon'])
-        if 'ubicacion_destino_lat' in data and data['ubicacion_destino_lat'] is not None:
-            data['ubicacion_destino_lat'] = float(data['ubicacion_destino_lat'])
-        if 'ubicacion_destino_lon' in data and data['ubicacion_destino_lon'] is not None:
-            data['ubicacion_destino_lon'] = float(data['ubicacion_destino_lon'])
-        
-        # Si se asigna un conductor, actualizar la fecha de asignación si no existe
-        if 'conductor_id' in data and data['conductor_id'] is not None:
-            current_viaje = viaje_ref.get().to_dict()
-            if not current_viaje.get('fecha_asignacion'):
-                data['fecha_asignacion'] = firestore.SERVER_TIMESTAMP
-            
-        # Asegurarse de que el estado esté en minúsculas si se actualiza
-        if 'estado' in data:
-            data['estado'] = data['estado'].lower()
-
-        viaje_ref.update(data)
-        return jsonify({"message": f"Viaje '{viaje_id}' actualizado exitosamente"}), 200
-    except ValueError as e:
-        print(f"Error de validación de datos al actualizar viaje: {e}")
-        return jsonify({"error": f"Datos de latitud/longitud inválidos en la actualización: {e}"}), 400
-    except Exception as e:
-        print(f"Error al actualizar viaje '{viaje_id}': {e}")
-        return jsonify({"error": "Error interno del servidor al actualizar viaje"}), 500
-
-@app.route('/viajes/<string:viaje_id>', methods=['DELETE'])
-def delete_viaje(viaje_id):
-    """
-    Elimina un viaje específico de Firestore.
-    Requiere el ID del viaje en la URL.
-    """
-    if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503
-    try:
-        viaje_ref = db.collection('viajes').document(viaje_id)
-        if not viaje_ref.get().exists:
-            return jsonify({"error": f"Viaje con ID '{viaje_id}' no encontrado"}), 404
-
-        viaje_ref.delete()
-        return jsonify({"message": f"Viaje '{viaje_id}' eliminado exitosamente"}), 200
-    except Exception as e:
-        print(f"Error al eliminar viaje '{viaje_id}': {e}")
-        return jsonify({"error": "Error interno del servidor al eliminar viaje"}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+export default App;

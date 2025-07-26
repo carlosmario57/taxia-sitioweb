@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// Componente TravelList: Muestra la lista de viajes.
-// Recibe setters para los mensajes globales de App.js.
-function TravelList({ setGlobalMessage, setGlobalError }) {
+// Componente TravelList: Muestra la lista de viajes, con opciones para editar y eliminar.
+// Recibe setters para los mensajes globales de App.js y funciones de acción.
+function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobalError }) {
   // Estados INTERNOS de TravelList para la data, carga y errores
   const [travels, setTravels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,31 +16,47 @@ function TravelList({ setGlobalMessage, setGlobalError }) {
   const fetchTravels = async () => {
     setLoading(true);
     setError(null);
-    setGlobalMessage(''); // Limpia mensajes globales del padre
-    setGlobalError('');   // Limpia errores globales del padre
+    setGlobalMessage(''); // Limpia mensajes globales
+    setGlobalError('');   // Limpia errores globales
 
     try {
-      // Realiza la petición GET a tu backend Flask
-      // URL CRÍTICA: Asegúrate de que esta URL sea la correcta y apunte a tu backend Flask.
       const response = await axios.get('http://localhost:5000/viajes');
       setTravels(response.data);
     } catch (err) {
       console.error("Error al obtener viajes:", err);
       const errorMessage = err.response?.data?.error || "Error al cargar los viajes. Asegúrate de que el backend esté funcionando y sea accesible.";
-      setError(errorMessage); // Establece el error interno
+      setError(errorMessage);
       setGlobalError(errorMessage); // Propaga el error al estado global
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Handles the deletion of a travel.
+   * @param {string} travelId - The ID of the travel to delete.
+   */
+  const handleDelete = async (travelId) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este viaje de forma permanente?')) {
+      try {
+        await axios.delete(`http://localhost:5000/viajes/${travelId}`);
+        setGlobalMessage(`Viaje con ID ${travelId} eliminado exitosamente.`);
+        setGlobalError('');
+        fetchTravels(); // Vuelve a cargar la lista de viajes después de la eliminación
+      } catch (err) {
+        console.error("Error al eliminar viaje:", err);
+        const errorMessage = err.response?.data?.error || `Error al eliminar viaje con ID ${travelId}.`;
+        setGlobalError(errorMessage);
+        setGlobalMessage('');
+      }
+    }
+  };
+
   // Cargar viajes al montar el componente
-  // Se ejecutará una vez al montar, y puede ser disparado por cambios en App.js
   useEffect(() => {
     fetchTravels();
-  }, [setGlobalMessage, setGlobalError]); // Dependencias para que se ejecute si los setters globales cambian
+  }, [setGlobalMessage, setGlobalError, onTravelDeleted]); // Dependencias para que se ejecute si los setters globales o la función de eliminación cambian
 
-  // Renderizado Condicional para estados de carga y error internos
   if (loading) {
     return <p className="text-center text-gray-600 p-4">Cargando viajes...</p>;
   }
@@ -50,7 +66,6 @@ function TravelList({ setGlobalMessage, setGlobalError }) {
   }
 
   return (
-    // Contenedor principal de la lista de viajes con estilos Tailwind
     <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Lista de Viajes</h2>
       {travels.length === 0 ? (
@@ -59,7 +74,7 @@ function TravelList({ setGlobalMessage, setGlobalError }) {
         <ul className="list-none p-0">
           {travels.map(travel => (
             <li key={travel.id} className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50 shadow-sm flex flex-col">
-              <div className="mb-2 text-gray-700 leading-relaxed">
+              <div className="mb-3 text-gray-700 leading-relaxed">
                 <p><strong className="text-purple-600">Pasajero:</strong> {travel.pasajero_nombre}</p>
                 <p><strong className="text-purple-600">Teléfono:</strong> {travel.pasajero_telefono || 'N/A'}</p>
                 <p><strong className="text-purple-600">Origen (Texto):</strong> {travel.ubicacion_origen_texto || 'N/A'}</p>
@@ -77,7 +92,6 @@ function TravelList({ setGlobalMessage, setGlobalError }) {
                   <p><strong className="text-purple-600">Conductor Asignado:</strong> {travel.conductor_nombre}</p>
                 )}
                 {travel.fecha_solicitud && (
-                  // Asegúrate de que fecha_solicitud sea un objeto de fecha válido o una cadena parseable
                   <p><strong className="text-purple-600">Solicitado:</strong> {new Date(travel.fecha_solicitud).toLocaleString()}</p>
                 )}
                 {travel.fecha_asignacion && (
@@ -87,7 +101,21 @@ function TravelList({ setGlobalMessage, setGlobalError }) {
                   <p><strong className="text-purple-600">Notas:</strong> {travel.notas}</p>
                 )}
               </div>
-              {/* Aquí puedes añadir botones de Editar/Eliminar para viajes más adelante */}
+              {/* Botones de acción (Editar/Eliminar) para Viajes */}
+              <div className="flex gap-2 mt-auto">
+                <button
+                  onClick={() => onEditTravel(travel)} // Llama a la función del padre para editar
+                  className="flex-1 py-2 px-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => handleDelete(travel.id)}
+                  className="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+                >
+                  Eliminar
+                </button>
+              </div>
             </li>
           ))}
         </ul>

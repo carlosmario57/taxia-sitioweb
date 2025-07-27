@@ -1,89 +1,117 @@
-import React, { useState } from 'react';
-import axios from 'axios'; // Aunque axios no se usa directamente aquí, se mantiene por si se añade lógica global de fetching
+import React, { useState, useEffect } from 'react'; // Importa useEffect
+import axios from 'axios';
 
 import DriverForm from './DriverForm';
 import DriverList from './DriverList';
 import TravelForm from './TravelForm';
 import TravelList from './TravelList';
+import AssignDriverModal from './AssignDriverModal'; // NUEVO: Importa el componente modal de asignación
 
 import './App.css'; // Asegúrate de que este archivo esté vacío o contenga tus estilos globales
 
 function App() {
   // --- Estados Globales para Mensajes y Errores ---
-  // Estos estados serán actualizados por los componentes hijos (DriverForm, DriverList, TravelForm, TravelList)
-  // para mostrar retroalimentación al usuario en la parte superior del panel.
   const [globalMessage, setGlobalMessage] = useState('');
   const [globalError, setGlobalError] = useState('');
 
-  // --- Estados para Edición ---
-  const [editingDriver, setEditingDriver] = useState(null); // Conductor actualmente en edición
-  const [editingTravel, setEditingTravel] = useState(null);   // Viaje actualmente en edición
+  // --- Estados de Datos y Edición ---
+  const [drivers, setDrivers] = useState([]); // Ahora App.js gestiona la lista de conductores
+  const [travels, setTravels] = useState([]); // App.js también gestionará la lista de viajes (o TravelList la cargará)
+  const [editingDriver, setEditingDriver] = useState(null);   // Conductor actualmente en edición
+  const [editingTravel, setEditingTravel] = useState(null);     // Viaje actualmente en edición
+  const [assigningTravel, setAssigningTravel] = useState(null); // NUEVO: Viaje actualmente en proceso de asignación de conductor
 
   // --- Estados para Forzar Recarga de Listas (Actualización Automática) ---
-  // Estos keys se incrementan para forzar un re-render y re-fetch en los useEffect de las listas
   const [refreshDriversKey, setRefreshDriversKey] = useState(0);
   const [refreshTravelsKey, setRefreshTravelsKey] = useState(0);
 
+  // --- Funciones de Carga de Datos (Ahora en App.js para drivers) ---
+  const fetchDrivers = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/drivers');
+      setDrivers(response.data);
+    } catch (err) {
+      console.error("Error al obtener conductores en App.js:", err);
+      setGlobalError("Error al cargar conductores. Asegúrate de que el backend esté funcionando.");
+    }
+  };
+
+  // useEffect para cargar conductores al inicio de la aplicación
+  useEffect(() => {
+    fetchDrivers();
+  }, [refreshDriversKey]); // Se recarga si se fuerza un refresh
+
   // --- Funciones de Callback para DriverForm y DriverList ---
 
-  // Se llama cuando se crea o actualiza un conductor desde DriverForm
   const handleDriverFormSubmit = () => {
-    setEditingDriver(null); // Sale del modo edición en el formulario
-    setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza la recarga de DriverList
-    // IMPORTANTE: DriverForm ya establece el mensaje global de éxito.
-    // Aquí solo limpiamos el error si lo hubiera.
-    setGlobalError(''); 
+    setEditingDriver(null);
+    setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza recarga de DriverList
+    setGlobalError(''); // Limpia errores
   };
 
-  // Se llama cuando se hace clic en "Editar" en DriverList
   const handleEditDriver = (driver) => {
-    setEditingDriver(driver); // Establece el conductor a editar en el formulario
-    setGlobalMessage('');      // Limpia mensajes globales al iniciar edición
-    setGlobalError('');        // Limpia errores globales al iniciar edición
+    setEditingDriver(driver);
+    setGlobalMessage('');
+    setGlobalError('');
   };
 
-  // Se llama para cancelar la edición en DriverForm
-  const handleCancelEditDriver = () => { 
-    setEditingDriver(null); // Sale del modo edición en el formulario
-    setGlobalMessage('');    // Limpia mensajes
-    setGlobalError('');      // Limpia errores
+  const handleCancelEditDriver = () => {
+    setEditingDriver(null);
+    setGlobalMessage('');
+    setGlobalError('');
   };
 
-  // Se llama cuando se elimina un conductor desde DriverList
   const handleDriverDeleted = () => {
-    setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza la recarga de DriverList
-    // DriverList ya gestiona su propio mensaje de éxito/error de eliminación y lo propaga globalmente
+    setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza recarga de DriverList
+    // DriverList ya gestiona su propio mensaje de éxito/error de eliminación
   };
 
   // --- Funciones de Callback para TravelForm y TravelList ---
 
-  // Se llama cuando se crea o actualiza un viaje desde TravelForm
   const handleTravelFormSubmit = () => {
-    setEditingTravel(null); // Sale del modo edición en el formulario de viajes
-    setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza la recarga de TravelList
-    // IMPORTANTE: TravelForm ya establece el mensaje global de éxito.
-    // Aquí solo limpiamos el error si lo hubiera.
+    setEditingTravel(null);
+    setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza recarga de TravelList
     setGlobalError('');
   };
 
-  // Se llama cuando se hace clic en "Editar" en TravelList
   const handleEditTravel = (travel) => {
-    setEditingTravel(travel); // Establece el viaje a editar en el formulario
-    setGlobalMessage('');      // Limpia mensajes globales al iniciar edición
-    setGlobalError('');        // Limpia errores globales al iniciar edición
+    setEditingTravel(travel);
+    setGlobalMessage('');
+    setGlobalError('');
   };
 
-  // Se llama para cancelar la edición en TravelForm
   const handleCancelEditTravel = () => {
-    setEditingTravel(null); // Sale del modo edición en el formulario de viajes
-    setGlobalMessage('');    // Limpia mensajes
-    setGlobalError('');      // Limpia errores
+    setEditingTravel(null);
+    setGlobalMessage('');
+    setGlobalError('');
   };
 
-  // Se llama cuando se elimina un viaje desde TravelList
   const handleTravelDeleted = () => {
+    setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza recarga de TravelList
+    // TravelList ya gestiona su propio mensaje de éxito/error de eliminación
+  };
+
+  // --- NUEVAS Funciones de Callback para Asignación de Conductores ---
+
+  // Se llama desde TravelList cuando se hace clic en "Asignar Conductor"
+  const handleAssignDriver = (travel) => {
+    setAssigningTravel(travel); // Establece el viaje que se va a asignar
+    setGlobalMessage('');
+    setGlobalError('');
+  };
+
+  // Se llama desde AssignDriverModal para cerrar el modal
+  const handleCancelAssign = () => {
+    setAssigningTravel(null); // Cierra el modal de asignación
+    setGlobalMessage('');
+    setGlobalError('');
+  };
+
+  // Se llama desde AssignDriverModal cuando la asignación es exitosa
+  const handleAssignSuccess = () => {
+    setAssigningTravel(null); // Cierra el modal
     setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza la recarga de TravelList
-    // TravelList ya gestiona su propio mensaje de éxito/error de eliminación y lo propaga globalmente
+    // El modal ya establece el mensaje global de éxito
   };
 
 
@@ -123,7 +151,8 @@ function App() {
             setError={setGlobalError}
           />
           <DriverList
-            key={refreshDriversKey} // ¡IMPORTANTE! Este key fuerza el re-render y re-fetch
+            key={refreshDriversKey} // Este key fuerza el re-render y re-fetch
+            drivers={drivers} // AHORA App.js pasa la lista de conductores
             onEditDriver={handleEditDriver}
             onDriverDeleted={handleDriverDeleted}
             setGlobalMessage={setGlobalMessage}
@@ -136,20 +165,33 @@ function App() {
           <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Viajes</h2>
           <TravelForm 
             onTravelCreated={handleTravelFormSubmit}
-            editingTravel={editingTravel} // Pasa el viaje a editar
-            onCancelEdit={handleCancelEditTravel} // Pasa la función para cancelar la edición
+            editingTravel={editingTravel}
+            onCancelEdit={handleCancelEditTravel}
             setMessage={setGlobalMessage}
             setError={setGlobalError}
           />
           <TravelList 
-            key={refreshTravelsKey} // ¡IMPORTANTE! Este key fuerza el re-render y re-fetch
-            onEditTravel={handleEditTravel} // Pasa la función para editar viajes
-            onTravelDeleted={handleTravelDeleted} // Pasa la función para eliminar viajes
+            key={refreshTravelsKey} // Este key fuerza el re-render y re-fetch
+            onEditTravel={handleEditTravel}
+            onTravelDeleted={handleTravelDeleted}
+            onAssignDriver={handleAssignDriver} // NUEVO: Pasa la función para iniciar asignación
             setGlobalMessage={setGlobalMessage} 
             setGlobalError={setGlobalError}     
           />
         </section>
       </main>
+
+      {/* NUEVO: Modal de Asignación de Conductor */}
+      {assigningTravel && (
+        <AssignDriverModal
+          travelToAssign={assigningTravel}
+          drivers={drivers} // Pasa la lista de conductores disponibles
+          onClose={handleCancelAssign}
+          onAssignSuccess={handleAssignSuccess}
+          setGlobalMessage={setGlobalMessage}
+          setGlobalError={setGlobalError}
+        />
+      )}
     </div>
   );
 }

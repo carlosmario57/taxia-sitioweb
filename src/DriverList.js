@@ -4,11 +4,11 @@ import axios from 'axios';
 // Componente DriverList: Muestra la lista de conductores, con opciones para editar y eliminar.
 // Recibe props de App.js para el manejo global de estados y mensajes, y funciones de acción.
 function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobalError }) {
-  // Estados locales para DriverList
+  // Estados INTERNOS de DriverList para la data, carga y errores de la lista misma.
   const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true); // Estado de carga interno
-  const [error, setError] = useState(null);     // Estado de error interno
-
+  const [loading, setLoading] = useState(true); // Estado de carga interno para la lista
+  const [error, setError] = useState(null);     // Estado de error interno para la lista
+  
   /**
    * Fetches the list of drivers from the backend API.
    * Resets loading and error states before fetching.
@@ -16,7 +16,7 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
   const fetchDrivers = async () => {
     setLoading(true); // Controla la carga internamente
     setError(null);    // Limpia error interno
-    setGlobalMessage(''); // Limpia mensajes globales del padre
+    setGlobalMessage(''); // Limpia mensajes globales del padre antes de una nueva operación
     setGlobalError('');   // Limpia errores globales del padre
 
     try {
@@ -42,14 +42,11 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
     if (window.confirm('¿Estás seguro de que quieres eliminar este conductor de forma permanente?')) {
       try {
         await axios.delete(`http://localhost:5000/drivers/${driverId}`);
-        // Actualiza el mensaje global del padre con el éxito
         setGlobalMessage(`Conductor con ID ${driverId} eliminado exitosamente.`);
         setGlobalError(''); // Limpia cualquier error global anterior
-
-        // Notifica al componente padre para que recargue la lista
-        if (onDriverDeleted) {
-          onDriverDeleted(); // Ya no pasamos el mensaje aquí, App.js lo manejará
-        }
+        
+        // Vuelve a cargar la lista de conductores después de la eliminación exitosa
+        fetchDrivers(); // Esto refrescará la lista internamente
       } catch (err) {
         console.error("Error al eliminar conductor:", err);
         const errorMessage = err.response?.data?.error || `Error al eliminar conductor con ID ${driverId}.`;
@@ -61,6 +58,7 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
   };
 
   // useEffect para cargar los datos al montar el componente
+  // Se ejecutará una vez al montar. El 'key' en App.js forzará el re-render y re-fetch.
   useEffect(() => {
     fetchDrivers();
   }, []); // Se ejecuta solo una vez al montar
@@ -78,7 +76,7 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
   return (
     <div className="flex-1 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Lista de Conductores</h2>
-
+      
       {drivers.length === 0 ? (
         <p className="text-center text-gray-500 italic">No hay conductores disponibles. ¡Crea uno!</p>
       ) : (

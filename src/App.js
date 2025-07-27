@@ -1,5 +1,5 @@
-import React, { useState } from 'react'; // Asegúrate de que solo haya imports de React y librerías JS
-import axios from 'axios';
+import React, { useState } from 'react';
+import axios from 'axios'; // Aunque axios no se usa directamente aquí, se mantiene por si se añade lógica global de fetching
 
 import DriverForm from './DriverForm';
 import DriverList from './DriverList';
@@ -30,7 +30,9 @@ function App() {
   const handleDriverFormSubmit = () => {
     setEditingDriver(null); // Sale del modo edición en el formulario
     setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza la recarga de DriverList
-    // Los mensajes globales ya los gestiona DriverForm directamente
+    // AÑADIDA/CONFIRMADA: Establece el mensaje global de éxito al completar la operación del conductor
+    setGlobalMessage('Operación de conductor exitosa.'); 
+    setGlobalError(''); // Limpia cualquier error global anterior
   };
 
   // Se llama cuando se hace clic en "Editar" en DriverList
@@ -41,7 +43,7 @@ function App() {
   };
 
   // Se llama para cancelar la edición en DriverForm
-  const handleCancelEditDriver = () => { // Renombrado para claridad
+  const handleCancelEditDriver = () => { 
     setEditingDriver(null); // Sale del modo edición en el formulario
     setGlobalMessage('');    // Limpia mensajes
     setGlobalError('');      // Limpia errores
@@ -50,7 +52,7 @@ function App() {
   // Se llama cuando se elimina un conductor desde DriverList
   const handleDriverDeleted = () => {
     setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza la recarga de DriverList
-    // Los mensajes globales ya los gestiona DriverList directamente
+    // DriverList ya gestiona su propio mensaje de éxito/error de eliminación y lo propaga globalmente
   };
 
   // --- Funciones de Callback para TravelForm y TravelList ---
@@ -59,7 +61,7 @@ function App() {
   const handleTravelFormSubmit = () => {
     setEditingTravel(null); // Sale del modo edición en el formulario de viajes
     setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza la recarga de TravelList
-    // Los mensajes globales ya los gestiona TravelForm directamente
+    // TravelForm ya gestiona su propio mensaje de éxito/error y lo propaga globalmente
   };
 
   // Se llama cuando se hace clic en "Editar" en TravelList
@@ -79,7 +81,7 @@ function App() {
   // Se llama cuando se elimina un viaje desde TravelList
   const handleTravelDeleted = () => {
     setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza la recarga de TravelList
-    // Los mensajes globales ya los gestiona TravelList directamente
+    // TravelList ya gestiona su propio mensaje de éxito/error de eliminación y lo propaga globalmente
   };
 
 

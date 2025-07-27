@@ -16,16 +16,18 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
   const fetchTravels = async () => {
     setLoading(true);
     setError(null);
-    setGlobalMessage(''); // Limpia mensajes globales
-    setGlobalError('');   // Limpia errores globales
+    setGlobalMessage(''); // Limpia mensajes globales del padre
+    setGlobalError('');   // Limpia errores globales del padre
 
     try {
+      // Realiza la petición GET a tu backend Flask
+      // URL CRÍTICA: Asegúrate de que esta URL sea la correcta y apunte a tu backend Flask.
       const response = await axios.get('http://localhost:5000/viajes');
       setTravels(response.data);
     } catch (err) {
       console.error("Error al obtener viajes:", err);
       const errorMessage = err.response?.data?.error || "Error al cargar los viajes. Asegúrate de que el backend esté funcionando y sea accesible.";
-      setError(errorMessage);
+      setError(errorMessage); // Establece el error interno
       setGlobalError(errorMessage); // Propaga el error al estado global
     } finally {
       setLoading(false);
@@ -53,9 +55,10 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
   };
 
   // Cargar viajes al montar el componente
+  // Se ejecutará una vez al montar. El 'key' en App.js forzará el re-render y re-fetch.
   useEffect(() => {
     fetchTravels();
-  }, [setGlobalMessage, setGlobalError, onTravelDeleted]); // Dependencias para que se ejecute si los setters globales o la función de eliminación cambian
+  }, []); // Se ejecuta solo una vez al montar
 
   if (loading) {
     return <p className="text-center text-gray-600 p-4">Cargando viajes...</p>;
@@ -92,6 +95,7 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
                   <p><strong className="text-purple-600">Conductor Asignado:</strong> {travel.conductor_nombre}</p>
                 )}
                 {travel.fecha_solicitud && (
+                  // Asegúrate de que fecha_solicitud sea un objeto de fecha válido o una cadena parseable
                   <p><strong className="text-purple-600">Solicitado:</strong> {new Date(travel.fecha_solicitud).toLocaleString()}</p>
                 )}
                 {travel.fecha_asignacion && (
@@ -104,7 +108,7 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
               {/* Botones de acción (Editar/Eliminar) para Viajes */}
               <div className="flex gap-2 mt-auto">
                 <button
-                  onClick={() => onEditTravel(travel)} // Llama a la función del padre para editar
+                  onClick={() => onEditTravel(travel)}
                   className="flex-1 py-2 px-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
                 >
                   Editar

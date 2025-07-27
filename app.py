@@ -15,7 +15,6 @@ SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, "serviceAccountKey.json")
 # Inicializa Firebase Admin SDK solo si no ha sido inicializado antes
 if not firebase_admin._apps:
     try:
-        # Verifica si el archivo de la clave de servicio existe antes de intentar inicializar
         if not os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
             raise FileNotFoundError(f"El archivo de clave de servicio no se encontró en: {SERVICE_ACCOUNT_KEY_PATH}")
 
@@ -44,7 +43,7 @@ except NameError: # Si 'firebase_admin' no se inicializó, 'db' no se definiría
     db = None # Asegura que 'db' esté definido, aunque sea como None
 
 app = Flask(__name__)
-CORS(app)
+CORS(app) # Habilita CORS para todas las rutas y orígenes, esencial para comunicación frontend-backend
 
 # --- Rutas de API para Conductores ---
 
@@ -66,25 +65,28 @@ def get_drivers():
         telefono_filter = request.args.get('telefono')
         tipo_vehiculo_filter = request.args.get('tipoVehiculo')
 
-        if nombre_filter:
-            query = query.where('nombre', '>=', nombre_filter).where('nombre', '<=', nombre_filter + '\uf8ff')
-        
+        # Firestore no permite filtros de 'range' o 'inequality' en diferentes campos sin un índice compuesto.
+        # Para búsquedas de texto parcial ("contiene"), es mejor traer un subconjunto y filtrar en memoria,
+        # o usar soluciones de búsqueda dedicadas.
+        # Por ahora, eliminamos el filtro "startswith" en Firestore para nombre y confiamos en el filtro en memoria.
+
         all_drivers = []
-        for doc in query.stream():
+        for doc in query.stream(): # Esta consulta inicial trae hasta 100 documentos
             driver_data = doc.to_dict()
             driver_data['id'] = doc.id
             all_drivers.append(driver_data)
 
-        # Filtrado en memoria para otros campos o para búsquedas "contiene"
+        # Filtrado en memoria para campos de texto (nombre, telefono, tipoVehiculo)
+        # Esto permite la búsqueda por "contiene" y combina múltiples filtros
         filtered_drivers = []
         for driver in all_drivers:
             match = True
+            # Convertir a minúsculas para búsqueda insensible a mayúsculas/minúsculas
+            if nombre_filter and nombre_filter.lower() not in driver.get('nombre', '').lower():
+                match = False
             if telefono_filter and telefono_filter.lower() not in driver.get('telefono', '').lower():
                 match = False
             if tipo_vehiculo_filter and tipo_vehiculo_filter.lower() not in driver.get('tipoVehiculo', '').lower():
-                match = False
-            
-            if nombre_filter and nombre_filter.lower() not in driver.get('nombre', '').lower():
                 match = False
 
             if match:
@@ -158,23 +160,26 @@ def get_viajes():
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
         viajes_ref = db.collection('viajes')
-        query = viajes_ref.limit(100)
+        query = viajes_ref.limit(100) # Limita a 100 documentos
 
+        # Aplicar filtros si se proporcionan en los parámetros de consulta
         pasajero_nombre_filter = request.args.get('pasajero_nombre')
         estado_filter = request.args.get('estado')
         conductor_nombre_filter = request.args.get('conductor_nombre')
 
-        if pasajero_nombre_filter:
-            query = query.where('pasajero_nombre', '>=', pasajero_nombre_filter).where('pasajero_nombre', '<=', pasajero_nombre_filter + '\uf8ff')
-        
+        # El filtro por 'estado' SÍ se aplica directamente en Firestore porque es un filtro de igualdad.
         if estado_filter:
             query = query.where('estado', '==', estado_filter.lower())
 
+        # Para búsquedas de texto parcial ("contiene") en pasajero_nombre o conductor_nombre,
+        # eliminamos los filtros de prefijo en Firestore y confiamos en el filtro en memoria.
+        
         all_viajes = []
-        for doc in query.stream():
+        for doc in query.stream(): # Esta consulta inicial trae hasta 100 documentos (ya filtrados por estado)
             viaje_data = doc.to_dict()
             viaje_data['id'] = doc.id
 
+            # Convertir Timestamps de Firestore a cadenas de texto ISO para JSON
             if 'fecha_solicitud' in viaje_data and hasattr(viaje_data['fecha_solicitud'], 'isoformat'):
                 viaje_data['fecha_solicitud'] = viaje_data['fecha_solicitud'].isoformat()
             if 'fecha_asignacion' in viaje_data and hasattr(viaje_data['fecha_asignacion'], 'isoformat'):
@@ -182,15 +187,16 @@ def get_viajes():
             
             all_viajes.append(viaje_data)
 
+        # Filtrado en memoria para campos de texto (pasajero_nombre, conductor_nombre)
         filtered_viajes = []
         for viaje in all_viajes:
             match = True
+            # Convertir a minúsculas para búsqueda insensible a mayúsculas/minúsculas
+            if pasajero_nombre_filter and pasajero_nombre_filter.lower() not in viaje.get('pasajero_nombre', '').lower():
+                match = False
             if conductor_nombre_filter and conductor_nombre_filter.lower() not in viaje.get('conductor_nombre', '').lower():
                 match = False
             
-            if pasajero_nombre_filter and pasajero_nombre_filter.lower() not in viaje.get('pasajero_nombre', '').lower():
-                match = False
-
             if match:
                 filtered_viajes.append(viaje)
 

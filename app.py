@@ -8,11 +8,14 @@ from datetime import datetime
 import json
 
 # --- Configuración de Firebase ---
+# Obtener la ruta absoluta del directorio actual del script app.py
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, "serviceAccountKey.json")
 
+# Inicializa Firebase Admin SDK solo si no ha sido inicializado antes
 if not firebase_admin._apps:
     try:
+        # Verifica si el archivo de la clave de servicio existe antes de intentar inicializar
         if not os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
             raise FileNotFoundError(f"El archivo de clave de servicio no se encontró en: {SERVICE_ACCOUNT_KEY_PATH}")
 
@@ -23,15 +26,22 @@ if not firebase_admin._apps:
         print(f"ERROR FATAL: {e}")
         print(f"POR FAVOR, VERIFICA LA RUTA Y EL NOMBRE EXACTO DEL ARCHIVO: '{SERVICE_ACCOUNT_KEY_PATH}'")
         print("Asegúrate de que no tenga extensiones dobles como '.json.json' o caracteres invisibles.")
+        # En un entorno de producción, aquí podrías querer salir de la aplicación
+        # import sys
+        # sys.exit(1)
     except Exception as e:
         print(f"ERROR FATAL al inicializar Firebase Admin SDK: {e}")
         print("Verifica tu conexión a internet o la configuración de tu proyecto Firebase.")
+        # En un entorno de producción, aquí podrías querer salir de la aplicación
+        # import sys
+        # sys.exit(1)
 
+# Obtiene una instancia del cliente de Firestore
 try:
     db = firestore.client()
-except NameError:
+except NameError: # Si 'firebase_admin' no se inicializó, 'db' no se definiría
     print("Firestore client no pudo ser inicializado. Las operaciones de base de datos fallarán.")
-    db = None
+    db = None # Asegura que 'db' esté definido, aunque sea como None
 
 app = Flask(__name__)
 CORS(app)
@@ -56,22 +66,8 @@ def get_drivers():
         telefono_filter = request.args.get('telefono')
         tipo_vehiculo_filter = request.args.get('tipoVehiculo')
 
-        # Firestore no permite múltiples filtros de 'range' o 'inequality' en diferentes campos
-        # sin un índice compuesto. Para simplificar, haremos un filtro 'exacto' en un campo
-        # y luego un filtrado en memoria para los demás si es necesario.
-        # Para la búsqueda de texto parcial, Firestore no lo soporta directamente,
-        # así que haremos un filtro 'startswith' si es posible, o en memoria.
-
-        # Ejemplo de filtro exacto:
         if nombre_filter:
-            # Para búsqueda "contiene" o "empieza con", Firestore requiere un enfoque diferente.
-            # Aquí, para simplicidad, haremos un filtro que "empiece por" o "sea igual a"
-            # y luego filtraremos en memoria para "contiene".
             query = query.where('nombre', '>=', nombre_filter).where('nombre', '<=', nombre_filter + '\uf8ff')
-            # El '\uf8ff' es un carácter Unicode que asegura que la búsqueda incluya todas las cadenas que comienzan con 'nombre_filter'.
-
-        # Si hay otros filtros, los aplicaremos en memoria después de la consulta inicial.
-        # Esto es una limitación de Firestore para búsquedas complejas sin índices específicos.
         
         all_drivers = []
         for doc in query.stream():
@@ -88,7 +84,6 @@ def get_drivers():
             if tipo_vehiculo_filter and tipo_vehiculo_filter.lower() not in driver.get('tipoVehiculo', '').lower():
                 match = False
             
-            # Si el filtro de nombre fue "contiene" en lugar de "empieza por"
             if nombre_filter and nombre_filter.lower() not in driver.get('nombre', '').lower():
                 match = False
 
@@ -163,9 +158,8 @@ def get_viajes():
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
         viajes_ref = db.collection('viajes')
-        query = viajes_ref.limit(100) # Limita a 100 documentos
+        query = viajes_ref.limit(100)
 
-        # Aplicar filtros si se proporcionan en los parámetros de consulta
         pasajero_nombre_filter = request.args.get('pasajero_nombre')
         estado_filter = request.args.get('estado')
         conductor_nombre_filter = request.args.get('conductor_nombre')
@@ -176,7 +170,6 @@ def get_viajes():
         if estado_filter:
             query = query.where('estado', '==', estado_filter.lower())
 
-        # Si hay otros filtros, los aplicaremos en memoria
         all_viajes = []
         for doc in query.stream():
             viaje_data = doc.to_dict()
@@ -195,7 +188,6 @@ def get_viajes():
             if conductor_nombre_filter and conductor_nombre_filter.lower() not in viaje.get('conductor_nombre', '').lower():
                 match = False
             
-            # Si el filtro de pasajero_nombre fue "contiene" en lugar de "empieza por"
             if pasajero_nombre_filter and pasajero_nombre_filter.lower() not in viaje.get('pasajero_nombre', '').lower():
                 match = False
 

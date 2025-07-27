@@ -1,34 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// Componente TravelList: Muestra la lista de viajes, con opciones para editar, eliminar y asignar conductor.
+// Componente TravelList: Muestra la lista de viajes, con opciones para editar, eliminar y asignar conductor, y filtros.
 // Recibe setters para los mensajes globales de App.js y funciones de acción.
 function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMessage, setGlobalError }) {
-  // Estados INTERNOS de TravelList para la data, carga y errores
   const [travels, setTravels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Nuevos estados para los filtros de viajes
+  const [pasajeroSearchTerm, setPasajeroSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState(''); // 'pendiente', 'asignado', 'completado', etc.
+
   /**
    * Fetches the list of travels from the backend API.
-   * Resets loading and error states before fetching.
+   * Accepts optional filter parameters.
    */
-  const fetchTravels = async () => {
+  const fetchTravels = async (pasajeroTerm = '', status = '') => {
     setLoading(true);
     setError(null);
-    setGlobalMessage(''); // Limpia mensajes globales del padre
-    setGlobalError('');   // Limpia errores globales del padre
+    setGlobalMessage('');
+    setGlobalError('');
 
     try {
-      // Realiza la petición GET a tu backend Flask
-      // URL CRÍTICA: Asegúrate de que esta URL sea la correcta y apunte a tu backend Flask.
-      const response = await axios.get('http://localhost:5000/viajes');
+      // Construye la URL con los parámetros de búsqueda y filtro de estado
+      const params = new URLSearchParams();
+      if (pasajeroTerm) {
+        params.append('pasajero_nombre', pasajeroTerm);
+      }
+      if (status) {
+        params.append('estado', status);
+      }
+      
+      // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
+      const url = `http://localhost:5000/viajes?${params.toString()}`;
+      const response = await axios.get(url);
       setTravels(response.data);
     } catch (err) {
       console.error("Error al obtener viajes:", err);
       const errorMessage = err.response?.data?.error || "Error al cargar los viajes. Asegúrate de que el backend esté funcionando y sea accesible.";
-      setError(errorMessage); // Establece el error interno
-      setGlobalError(errorMessage); // Propaga el error al estado global
+      setError(errorMessage);
+      setGlobalError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -41,13 +53,11 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
   const handleDelete = async (travelId) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este viaje de forma permanente?')) {
       try {
+        // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
         await axios.delete(`http://localhost:5000/viajes/${travelId}`);
         setGlobalMessage(`Viaje con ID ${travelId} eliminado exitosamente.`);
         setGlobalError('');
-        // Notifica al padre que un viaje fue eliminado, lo que forzará la recarga de la lista.
-        if (onTravelDeleted) {
-          onTravelDeleted();
-        }
+        fetchTravels(pasajeroSearchTerm, statusFilter); // Recarga la lista con los filtros actuales
       } catch (err) {
         console.error("Error al eliminar viaje:", err);
         const errorMessage = err.response?.data?.error || `Error al eliminar viaje con ID ${travelId}.`;
@@ -57,11 +67,22 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
     }
   };
 
-  // Cargar viajes al montar el componente.
-  // El 'key' en App.js forzará el re-render y re-fetch cuando sea necesario.
+  // Maneja la búsqueda por nombre de pasajero
+  const handleSearchPasajero = () => {
+    fetchTravels(pasajeroSearchTerm, statusFilter);
+  };
+
+  // Maneja el cambio de filtro por estado
+  const handleStatusFilterChange = (e) => {
+    const newStatus = e.target.value;
+    setStatusFilter(newStatus);
+    fetchTravels(pasajeroSearchTerm, newStatus); // Inicia la búsqueda inmediatamente
+  };
+
+  // Cargar viajes al montar el componente (sin filtros iniciales)
   useEffect(() => {
     fetchTravels();
-  }, []); // Se ejecuta solo una vez al montar, y App.js controla el refresh.
+  }, []);
 
   if (loading) {
     return <p className="text-center text-gray-600 p-4">Cargando viajes...</p>;
@@ -72,10 +93,40 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
   }
 
   return (
-    <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
+    <div className="flex-1 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Lista de Viajes</h2>
+
+      {/* Campos de filtro de viajes */}
+      <div className="mb-4 flex flex-col gap-2">
+        <input
+          type="text"
+          placeholder="Buscar por pasajero..."
+          value={pasajeroSearchTerm}
+          onChange={(e) => setPasajeroSearchTerm(e.target.value)}
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500"
+        />
+        <button
+          onClick={handleSearchPasajero}
+          className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out text-sm"
+        >
+          Buscar Viajes
+        </button>
+        <select
+          value={statusFilter}
+          onChange={handleStatusFilterChange}
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 mt-2"
+        >
+          <option value="">Filtrar por Estado (Todos)</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="asignado">Asignado</option>
+          <option value="en_curso">En Curso</option>
+          <option value="completado">Completado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+      </div>
+
       {travels.length === 0 ? (
-        <p className="text-center text-gray-500 italic">No hay viajes registrados aún.</p>
+        <p className="text-center text-gray-500 italic">No hay viajes que coincidan con la búsqueda.</p>
       ) : (
         <ul className="list-none p-0">
           {travels.map(travel => (
@@ -87,9 +138,7 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
                 {travel.ubicacion_origen_lat && travel.ubicacion_origen_lon && (
                   <p><strong className="text-purple-600">Origen (GPS):</strong> {travel.ubicacion_origen_lat}, {travel.ubicacion_origen_lon}</p>
                 )}
-                {travel.ubicacion_destino_texto && (
-                  <p><strong className="text-purple-600">Destino (Texto):</strong> {travel.ubicacion_destino_texto}</p>
-                )}
+                <p><strong className="text-purple-600">Destino (Texto):</strong> {travel.ubicacion_destino_texto || 'N/A'}</p>
                 {travel.ubicacion_destino_lat && travel.ubicacion_destino_lon && (
                   <p><strong className="text-purple-600">Destino (GPS):</strong> {travel.ubicacion_destino_lat}, {travel.ubicacion_destino_lon}</p>
                 )}
@@ -107,19 +156,17 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
                   <p><strong className="text-purple-600">Notas:</strong> {travel.notas}</p>
                 )}
               </div>
-              {/* Botones de acción (Editar/Eliminar/Asignar) para Viajes */}
               <div className="flex flex-wrap gap-2 mt-auto">
-                {/* Botón Asignar Conductor - Solo visible si el estado es 'pendiente' y no hay conductor asignado */}
                 {travel.estado === 'pendiente' && !travel.conductor_id && (
                   <button
-                    onClick={() => onAssignDriver(travel)} // Llama a la función del padre para abrir el modal
+                    onClick={() => onAssignDriver(travel)}
                     className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
                   >
                     Asignar Conductor
                   </button>
                 )}
                 <button
-                  onClick={() => onEditTravel(travel)} // Llama a la función del padre para editar
+                  onClick={() => onEditTravel(travel)}
                   className="flex-1 py-2 px-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
                 >
                   Editar

@@ -1,42 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// Componente DriverList: Muestra la lista de conductores, con opciones para editar y eliminar.
-// Ahora recibe 'drivers' como una prop desde App.js, en lugar de cargarlos internamente.
+// Componente DriverList: Muestra la lista de conductores, con opciones para editar, eliminar y búsqueda.
 // Recibe props de App.js para el manejo global de estados y mensajes, y funciones de acción.
-function DriverList({ drivers, onDriverDeleted, onEditDriver, setGlobalMessage, setGlobalError }) {
-  // 'drivers' ahora es una prop, así que no necesitamos un estado 'drivers' interno.
-  // Sin embargo, mantenemos 'loading' y 'error' para la eliminación, aunque 'loading'
-  // para la carga inicial se gestiona en App.js.
-  const [loading, setLoading] = useState(false); // No carga directamente, por eso false por defecto
+function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobalError }) {
+  // ESTADOS INTERNOS de DriverList para la data, carga y errores de la lista misma.
+  const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true); // Estado de carga interno para la lista
   const [error, setError] = useState(null);     // Estado de error interno para la lista
-  
+  const [deleteMessage, setDeleteMessage] = useState(''); // Estado para mensajes de eliminación
+
+  // Nuevo estado para el término de búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+
   /**
    * Fetches the list of drivers from the backend API.
-   * NOTA: Esta función ahora solo se usa para RECARGAR la lista después de una eliminación.
-   * La carga inicial de 'drivers' la hace App.js y la pasa como prop.
+   * Accepts an optional searchTerm to filter results.
    */
-  const fetchDrivers = async () => {
-    setLoading(true); // Controla la carga internamente para la operación de eliminación
-    setError(null);    // Limpia error interno
-    setGlobalMessage(''); // Limpia mensajes globales del padre antes de una nueva operación
+  const fetchDrivers = async (term = '') => { // Acepta un término de búsqueda
+    setLoading(true);
+    setError(null);
+    setDeleteMessage(''); 
+    setGlobalMessage(''); // Limpia mensajes globales del padre
     setGlobalError('');   // Limpia errores globales del padre
 
     try {
-      const response = await axios.get('http://localhost:5000/drivers');
-      // App.js ya tiene la responsabilidad de setear los drivers,
-      // pero si esta función se llama, es para refrescar la lista después de una eliminación
-      // y App.js lo manejará a través del refreshDriversKey.
-      // Aquí no necesitamos setear 'drivers' porque ya vienen de App.js.
-      // Esta función solo se llama cuando se elimina un conductor, y onDriverDeleted en App.js
-      // se encargará de actualizar la lista globalmente.
+      // Construye la URL con el parámetro de búsqueda si existe
+      // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
+      const url = term ? `http://localhost:5000/drivers?nombre=${term}` : 'http://localhost:5000/drivers';
+      const response = await axios.get(url); // Usa la URL con o sin filtro
+      setDrivers(response.data);
     } catch (err) {
-      console.error("Error al obtener conductores para refrescar:", err);
-      const errorMessage = err.response?.data?.error || "Error al recargar los conductores después de la eliminación.";
-      setError(errorMessage); // Establece el error interno
-      setGlobalError(errorMessage); // También propaga el error al estado global del padre
+      console.error("Error al obtener conductores:", err);
+      const errorMessage = err.response?.data?.error || "Error al cargar los conductores. Asegúrate de que el backend esté funcionando y sea accesible.";
+      setError(errorMessage);
+      setGlobalError(errorMessage);
     } finally {
-      setLoading(false); // Siempre deja de cargar.
+      setLoading(false);
     }
   };
 
@@ -47,43 +47,34 @@ function DriverList({ drivers, onDriverDeleted, onEditDriver, setGlobalMessage, 
   const handleDelete = async (driverId) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este conductor de forma permanente?')) {
       try {
-        setLoading(true); // Muestra un estado de carga mientras se elimina
+        // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
         await axios.delete(`http://localhost:5000/drivers/${driverId}`);
         setGlobalMessage(`Conductor con ID ${driverId} eliminado exitosamente.`);
-        setGlobalError(''); // Limpia cualquier error global anterior
-        
-        // Notifica al componente padre (App.js) que un conductor ha sido eliminado.
-        // App.js usará refreshDriversKey para forzar la recarga de la lista.
-        if (onDriverDeleted) {
-          onDriverDeleted();
-        }
+        setGlobalError('');
+        fetchDrivers(searchTerm); // Recarga la lista con el filtro actual después de eliminar
       } catch (err) {
         console.error("Error al eliminar conductor:", err);
         const errorMessage = err.response?.data?.error || `Error al eliminar conductor con ID ${driverId}.`;
-        setError(errorMessage); // Establece el error interno
-        setGlobalError(errorMessage); // También propaga el error al estado global del padre
-        setGlobalMessage(''); // Limpia el mensaje de éxito si hay un error
-      } finally {
-        setLoading(false); // Deja de cargar después de la eliminación (éxito o error)
+        setError(errorMessage);
+        setGlobalError(errorMessage);
       }
     }
   };
 
-  // El useEffect que solía cargar los drivers ahora es menos relevante aquí,
-  // ya que los drivers se pasan como prop.
-  // El 'key' en App.js se encargará de que este componente se re-renderice
-  // y muestre los 'drivers' actualizados cuando App.js los obtenga.
-  // No necesitamos un fetch inicial aquí.
+  // Función para manejar el clic en el botón de búsqueda
+  const handleSearch = () => {
+    fetchDrivers(searchTerm); // Llama a fetchDrivers con el término actual del input
+  };
 
-  // Renderizado Condicional
-  // Si App.js está cargando los drivers, esta lista podría no tenerlos aún.
-  // Puedes añadir un indicador de carga si lo deseas, o confiar en el de App.js.
-  // Por ahora, solo mostramos si la prop 'drivers' está vacía.
-  if (loading) { // Esto es para la carga de la operación de eliminación
-    return <p className="text-center text-gray-600 p-4">Procesando eliminación...</p>;
+  // Cargar conductores al montar el componente (sin término inicial)
+  useEffect(() => {
+    fetchDrivers();
+  }, []); // Se ejecuta solo una vez al montar
+
+  if (loading) {
+    return <p className="text-center text-gray-600 p-4">Cargando conductores...</p>;
   }
 
-  // Si hay un error interno (ej. al eliminar), se muestra aquí
   if (error) {
     return <p className="text-red-600 text-center font-bold p-4">{error}</p>;
   }
@@ -91,7 +82,30 @@ function DriverList({ drivers, onDriverDeleted, onEditDriver, setGlobalMessage, 
   return (
     <div className="flex-1 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Lista de Conductores</h2>
-      
+
+      {/* Campo de búsqueda */}
+      <div className="mb-4 flex gap-2">
+        <input
+          type="text"
+          placeholder="Buscar por nombre..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          onClick={handleSearch}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out text-sm"
+        >
+          Buscar
+        </button>
+      </div>
+
+      {deleteMessage && (
+        <p className={`text-center mb-4 p-2 rounded ${deleteMessage.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {deleteMessage}
+        </p>
+      )}
+
       {drivers.length === 0 ? (
         <p className="text-center text-gray-500 italic">No hay conductores disponibles. ¡Crea uno!</p>
       ) : (

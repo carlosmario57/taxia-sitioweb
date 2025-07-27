@@ -63,10 +63,10 @@ function TravelForm({ onTravelCreated, editingTravel, onCancelEdit, setMessage, 
    * @param {Event} e - El evento de envío del formulario.
    */
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Previene el comportamiento por defecto del formulario
 
-    setMessage('');
-    setError('');
+    setMessage(''); // Limpia mensajes globales del padre antes de la petición
+    setError('');   // Limpia errores globales del padre
 
     // Validación básica de campos obligatorios
     if (!pasajeroNombre) {

@@ -8,7 +8,7 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true); // Estado de carga interno para la lista
   const [error, setError] = useState(null);     // Estado de error interno para la lista
-  const [deleteMessage, setDeleteMessage] = useState(''); // Estado para mensajes de eliminación
+  const [deleteMessage, setDeleteMessage] = useState(''); // Estado para mensajes de eliminación (por si la eliminación falla, el mensaje sea más local)
 
   // Nuevo estado para el término de búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,26 +17,27 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
    * Fetches the list of drivers from the backend API.
    * Accepts an optional searchTerm to filter results.
    */
-  const fetchDrivers = async (term = '') => { // Acepta un término de búsqueda
-    setLoading(true);
-    setError(null);
-    setDeleteMessage(''); 
-    setGlobalMessage(''); // Limpia mensajes globales del padre
-    setGlobalError('');   // Limpia errores globales del padre
+  const fetchDrivers = async (term = '') => { // Acepta un término de búsqueda opcional
+    setLoading(true); // Controla la carga internamente
+    setError(null);    // Limpia error interno
+    setDeleteMessage(''); // Limpia mensajes de eliminación anteriores
+
+    // No limpiamos los mensajes globales aquí, ya que la búsqueda no es una operación de CRUD
+    // principal que genere un mensaje global de éxito/error.
 
     try {
       // Construye la URL con el parámetro de búsqueda si existe
-      // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
+      // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask (http://localhost:5000/drivers)
       const url = term ? `http://localhost:5000/drivers?nombre=${term}` : 'http://localhost:5000/drivers';
       const response = await axios.get(url); // Usa la URL con o sin filtro
       setDrivers(response.data);
     } catch (err) {
       console.error("Error al obtener conductores:", err);
       const errorMessage = err.response?.data?.error || "Error al cargar los conductores. Asegúrate de que el backend esté funcionando y sea accesible.";
-      setError(errorMessage);
-      setGlobalError(errorMessage);
+      setError(errorMessage); // Establece el error interno
+      setGlobalError(errorMessage); // También propaga el error al estado global del padre
     } finally {
-      setLoading(false);
+      setLoading(false); // Siempre deja de cargar.
     }
   };
 
@@ -49,14 +50,18 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
       try {
         // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
         await axios.delete(`http://localhost:5000/drivers/${driverId}`);
-        setGlobalMessage(`Conductor con ID ${driverId} eliminado exitosamente.`);
-        setGlobalError('');
-        fetchDrivers(searchTerm); // Recarga la lista con el filtro actual después de eliminar
+        setDeleteMessage(`Conductor con ID ${driverId} eliminado exitosamente.`); // Mensaje local para eliminación
+        setGlobalMessage(`Conductor con ID ${driverId} eliminado exitosamente.`); // Mensaje global de éxito
+        setGlobalError(''); // Limpia cualquier error global anterior
+        
+        // Vuelve a cargar la lista de conductores después de la eliminación exitosa, manteniendo el filtro actual
+        fetchDrivers(searchTerm);
       } catch (err) {
         console.error("Error al eliminar conductor:", err);
         const errorMessage = err.response?.data?.error || `Error al eliminar conductor con ID ${driverId}.`;
-        setError(errorMessage);
-        setGlobalError(errorMessage);
+        setDeleteMessage(errorMessage); // Mensaje de error local
+        setGlobalError(errorMessage); // Propaga el error al estado global
+        setGlobalMessage(''); // Limpia el mensaje de éxito global si hay un error
       }
     }
   };
@@ -71,6 +76,7 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
     fetchDrivers();
   }, []); // Se ejecuta solo una vez al montar
 
+  // Renderizado Condicional
   if (loading) {
     return <p className="text-center text-gray-600 p-4">Cargando conductores...</p>;
   }
@@ -80,6 +86,7 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
   }
 
   return (
+    // Contenedor principal de la lista con estilos Tailwind
     <div className="flex-1 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Lista de Conductores</h2>
 

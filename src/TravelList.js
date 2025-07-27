@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// Componente TravelList: Muestra la lista de viajes, con opciones para editar y eliminar.
+// Componente TravelList: Muestra la lista de viajes, con opciones para editar, eliminar y asignar conductor.
 // Recibe setters para los mensajes globales de App.js y funciones de acción.
-function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobalError }) {
+function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMessage, setGlobalError }) {
   // Estados INTERNOS de TravelList para la data, carga y errores
   const [travels, setTravels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,10 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
         await axios.delete(`http://localhost:5000/viajes/${travelId}`);
         setGlobalMessage(`Viaje con ID ${travelId} eliminado exitosamente.`);
         setGlobalError('');
-        fetchTravels(); // Vuelve a cargar la lista de viajes después de la eliminación
+        // Notifica al padre que un viaje fue eliminado, lo que forzará la recarga de la lista.
+        if (onTravelDeleted) {
+          onTravelDeleted();
+        }
       } catch (err) {
         console.error("Error al eliminar viaje:", err);
         const errorMessage = err.response?.data?.error || `Error al eliminar viaje con ID ${travelId}.`;
@@ -54,11 +57,11 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
     }
   };
 
-  // Cargar viajes al montar el componente
-  // Se ejecutará una vez al montar. El 'key' en App.js forzará el re-render y re-fetch.
+  // Cargar viajes al montar el componente.
+  // El 'key' en App.js forzará el re-render y re-fetch cuando sea necesario.
   useEffect(() => {
     fetchTravels();
-  }, []); // Se ejecuta solo una vez al montar
+  }, []); // Se ejecuta solo una vez al montar, y App.js controla el refresh.
 
   if (loading) {
     return <p className="text-center text-gray-600 p-4">Cargando viajes...</p>;
@@ -90,12 +93,11 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
                 {travel.ubicacion_destino_lat && travel.ubicacion_destino_lon && (
                   <p><strong className="text-purple-600">Destino (GPS):</strong> {travel.ubicacion_destino_lat}, {travel.ubicacion_destino_lon}</p>
                 )}
-                <p><strong className="text-purple-600">Estado:</strong> <span className={`font-semibold ${travel.estado === 'pendiente' ? 'text-orange-500' : 'text-blue-500'}`}>{travel.estado}</span></p>
+                <p><strong className="text-purple-600">Estado:</strong> <span className={`font-semibold ${travel.estado === 'pendiente' ? 'text-orange-500' : travel.estado === 'asignado' ? 'text-blue-500' : 'text-green-500'}`}>{travel.estado}</span></p>
                 {travel.conductor_nombre && (
                   <p><strong className="text-purple-600">Conductor Asignado:</strong> {travel.conductor_nombre}</p>
                 )}
                 {travel.fecha_solicitud && (
-                  // Asegúrate de que fecha_solicitud sea un objeto de fecha válido o una cadena parseable
                   <p><strong className="text-purple-600">Solicitado:</strong> {new Date(travel.fecha_solicitud).toLocaleString()}</p>
                 )}
                 {travel.fecha_asignacion && (
@@ -105,10 +107,19 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
                   <p><strong className="text-purple-600">Notas:</strong> {travel.notas}</p>
                 )}
               </div>
-              {/* Botones de acción (Editar/Eliminar) para Viajes */}
-              <div className="flex gap-2 mt-auto">
+              {/* Botones de acción (Editar/Eliminar/Asignar) para Viajes */}
+              <div className="flex flex-wrap gap-2 mt-auto">
+                {/* Botón Asignar Conductor - Solo visible si el estado es 'pendiente' y no hay conductor asignado */}
+                {travel.estado === 'pendiente' && !travel.conductor_id && (
+                  <button
+                    onClick={() => onAssignDriver(travel)} // Llama a la función del padre para abrir el modal
+                    className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+                  >
+                    Asignar Conductor
+                  </button>
+                )}
                 <button
-                  onClick={() => onEditTravel(travel)}
+                  onClick={() => onEditTravel(travel)} // Llama a la función del padre para editar
                   className="flex-1 py-2 px-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
                 >
                   Editar

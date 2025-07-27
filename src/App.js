@@ -30,9 +30,9 @@ function App() {
   const handleDriverFormSubmit = () => {
     setEditingDriver(null); // Sale del modo edición en el formulario
     setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza la recarga de DriverList
-    // AÑADIDA/CONFIRMADA: Establece el mensaje global de éxito al completar la operación del conductor
-    setGlobalMessage('Operación de conductor exitosa.'); 
-    setGlobalError(''); // Limpia cualquier error global anterior
+    // IMPORTANTE: NO TOCAMOS setGlobalMessage aquí. DriverForm ya lo estableció.
+    // Solo limpiamos el error si lo hubiera.
+    setGlobalError(''); 
   };
 
   // Se llama cuando se hace clic en "Editar" en DriverList
@@ -61,7 +61,9 @@ function App() {
   const handleTravelFormSubmit = () => {
     setEditingTravel(null); // Sale del modo edición en el formulario de viajes
     setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza la recarga de TravelList
-    // TravelForm ya gestiona su propio mensaje de éxito/error y lo propaga globalmente
+    // IMPORTANTE: NO TOCAMOS setGlobalMessage aquí. TravelForm ya lo estableció.
+    // Solo limpiamos el error si lo hubiera.
+    setGlobalError('');
   };
 
   // Se llama cuando se hace clic en "Editar" en TravelList

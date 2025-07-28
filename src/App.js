@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react'; // Importa useEffect
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { onAuthStateChanged, signOut } from 'firebase/auth'; // Importa funciones de autenticación de Firebase
+import { auth } from './firebaseConfig'; // Importa la instancia de autenticación que exportamos
 
 import DriverForm from './DriverForm';
 import DriverList from './DriverList';
 import TravelForm from './TravelForm';
 import TravelList from './TravelList';
-import AssignDriverModal from './AssignDriverModal'; // NUEVO: Importa el componente modal de asignación
+import LoginForm from './LoginForm'; // Importa el nuevo componente LoginForm
 
 import './App.css'; // Asegúrate de que este archivo esté vacío o contenga tus estilos globales
 
@@ -14,39 +16,39 @@ function App() {
   const [globalMessage, setGlobalMessage] = useState('');
   const [globalError, setGlobalError] = useState('');
 
-  // --- Estados de Datos y Edición ---
-  const [drivers, setDrivers] = useState([]); // Ahora App.js gestiona la lista de conductores
-  const [travels, setTravels] = useState([]); // App.js también gestionará la lista de viajes (o TravelList la cargará)
-  const [editingDriver, setEditingDriver] = useState(null);   // Conductor actualmente en edición
-  const [editingTravel, setEditingTravel] = useState(null);     // Viaje actualmente en edición
-  const [assigningTravel, setAssigningTravel] = useState(null); // NUEVO: Viaje actualmente en proceso de asignación de conductor
+  // --- Estado de Usuario Autenticado ---
+  const [user, setUser] = useState(null); // Almacena el objeto de usuario autenticado
 
-  // --- Estados para Forzar Recarga de Listas (Actualización Automática) ---
+  // --- Estados para Edición ---
+  const [editingDriver, setEditingDriver] = useState(null);
+  const [editingTravel, setEditingTravel] = useState(null);
+
+  // --- Estados para Forzar Recarga de Listas ---
   const [refreshDriversKey, setRefreshDriversKey] = useState(0);
   const [refreshTravelsKey, setRefreshTravelsKey] = useState(0);
 
-  // --- Funciones de Carga de Datos (Ahora en App.js para drivers) ---
-  const fetchDrivers = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/drivers');
-      setDrivers(response.data);
-    } catch (err) {
-      console.error("Error al obtener conductores en App.js:", err);
-      setGlobalError("Error al cargar conductores. Asegúrate de que el backend esté funcionando.");
-    }
-  };
-
-  // useEffect para cargar conductores al inicio de la aplicación
+  // --- useEffect para escuchar cambios en el estado de autenticación ---
+  // Este efecto se ejecuta una vez al montar el componente y se mantiene escuchando.
   useEffect(() => {
-    fetchDrivers();
-  }, [refreshDriversKey]); // Se recarga si se fuerza un refresh
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser); // Actualiza el estado 'user' con el usuario actual (o null si no hay)
+      if (currentUser) {
+        setGlobalMessage('Sesión iniciada exitosamente.');
+        setGlobalError('');
+      } else {
+        setGlobalMessage('Sesión cerrada. Por favor, inicia sesión.');
+        setGlobalError('');
+      }
+    });
 
-  // --- Funciones de Callback para DriverForm y DriverList ---
+    // La función de limpieza se ejecuta cuando el componente se desmonta
+    return () => unsubscribe();
+  }, []); // El array vacío asegura que se ejecute solo una vez al montar
 
+  // --- Funciones de Callback para Conductores ---
   const handleDriverFormSubmit = () => {
     setEditingDriver(null);
-    setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza recarga de DriverList
-    setGlobalError(''); // Limpia errores
+    setRefreshDriversKey(prevKey => prevKey + 1);
   };
 
   const handleEditDriver = (driver) => {
@@ -62,16 +64,13 @@ function App() {
   };
 
   const handleDriverDeleted = () => {
-    setRefreshDriversKey(prevKey => prevKey + 1); // Fuerza recarga de DriverList
-    // DriverList ya gestiona su propio mensaje de éxito/error de eliminación
+    setRefreshDriversKey(prevKey => prevKey + 1);
   };
 
-  // --- Funciones de Callback para TravelForm y TravelList ---
-
+  // --- Funciones de Callback para Viajes ---
   const handleTravelFormSubmit = () => {
     setEditingTravel(null);
-    setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza recarga de TravelList
-    setGlobalError('');
+    setRefreshTravelsKey(prevKey => prevKey + 1);
   };
 
   const handleEditTravel = (travel) => {
@@ -87,42 +86,50 @@ function App() {
   };
 
   const handleTravelDeleted = () => {
-    setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza recarga de TravelList
-    // TravelList ya gestiona su propio mensaje de éxito/error de eliminación
+    setRefreshTravelsKey(prevKey => prevKey + 1);
   };
 
-  // --- NUEVAS Funciones de Callback para Asignación de Conductores ---
-
-  // Se llama desde TravelList cuando se hace clic en "Asignar Conductor"
-  const handleAssignDriver = (travel) => {
-    setAssigningTravel(travel); // Establece el viaje que se va a asignar
-    setGlobalMessage('');
-    setGlobalError('');
-  };
-
-  // Se llama desde AssignDriverModal para cerrar el modal
-  const handleCancelAssign = () => {
-    setAssigningTravel(null); // Cierra el modal de asignación
-    setGlobalMessage('');
-    setGlobalError('');
-  };
-
-  // Se llama desde AssignDriverModal cuando la asignación es exitosa
-  const handleAssignSuccess = () => {
-    setAssigningTravel(null); // Cierra el modal
-    setRefreshTravelsKey(prevKey => prevKey + 1); // Fuerza la recarga de TravelList
-    // El modal ya establece el mensaje global de éxito
+  // --- Función para Cerrar Sesión ---
+  const handleLogout = async () => {
+    try {
+      await signOut(auth); // Cierra la sesión de Firebase
+      setGlobalMessage('Sesión cerrada exitosamente.');
+      setGlobalError('');
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      setGlobalError('Error al cerrar sesión. Intenta de nuevo.');
+    }
   };
 
 
-  // --- Renderizado del Componente Principal ---
+  // --- Renderizado Condicional Basado en la Autenticación ---
+  if (!user) {
+    // Si no hay usuario autenticado, muestra el formulario de login
+    return (
+      <LoginForm 
+        setMessage={setGlobalMessage} 
+        setError={setGlobalError} 
+      />
+    );
+  }
+
+  // Si hay usuario autenticado, muestra el panel de control completo
   return (
     <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center font-sans antialiased">
       
       {/* Encabezado del Panel */}
-      <header className="w-full max-w-4xl bg-white shadow-lg rounded-lg p-6 mb-8 text-center">
+      <header className="w-full max-w-4xl bg-white shadow-lg rounded-lg p-6 mb-8 text-center relative">
         <h1 className="text-4xl font-extrabold text-purple-700 mb-2">CIMCO Operations</h1>
         <p className="text-xl text-gray-600">Gestión Centralizada de Conductores y Viajes</p>
+        
+        {/* Botón de Cerrar Sesión */}
+        <button
+          onClick={handleLogout}
+          className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full text-sm transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+        >
+          Cerrar Sesión
+        </button>
+        {user && <p className="text-sm text-gray-500 mt-2">Logueado como: {user.email}</p>} {/* Muestra el correo del usuario */}
       </header>
 
       {/* Mensajes Globales (éxito/error) */}
@@ -151,8 +158,7 @@ function App() {
             setError={setGlobalError}
           />
           <DriverList
-            key={refreshDriversKey} // Este key fuerza el re-render y re-fetch
-            drivers={drivers} // AHORA App.js pasa la lista de conductores
+            key={refreshDriversKey}
             onEditDriver={handleEditDriver}
             onDriverDeleted={handleDriverDeleted}
             setGlobalMessage={setGlobalMessage}
@@ -171,27 +177,14 @@ function App() {
             setError={setGlobalError}
           />
           <TravelList 
-            key={refreshTravelsKey} // Este key fuerza el re-render y re-fetch
+            key={refreshTravelsKey}
             onEditTravel={handleEditTravel}
             onTravelDeleted={handleTravelDeleted}
-            onAssignDriver={handleAssignDriver} // NUEVO: Pasa la función para iniciar asignación
             setGlobalMessage={setGlobalMessage} 
             setGlobalError={setGlobalError}     
           />
         </section>
       </main>
-
-      {/* NUEVO: Modal de Asignación de Conductor */}
-      {assigningTravel && (
-        <AssignDriverModal
-          travelToAssign={assigningTravel}
-          drivers={drivers} // Pasa la lista de conductores disponibles
-          onClose={handleCancelAssign}
-          onAssignSuccess={handleAssignSuccess}
-          setGlobalMessage={setGlobalMessage}
-          setGlobalError={setGlobalError}
-        />
-      )}
     </div>
   );
 }

@@ -14,7 +14,8 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
     if (editingDriver) {
       // Si hay un conductor para editar, precarga sus datos en los estados del formulario
       setNombre(editingDriver.nombre || '');
-      setTelefono(editingDriver.telefono || '');
+      // Asegúrate de que el campo 'telefono' sea 'telefono' y no 'driver_telefono' si es diferente en tu DB/API
+      setTelefono(editingDriver.telefono || ''); 
       setTipoVehiculo(editingDriver.tipoVehiculo || '');
       setMessage(''); // Limpia mensajes globales del padre al iniciar edición
       setError('');   // Limpia errores globales del padre al iniciar edición
@@ -24,7 +25,7 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
       setTelefono('');
       setTipoVehiculo('');
     }
-  }, [editingDriver, setMessage, setError]); // Se ejecuta cuando editingDriver cambia, o cuando los setters globales cambian (por seguridad)
+  }, [editingDriver, setMessage, setError]); // Se ejecuta cuando editingDriver cambia, o cuando los setters globales cambian
 
   /**
    * Maneja el envío del formulario, ya sea para crear o actualizar un conductor.
@@ -67,14 +68,13 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
       setTipoVehiculo('');
 
       // Notifica al componente padre (App.js) para que recargue la lista de conductores
-      // App.js se encargará de que DriverList recargue sus propios datos.
       if (onDriverCreated) {
         onDriverCreated();
       }
 
     } catch (err) {
       console.error("Error al procesar conductor:", err);
-      // Extrae el mensaje de error del backend si está disponible, sino usa un mensaje genérico
+      // Extrae el mensaje de error del backend si está disponible
       const backendErrorMessage = err.response?.data?.error || err.message;
       setError(`Error al ${editingDriver ? 'actualizar' : 'crear'} el conductor: ${backendErrorMessage}.`);
     }
@@ -82,7 +82,7 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
 
   return (
     // Contenedor principal del formulario con estilos Tailwind
-    <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
+    <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-xl bg-white w-full max-w-md mx-auto transform hover:scale-105 transition-transform duration-300">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
         {editingDriver ? 'Editar Conductor' : 'Crear Nuevo Conductor'}
       </h2>
@@ -95,7 +95,7 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
             id="nombre"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-blue-500 transition duration-150"
             required
           />
         </div>
@@ -107,7 +107,7 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
             id="telefono"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-blue-500 transition duration-150"
             required
           />
         </div>
@@ -119,17 +119,18 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
             id="tipoVehiculo"
             value={tipoVehiculo}
             onChange={(e) => setTipoVehiculo(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-blue-500 transition duration-150"
             required
           />
         </div>
         {/* Botones de acción */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between space-x-4">
           <button 
             type="submit" 
             className={`
-              ${editingDriver ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'}
-              text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+              flex-1 py-2 px-4 rounded font-bold focus:outline-none focus:shadow-outline transition duration-150 ease-in-out
+              ${editingDriver ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'}
+              text-white focus:ring-2 focus:ring-offset-2
             `}
           >
             {editingDriver ? 'Actualizar Conductor' : 'Crear Conductor'}
@@ -138,18 +139,15 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
             <button 
               type="button" // Importante: tipo "button" para que no envíe el formulario
               onClick={onCancelEdit} 
-              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
             >
               Cancelar Edición
             </button>
           )}
         </div>
-      </form>
-      {/* Los mensajes de éxito o error ahora se muestran globalmente en App.js.
-          Si quieres feedback instantáneo aquí, puedes añadir estados locales,
-          pero el global ya se encargará de notificar al usuario. */}
-    </div>
-  );
-}
+        {/* Los mensajes de éxito o error ahora se muestran globalmente en App.js */}
+      </div>
+    );
+  }
 
 export default DriverForm;

@@ -1,56 +1,52 @@
 import React, { useState } from 'react';
-// import { signInWithEmailAndPassword } from 'firebase/auth'; // Lo usaremos más adelante
-// import { auth } from './firebaseConfig'; // Lo usaremos más adelante
+import { signInWithEmailAndPassword } from 'firebase/auth'; // Importa la función de autenticación
+import { auth } from './firebaseConfig'; // Importa la instancia 'auth' desde firebaseConfig.js
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState(''); // Para mensajes de éxito o error
-  const [error, setError] = useState('');     // Para errores específicos
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Previene el envío por defecto del formulario
+    e.preventDefault();
 
-    setMessage(''); // Limpiar mensajes anteriores
-    setError('');   // Limpiar errores anteriores
+    setMessage('');
+    setError('');
 
     if (!email || !password) {
       setError('Por favor, ingresa tu correo y contraseña.');
       return;
     }
 
-    // --- Lógica de Inicio de Sesión con Firebase Authentication se añadirá aquí ---
     try {
-      // ESTO ES SOLO UN EJEMPLO DE SIMULACIÓN POR AHORA
-      // Aquí iría la llamada real a Firebase: await signInWithEmailAndPassword(auth, email, password);
-      console.log('Intentando iniciar sesión con:', { email, password });
-      setMessage('Iniciando sesión... (Lógica de Firebase vendrá aquí)');
-      // Simular un retraso para ver el mensaje
-      await new Promise(resolve => setTimeout(resolve, 1500)); 
-      setMessage('¡Inicio de sesión simulado exitoso!');
+      // Intenta iniciar sesión con Firebase Authentication
+      await signInWithEmailAndPassword(auth, email, password);
+
+      setMessage('¡Inicio de sesión exitoso!');
       setEmail('');
       setPassword('');
 
     } catch (err) {
-      // console.error("Error al iniciar sesión:", err);
-      // let errorMessage = "Error al iniciar sesión. Verifica tus credenciales.";
-      // if (err.code === 'auth/user-not-found') {
-      //   errorMessage = "Usuario no encontrado. Crea una cuenta.";
-      // } else if (err.code === 'auth/wrong-password') {
-      //   errorMessage = "Contraseña incorrecta. Intenta de nuevo.";
-      // }
-      // setError(errorMessage);
-      setError('Error simulado al iniciar sesión.'); // Mensaje de error simulado
+      console.error("Error al iniciar sesión:", err);
+
+      let errorMessage = "Error al iniciar sesión. Verifica tus credenciales.";
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        errorMessage = "Correo o contraseña incorrectos. Intenta de nuevo.";
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = "El formato del correo electrónico es inválido.";
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = "Demasiados intentos de inicio de sesión fallidos. Intenta de nuevo más tarde.";
+      }
+      setError(errorMessage);
     }
   };
 
   return (
-    // Contenedor principal del formulario de login con estilos Tailwind
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Iniciar Sesión</h2>
         <form onSubmit={handleSubmit}>
-          {/* Campo de Correo Electrónico */}
           <div className="mb-4">
             <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">Correo Electrónico:</label>
             <input
@@ -63,7 +59,6 @@ function LoginForm() {
               required
             />
           </div>
-          {/* Campo de Contraseña */}
           <div className="mb-6">
             <label htmlFor="password" className="block text-gray-700 text-sm font-bold mb-2">Contraseña:</label>
             <input
@@ -76,7 +71,6 @@ function LoginForm() {
               required
             />
           </div>
-          {/* Botón de Iniciar Sesión */}
           <button
             type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
@@ -84,7 +78,6 @@ function LoginForm() {
             Iniciar Sesión
           </button>
         </form>
-        {/* Mensajes de éxito o error */}
         {message && <p className="text-green-500 text-sm mt-4 text-center">{message}</p>}
         {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
       </div>

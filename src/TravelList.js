@@ -1,40 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// Componente TravelList: Muestra la lista de viajes, con opciones para editar, eliminar y asignar conductor, y filtros.
-// Recibe setters para los mensajes globales de App.js y funciones de acción.
-function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMessage, setGlobalError }) {
+// Componente TravelList: Muestra la lista de viajes, con opciones para editar y eliminar,
+// y campos para búsqueda y filtrado por estado.
+// Recibe setters para los mensajes globales de App.js, y funciones para editar y eliminar viajes.
+function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobalError }) {
+  // Estados internos para la lista de viajes, carga y errores
   const [travels, setTravels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Nuevos estados para los filtros de viajes
-  const [pasajeroSearchTerm, setPasajeroSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState(''); // 'pendiente', 'asignado', 'completado', etc.
+  const [pasajeroSearchTerm, setPasajeroSearchTerm] = useState(''); // Estado para el término de búsqueda de pasajero
+  const [statusFilter, setStatusFilter] = useState(''); // Estado para el filtro por estado
 
   /**
-   * Fetches the list of travels from the backend API.
-   * Accepts optional filter parameters.
+   * Fetches the list of travels from the backend API, optionally applying search and status filters.
+   * @param {string} currentPasajeroSearchTerm - El término de búsqueda por nombre de pasajero.
+   * @param {string} currentStatusFilter - El estado del viaje por el cual filtrar.
    */
-  const fetchTravels = async (pasajeroTerm = '', status = '') => {
+  const fetchTravels = async (currentPasajeroSearchTerm = '', currentStatusFilter = '') => {
     setLoading(true);
     setError(null);
-    setGlobalMessage('');
-    setGlobalError('');
+    setGlobalMessage(''); // Limpia mensajes globales del padre al iniciar una nueva operación
+    setGlobalError('');   // Limpia errores globales del padre
 
     try {
-      // Construye la URL con los parámetros de búsqueda y filtro de estado
+      // Construye los parámetros de la URL para el filtrado
       const params = new URLSearchParams();
-      if (pasajeroTerm) {
-        params.append('pasajero_nombre', pasajeroTerm);
+      if (currentPasajeroSearchTerm) {
+        params.append('pasajero_nombre', currentPasajeroSearchTerm);
       }
-      if (status) {
-        params.append('estado', status);
+      if (currentStatusFilter) {
+        params.append('estado', currentStatusFilter);
       }
-      
-      // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
-      const url = `http://localhost:5000/viajes?${params.toString()}`;
-      const response = await axios.get(url);
+
+      // Realiza la petición GET a tu backend Flask con los filtros
+      const response = await axios.get(`http://localhost:5000/viajes?${params.toString()}`);
       setTravels(response.data);
     } catch (err) {
       console.error("Error al obtener viajes:", err);
@@ -47,17 +47,45 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
   };
 
   /**
+   * Maneja el cambio en el campo de búsqueda por pasajero.
+   * @param {Object} e - Evento de cambio del input.
+   */
+  const handlePasajeroSearchChange = (e) => {
+    setPasajeroSearchTerm(e.target.value);
+  };
+
+  /**
+   * Maneja el cambio en el filtro por estado.
+   * @param {Object} e - Evento de cambio del select.
+   */
+  const handleStatusFilterChange = (e) => {
+    setStatusFilter(e.target.value);
+    // Dispara la búsqueda inmediatamente al cambiar el filtro de estado
+    fetchTravels(pasajeroSearchTerm, e.target.value);
+  };
+
+  /**
+   * Maneja el envío del formulario de búsqueda por pasajero.
+   * @param {Object} e - Evento de envío del formulario.
+   */
+  const handleSearchSubmit = (e) => {
+    e.preventDefault(); // Evita que el formulario recargue la página
+    fetchTravels(pasajeroSearchTerm, statusFilter); // Realiza la búsqueda con los términos actuales
+  };
+
+  /**
    * Handles the deletion of a travel.
    * @param {string} travelId - The ID of the travel to delete.
    */
   const handleDelete = async (travelId) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este viaje de forma permanente?')) {
       try {
-        // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
         await axios.delete(`http://localhost:5000/viajes/${travelId}`);
         setGlobalMessage(`Viaje con ID ${travelId} eliminado exitosamente.`);
         setGlobalError('');
-        fetchTravels(pasajeroSearchTerm, statusFilter); // Recarga la lista con los filtros actuales
+        
+        // Vuelve a cargar la lista de viajes después de la eliminación exitosa
+        fetchTravels(pasajeroSearchTerm, statusFilter);
       } catch (err) {
         console.error("Error al eliminar viaje:", err);
         const errorMessage = err.response?.data?.error || `Error al eliminar viaje con ID ${travelId}.`;
@@ -67,23 +95,12 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
     }
   };
 
-  // Maneja la búsqueda por nombre de pasajero
-  const handleSearchPasajero = () => {
-    fetchTravels(pasajeroSearchTerm, statusFilter);
-  };
-
-  // Maneja el cambio de filtro por estado
-  const handleStatusFilterChange = (e) => {
-    const newStatus = e.target.value;
-    setStatusFilter(newStatus);
-    fetchTravels(pasajeroSearchTerm, newStatus); // Inicia la búsqueda inmediatamente
-  };
-
-  // Cargar viajes al montar el componente (sin filtros iniciales)
+  // useEffect se ejecuta una vez al montar el componente para cargar los datos iniciales.
   useEffect(() => {
-    fetchTravels();
-  }, []);
+    fetchTravels(); // Carga todos los viajes al inicio
+  }, []); // El array vacío asegura que este efecto se ejecute solo una vez al montar
 
+  // --- Renderizado Condicional de la Lista ---
   if (loading) {
     return <p className="text-center text-gray-600 p-4">Cargando viajes...</p>;
   }
@@ -93,28 +110,23 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
   }
 
   return (
-    <div className="flex-1 p-6 border border-gray-200 rounded-lg shadow-md bg-white w-full max-w-md mx-auto">
+    // Contenedor principal de la lista de viajes con estilos Tailwind
+    <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-xl bg-white w-full max-w-md mx-auto transform hover:scale-105 transition-transform duration-300">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Lista de Viajes</h2>
 
-      {/* Campos de filtro de viajes */}
-      <div className="mb-4 flex flex-col gap-2">
+      {/* Sección de Búsqueda y Filtro */}
+      <form onSubmit={handleSearchSubmit} className="mb-6 flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           placeholder="Buscar por pasajero..."
           value={pasajeroSearchTerm}
-          onChange={(e) => setPasajeroSearchTerm(e.target.value)}
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500"
+          onChange={handlePasajeroSearchChange}
+          className="flex-1 shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-purple-500"
         />
-        <button
-          onClick={handleSearchPasajero}
-          className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out text-sm"
-        >
-          Buscar Viajes
-        </button>
         <select
           value={statusFilter}
           onChange={handleStatusFilterChange}
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 mt-2"
+          className="flex-1 shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-purple-500"
         >
           <option value="">Filtrar por Estado (Todos)</option>
           <option value="pendiente">Pendiente</option>
@@ -123,11 +135,20 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
           <option value="completado">Completado</option>
           <option value="cancelado">Cancelado</option>
         </select>
-      </div>
-
+        <button
+          type="submit"
+          className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out hidden sm:block"
+          // Ocultar en pantallas pequeñas si solo hay dos campos y el select ya dispara el filtro
+        >
+          Buscar
+        </button>
+      </form>
+          
+      {/* Mensaje si no hay viajes o después de búsqueda */}
       {travels.length === 0 ? (
-        <p className="text-center text-gray-500 italic">No hay viajes que coincidan con la búsqueda.</p>
+        <p className="text-center text-gray-500 italic">No hay viajes registrados o no coinciden con la búsqueda/filtro. ¡Crea uno!</p>
       ) : (
+        // Lista de viajes
         <ul className="list-none p-0">
           {travels.map(travel => (
             <li key={travel.id} className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50 shadow-sm flex flex-col">
@@ -138,11 +159,13 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
                 {travel.ubicacion_origen_lat && travel.ubicacion_origen_lon && (
                   <p><strong className="text-purple-600">Origen (GPS):</strong> {travel.ubicacion_origen_lat}, {travel.ubicacion_origen_lon}</p>
                 )}
-                <p><strong className="text-purple-600">Destino (Texto):</strong> {travel.ubicacion_destino_texto || 'N/A'}</p>
+                {travel.ubicacion_destino_texto && (
+                  <p><strong className="text-purple-600">Destino (Texto):</strong> {travel.ubicacion_destino_texto}</p>
+                )}
                 {travel.ubicacion_destino_lat && travel.ubicacion_destino_lon && (
                   <p><strong className="text-purple-600">Destino (GPS):</strong> {travel.ubicacion_destino_lat}, {travel.ubicacion_destino_lon}</p>
                 )}
-                <p><strong className="text-purple-600">Estado:</strong> <span className={`font-semibold ${travel.estado === 'pendiente' ? 'text-orange-500' : travel.estado === 'asignado' ? 'text-blue-500' : 'text-green-500'}`}>{travel.estado}</span></p>
+                <p><strong className="text-purple-600">Estado:</strong> <span className={`font-semibold ${travel.estado === 'pendiente' ? 'text-orange-500' : 'text-blue-500'}`}>{travel.estado}</span></p>
                 {travel.conductor_nombre && (
                   <p><strong className="text-purple-600">Conductor Asignado:</strong> {travel.conductor_nombre}</p>
                 )}
@@ -156,15 +179,8 @@ function TravelList({ onEditTravel, onTravelDeleted, onAssignDriver, setGlobalMe
                   <p><strong className="text-purple-600">Notas:</strong> {travel.notas}</p>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2 mt-auto">
-                {travel.estado === 'pendiente' && !travel.conductor_id && (
-                  <button
-                    onClick={() => onAssignDriver(travel)}
-                    className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
-                  >
-                    Asignar Conductor
-                  </button>
-                )}
+              {/* Botones de acción (Editar/Eliminar) */}
+              <div className="flex gap-2 mt-auto">
                 <button
                   onClick={() => onEditTravel(travel)}
                   className="flex-1 py-2 px-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"

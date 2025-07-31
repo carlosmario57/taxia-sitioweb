@@ -18,8 +18,8 @@ function App() {
   const [globalError, setGlobalError] = useState('');
 
   // --- Estados para Edición ---
-  const [editingDriver, setEditingDriver] = useState(null);
-  const [editingTravel, setEditingTravel] = useState(null);
+  const [editingDriver, setEditingDriver] = useState(null); // Conductor actualmente en edición
+  const [editingTravel, setEditingTravel] = useState(null);   // Viaje actualmente en edición
 
   // --- Estados para Forzar Recarga de Listas (Actualización Automática) ---
   // Estos keys se incrementan para forzar un re-render y re-fetch en los useEffect de las listas
@@ -179,7 +179,7 @@ function App() {
 
       {/* Contenido Principal: Formularios y Listas */}
       <main className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
-
+        
         {/* Sección de Gestión de Conductores */}
         <section className="bg-white shadow-lg rounded-lg p-6">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Conductores</h2>
@@ -191,7 +191,7 @@ function App() {
             setError={setGlobalError}
           />
           <DriverList
-            key={refreshDriversKey}
+            key={refreshDriversKey} // ¡IMPORTANTE! Este key fuerza el re-render y re-fetch
             onEditDriver={handleEditDriver}
             onDriverDeleted={handleDriverDeleted}
             setGlobalMessage={setGlobalMessage}
@@ -202,19 +202,19 @@ function App() {
         {/* Sección de Gestión de Viajes */}
         <section className="bg-white shadow-lg rounded-lg p-6">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center border-b pb-4">Gestión de Viajes</h2>
-          <TravelForm
+          <TravelForm 
             onTravelCreated={handleTravelFormSubmit}
-            editingTravel={editingTravel}
-            onCancelEdit={handleCancelEditTravel}
+            editingTravel={editingTravel} // Pasa el viaje a editar
+            onCancelEdit={handleCancelEditTravel} // Pasa la función para cancelar la edición
             setMessage={setGlobalMessage}
             setError={setGlobalError}
           />
-          <TravelList
-            key={refreshTravelsKey}
-            onEditTravel={handleEditTravel}
-            onTravelDeleted={handleTravelDeleted}
-            setGlobalMessage={setGlobalMessage}
-            setGlobalError={setGlobalError}
+          <TravelList 
+            key={refreshTravelsKey} // ¡IMPORTANTE! Este key fuerza el re-render y re-fetch
+            onEditTravel={handleEditTravel} // Pasa la función para editar viajes
+            onTravelDeleted={handleTravelDeleted} // Pasa la función para eliminar viajes
+            setGlobalMessage={setGlobalMessage} 
+            setGlobalError={setGlobalError}     
           />
         </section>
       </main>

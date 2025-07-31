@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { getAuth } from 'firebase/auth'; // ¡Importante! Importa getAuth de Firebase para obtener el usuario actual
 
 // Componente DriverForm: Proporciona un formulario para crear o editar conductores.
 // Recibe props de App.js para el manejo global de estados y mensajes.
@@ -63,6 +64,21 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
     setLoading(true); // Activa el estado de carga
 
     try {
+      // --- Lógica de Autenticación de Firebase ---
+      const auth = getAuth(); // Obtiene la instancia de autenticación
+      const user = auth.currentUser; // Obtiene el usuario actualmente logueado
+
+      if (!user) {
+        // Si no hay un usuario autenticado, muestra un error y detiene la ejecución
+        setError('Debes iniciar sesión para realizar esta operación.');
+        setLoading(false);
+        return;
+      }
+
+      // Obtiene el token de ID del usuario. Este token se usa para autenticar la petición al backend.
+      const idToken = await user.getIdToken();
+      // console.log("Firebase ID Token:", idToken); // Útil para depuración, pero no en producción
+
       // Objeto con los datos del conductor a enviar
       const driverData = {
         nombre: nombre.trim(), // Limpia espacios en blanco
@@ -70,14 +86,21 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
         tipoVehiculo: tipoVehiculo.trim() // Limpia espacios en blanco
       };
 
+      // Configuración de los encabezados de Axios, incluyendo el token de autorización
+      const axiosConfig = {
+        headers: {
+          'Authorization': `Bearer ${idToken}` // Formato estándar: "Bearer <token>"
+        }
+      };
+
       if (editingDriver) {
         // Si estamos en modo edición, enviamos una petición PUT para actualizar
-        await axios.put(`http://localhost:5000/drivers/${editingDriver.id}`, driverData);
+        await axios.put(`http://localhost:5000/drivers/${editingDriver.id}`, driverData, axiosConfig);
         setMessage(`Conductor "${nombre}" (ID: ${editingDriver.id}) actualizado exitosamente.`);
         onCancelEdit(); // Vuelve al modo de creación después de actualizar
       } else {
         // Si estamos creando, enviamos una petición POST para añadir
-        const response = await axios.post('http://localhost:5000/drivers', driverData);
+        const response = await axios.post('http://localhost:5000/drivers', driverData, axiosConfig);
         setMessage(`Conductor "${response.data.id}" creado exitosamente.`);
       }
 
@@ -98,23 +121,25 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
       let errorMessage = `Error al ${editingDriver ? 'actualizar' : 'crear'} el conductor: `;
       if (err.response) {
         // El servidor respondió con un estado fuera del rango 2xx
+        // Intenta obtener el mensaje de error del backend si está disponible
         if (err.response.data && err.response.data.error) {
           errorMessage += err.response.data.error;
         } else if (err.response.data && typeof err.response.data === 'string') {
           errorMessage += err.response.data;
         } else {
+          // Si el backend no da un mensaje específico, usa el estado HTTP
           errorMessage += `Código ${err.response.status} - ${err.response.statusText}`;
         }
       } else if (err.request) {
-        // La petición fue hecha pero no se recibió respuesta (ej. red caída)
-        errorMessage += 'No se pudo conectar con el servidor. Verifica tu conexión.';
+        // La petición fue hecha pero no se recibió respuesta (ej. red caída, servidor no responde)
+        errorMessage += 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.';
       } else {
-        // Algo más causó el error
+        // Algo más causó el error (ej. error en la configuración de Axios)
         errorMessage += err.message;
       }
       setError(errorMessage);
     } finally {
-      setLoading(false); // Desactiva el estado de carga
+      setLoading(false); // Desactiva el estado de carga siempre al finalizar
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Importa useCallback
 import axios from 'axios';
 
 // Componente TravelList: Muestra la lista de viajes, con opciones para editar y eliminar,
@@ -14,10 +14,12 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
 
   /**
    * Fetches the list of travels from the backend API, optionally applying search and status filters.
+   * Esta función está envuelta en `useCallback` para asegurar que no cambie en cada render
+   * a menos que sus dependencias cambien, lo cual es crucial para `useEffect`.
    * @param {string} currentPasajeroSearchTerm - El término de búsqueda por nombre de pasajero.
    * @param {string} currentStatusFilter - El estado del viaje por el cual filtrar.
    */
-  const fetchTravels = async (currentPasajeroSearchTerm = '', currentStatusFilter = '') => {
+  const fetchTravels = useCallback(async (currentPasajeroSearchTerm = '', currentStatusFilter = '') => {
     setLoading(true);
     setError(null);
     setGlobalMessage(''); // Limpia mensajes globales del padre al iniciar una nueva operación
@@ -34,6 +36,7 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
       }
 
       // Realiza la petición GET a tu backend Flask con los filtros
+      // URL CRÍTICA: Asegúrate de que esta URL sea la correcta y apunte a tu backend Flask.
       const response = await axios.get(`http://localhost:5000/viajes?${params.toString()}`);
       setTravels(response.data);
     } catch (err) {
@@ -44,7 +47,7 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
     } finally {
       setLoading(false);
     }
-  };
+  }, [setLoading, setError, setGlobalMessage, setGlobalError, setTravels]); // Dependencias para useCallback
 
   /**
    * Maneja el cambio en el campo de búsqueda por pasajero.
@@ -59,9 +62,10 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
    * @param {Object} e - Evento de cambio del select.
    */
   const handleStatusFilterChange = (e) => {
-    setStatusFilter(e.target.value);
+    const newStatus = e.target.value;
+    setStatusFilter(newStatus);
     // Dispara la búsqueda inmediatamente al cambiar el filtro de estado
-    fetchTravels(pasajeroSearchTerm, e.target.value);
+    fetchTravels(pasajeroSearchTerm, newStatus);
   };
 
   /**
@@ -86,6 +90,10 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
         
         // Vuelve a cargar la lista de viajes después de la eliminación exitosa
         fetchTravels(pasajeroSearchTerm, statusFilter);
+        // Notifica al componente padre que un viaje fue eliminado, para que App.js pueda forzar un refresh si lo necesita.
+        if (onTravelDeleted) {
+          onTravelDeleted();
+        }
       } catch (err) {
         console.error("Error al eliminar viaje:", err);
         const errorMessage = err.response?.data?.error || `Error al eliminar viaje con ID ${travelId}.`;
@@ -96,9 +104,10 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
   };
 
   // useEffect se ejecuta una vez al montar el componente para cargar los datos iniciales.
+  // La función `fetchTravels` se incluye en el array de dependencias porque es una función memoizada.
   useEffect(() => {
     fetchTravels(); // Carga todos los viajes al inicio
-  }, []); // El array vacío asegura que este efecto se ejecute solo una vez al montar
+  }, [fetchTravels]); // ¡CORRECCIÓN! Añadida fetchTravels como dependencia para evitar la advertencia
 
   // --- Renderizado Condicional de la Lista ---
   if (loading) {
@@ -170,6 +179,7 @@ function TravelList({ onEditTravel, onTravelDeleted, setGlobalMessage, setGlobal
                   <p><strong className="text-purple-600">Conductor Asignado:</strong> {travel.conductor_nombre}</p>
                 )}
                 {travel.fecha_solicitud && (
+                  // Asegúrate de que fecha_solicitud sea un objeto de fecha válido o una cadena parseable
                   <p><strong className="text-purple-600">Solicitado:</strong> {new Date(travel.fecha_solicitud).toLocaleString()}</p>
                 )}
                 {travel.fecha_asignacion && (

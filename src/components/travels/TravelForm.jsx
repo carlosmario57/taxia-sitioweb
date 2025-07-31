@@ -94,7 +94,7 @@ function TravelForm({ onTravelCreated, editingTravel, onCancelEdit, setMessage, 
             }
 
             const idToken = await user.getIdToken();
-            const response = await axios.get('http://localhost:5000/conductores', {
+            const response = await axios.get('http://localhost:5000/drivers', {
                 headers: {
                     'Authorization': `Bearer ${idToken}`
                 }

@@ -135,8 +135,8 @@ function App() {
     return (
       <LoginForm 
         onLoginSuccess={handleLoginSuccess} 
-        setGlobalMessage={setGlobalMessage} // Pasa los setters para que LoginForm pueda mostrar mensajes globales
-        setGlobalError={setGlobalError}    // Pasa los setters para que LoginForm pueda mostrar errores globales
+        setMessage={setGlobalMessage} // <--- Esta es la línea crucial que pasa setGlobalMessage
+        setError={setGlobalError}     // <--- Esta es la línea crucial que pasa setGlobalError
       />
     );
   }

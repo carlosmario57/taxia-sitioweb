@@ -1,37 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// Componente DriverList: Muestra la lista de conductores, con opciones para editar y eliminar.
-// Recibe setters para los mensajes globales de App.js, y funciones para editar y eliminar.
+// Componente DriverList: Muestra la lista de conductores, con opciones para editar, eliminar y búsqueda.
+// Recibe props de App.js para el manejo global de estados y mensajes, y funciones de acción.
 function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobalError }) {
-  // Estados internos para la lista de conductores, carga y errores
+  // Estados INTERNOS de DriverList para la data, carga y errores de la lista misma.
   const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true); // Controla el estado de carga
-  const [error, setError] = useState(null);     // Almacena errores de la petición
-  const [searchTerm, setSearchTerm] = useState(''); // Estado para el término de búsqueda de conductores
+  const [loading, setLoading] = useState(true); // Estado de carga interno para la lista
+  const [error, setError] = useState(null);     // Estado de error interno para la lista
+  const [deleteMessage, setDeleteMessage] = useState(''); // Estado para mensajes de eliminación (por si la eliminación falla, el mensaje sea más local)
+
+  // Nuevo estado para el término de búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
 
   /**
-   * Fetches the list of drivers from the backend API, optionally applying a search filter.
+   * Fetches the list of drivers from the backend API.
+   * Accepts an optional searchTerm to filter results.
    * @param {string} currentSearchTerm - El término de búsqueda a aplicar.
    */
-  const fetchDrivers = async (currentSearchTerm = '') => {
-    setLoading(true);
-    setError(null);
-    setGlobalMessage(''); // Limpia mensajes globales del padre al iniciar una nueva operación
-    setGlobalError('');   // Limpia errores globales del padre
+  const fetchDrivers = async (currentSearchTerm = '') => { // Acepta un término de búsqueda opcional
+    setLoading(true); // Controla la carga internamente
+    setError(null);    // Limpia error interno
+    setDeleteMessage(''); // Limpia mensajes de eliminación anteriores
+
+    // No limpiamos los mensajes globales aquí, ya que la búsqueda no es una operación de CRUD
+    // principal que genere un mensaje global de éxito/error.
 
     try {
-      // Realiza la petición GET a tu backend Flask con el término de búsqueda
-      // URL CRÍTICA: Asegúrate de que esta URL sea correcta. Flask debe manejar ?nombre=
-      const response = await axios.get(`http://localhost:5000/drivers?nombre=${currentSearchTerm}`);
+      // Construye la URL con el parámetro de búsqueda si existe
+      // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask (http://localhost:5000/drivers)
+      const url = currentSearchTerm ? `http://localhost:5000/drivers?nombre=${currentSearchTerm}` : 'http://localhost:5000/drivers';
+      const response = await axios.get(url); // Usa la URL con o sin filtro
       setDrivers(response.data);
     } catch (err) {
       console.error("Error al obtener conductores:", err);
       const errorMessage = err.response?.data?.error || "Error al cargar los conductores. Asegúrate de que el backend esté funcionando y sea accesible.";
-      setError(errorMessage); // Establece el error interno de la lista
+      setError(errorMessage); // Establece el error interno
       setGlobalError(errorMessage); // También propaga el error al estado global del padre
     } finally {
-      setLoading(false);
+      setLoading(false); // Siempre deja de cargar.
     }
   };
 
@@ -60,29 +67,33 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
   const handleDelete = async (driverId) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este conductor de forma permanente?')) {
       try {
+        // ¡IMPORTANTE! Asegúrate de que esta URL sea la correcta para tu backend Flask
         await axios.delete(`http://localhost:5000/drivers/${driverId}`);
-        setGlobalMessage(`Conductor con ID ${driverId} eliminado exitosamente.`);
-        setGlobalError('');
+        setDeleteMessage(`Conductor con ID ${driverId} eliminado exitosamente.`); // Mensaje local para eliminación
+        setGlobalMessage(`Conductor con ID ${driverId} eliminado exitosamente.`); // Mensaje global de éxito
+        setGlobalError(''); // Limpia cualquier error global anterior
         
-        // Vuelve a cargar la lista de conductores después de la eliminación exitosa
-        fetchDrivers(searchTerm); // Recarga aplicando el filtro actual
+        // Vuelve a cargar la lista de conductores después de la eliminación exitosa, manteniendo el filtro actual
+        fetchDrivers(searchTerm);
       } catch (err) {
         console.error("Error al eliminar conductor:", err);
         const errorMessage = err.response?.data?.error || `Error al eliminar conductor con ID ${driverId}.`;
-        setGlobalError(errorMessage);
-        setGlobalMessage('');
+        setDeleteMessage(errorMessage); // Mensaje de error local
+        setGlobalError(errorMessage); // Propaga el error al estado global
+        setGlobalMessage(''); // Limpia el mensaje de éxito global si hay un error
       }
     }
   };
 
   // useEffect se ejecuta una vez al montar el componente para cargar los datos iniciales.
-  // Se recarga si la 'key' del componente padre cambia (no es necesario aquí si fetchDrivers
-  // se llama directamente con filtros o desde el padre).
+  // La función fetchDrivers se incluye en el array de dependencias para satisfacer la advertencia de ESLint.
+  // React garantiza que las funciones definidas dentro del componente (como fetchDrivers)
+  // son estables si sus propias dependencias son estables.
   useEffect(() => {
     fetchDrivers(); // Carga todos los conductores al inicio
-  }, []); // El array vacío asegura que este efecto se ejecute solo una vez al montar
+  }, [fetchDrivers]); // ¡CORRECCIÓN! Añadida fetchDrivers como dependencia para evitar la advertencia
 
-  // --- Renderizado Condicional de la Lista ---
+  // Renderizado Condicional
   if (loading) {
     return <p className="text-center text-gray-600 p-4">Cargando conductores...</p>;
   }
@@ -113,6 +124,13 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
         </button>
       </form>
           
+      {/* Mensaje de eliminación (local) */}
+      {deleteMessage && (
+        <p className={`text-center mb-4 p-2 rounded ${deleteMessage.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {deleteMessage}
+        </p>
+      )}
+
       {/* Mensaje si no hay conductores o después de búsqueda */}
       {drivers.length === 0 ? (
         <p className="text-center text-gray-500 italic">No hay conductores disponibles o no coinciden con la búsqueda. ¡Crea uno!</p>

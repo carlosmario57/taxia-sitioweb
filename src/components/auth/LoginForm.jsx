@@ -1,20 +1,31 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from './firebaseConfig'; // Importa la instancia 'auth' desde firebaseConfig.js
+// ¡IMPORTANTE! La ruta ahora apunta dos niveles arriba para encontrar firebaseConfig.js
+import { auth } from '../../firebaseConfig'; 
 
-function LoginForm({ onLoginSuccess }) { // Agregamos una prop para notificar al componente padre sobre el éxito
+// Componente LoginForm: Permite a los usuarios iniciar sesión con correo y contraseña de Firebase.
+// Recibe:
+// - onLoginSuccess: Función para notificar al componente padre (App.jsx) sobre el éxito del login.
+// - setMessage (prop): Función para actualizar el mensaje global de éxito en App.jsx.
+// - setError (prop): Función para actualizar el mensaje global de error en App.jsx.
+function LoginForm({ onLoginSuccess, setMessage, setError }) { // Recibe los setters de mensajes globales
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // Nuevo estado para controlar el estado de carga
+  // Los estados 'message' y 'error' locales se eliminan ya que se usarán los globales pasados por props
+  const [loading, setLoading] = useState(false); // Estado para controlar el estado de carga de la petición
 
+  /**
+   * Maneja el envío del formulario de inicio de sesión.
+   * Intenta autenticar al usuario con Firebase y maneja los estados de éxito/error.
+   * @param {Event} e - El evento de envío del formulario.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    setMessage('');
-    setError('');
+    setMessage(''); // Limpia mensajes globales de éxito antes de un nuevo intento
+    setError('');   // Limpia mensajes globales de error antes de un nuevo intento
 
+    // Validación básica de campos obligatorios
     if (!email || !password) {
       setError('Por favor, ingresa tu correo y contraseña.');
       return;
@@ -25,25 +36,26 @@ function LoginForm({ onLoginSuccess }) { // Agregamos una prop para notificar al
     try {
       // Intenta iniciar sesión con Firebase Authentication
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // const user = userCredential.user; // Puedes acceder al objeto de usuario si lo necesitas
+      const user = userCredential.user; // Objeto de usuario autenticado
 
-      setMessage('¡Inicio de sesión exitoso!');
-      setEmail('');
-      setPassword('');
+      setMessage('¡Inicio de sesión exitoso!'); // Establece el mensaje global de éxito
+      setEmail(''); // Limpia el campo de email
+      setPassword(''); // Limpia el campo de contraseña
 
-      // Notifica al componente padre que el inicio de sesión fue exitoso
+      // Notifica al componente padre (App.jsx) que el inicio de sesión fue exitoso
       if (onLoginSuccess) {
-        onLoginSuccess(userCredential.user); // Pasa el objeto user al padre
+        onLoginSuccess(user); // Pasa el objeto user al padre
       }
 
     } catch (err) {
       console.error("Error al iniciar sesión:", err);
 
       let errorMessage = "Error al iniciar sesión. Verifica tus credenciales.";
+      // Manejo de errores específicos de Firebase Authentication para mensajes más amigables
       switch (err.code) {
         case 'auth/user-not-found':
         case 'auth/wrong-password':
-        case 'auth/invalid-credential':
+        case 'auth/invalid-credential': // Error genérico para credenciales incorrectas
           errorMessage = "Correo o contraseña incorrectos. Intenta de nuevo.";
           break;
         case 'auth/invalid-email':
@@ -59,7 +71,7 @@ function LoginForm({ onLoginSuccess }) { // Agregamos una prop para notificar al
           errorMessage = `Ocurrió un error inesperado: ${err.message}`;
           break;
       }
-      setError(errorMessage);
+      setError(errorMessage); // Establece el mensaje global de error
     } finally {
       setLoading(false); // Desactiva el estado de carga al finalizar (éxito o error)
     }
@@ -67,9 +79,10 @@ function LoginForm({ onLoginSuccess }) { // Agregamos una prop para notificar al
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md transform hover:scale-105 transition-transform duration-300">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Iniciar Sesión</h2>
         <form onSubmit={handleSubmit}>
+          {/* Campo Correo Electrónico */}
           <div className="mb-4">
             <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">Correo Electrónico:</label>
             <input
@@ -83,6 +96,7 @@ function LoginForm({ onLoginSuccess }) { // Agregamos una prop para notificar al
               disabled={loading} // Deshabilita el campo mientras carga
             />
           </div>
+          {/* Campo Contraseña */}
           <div className="mb-6">
             <label htmlFor="password" className="block text-gray-700 text-sm font-bold mb-2">Contraseña:</label>
             <input
@@ -96,6 +110,7 @@ function LoginForm({ onLoginSuccess }) { // Agregamos una prop para notificar al
               disabled={loading} // Deshabilita el campo mientras carga
             />
           </div>
+          {/* Botón de Iniciar Sesión */}
           <button
             type="submit"
             disabled={loading} // Deshabilita el botón mientras carga
@@ -107,8 +122,11 @@ function LoginForm({ onLoginSuccess }) { // Agregamos una prop para notificar al
             {loading ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
           </button>
         </form>
-        {message && <p className="text-green-500 text-sm mt-4 text-center">{message}</p>}
-        {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
+        {/* Los mensajes de éxito y error ahora se mostrarán a nivel global en App.jsx */}
+        {/* Puedes descomentar las siguientes líneas si quieres un feedback adicional local,
+            pero el feedback principal ya lo gestiona App.jsx */}
+        {/* {message && <p className="text-green-500 text-sm mt-4 text-center">{message}</p>}
+        {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>} */}
       </div>
     </div>
   );

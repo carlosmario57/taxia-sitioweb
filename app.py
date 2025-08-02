@@ -1,12 +1,15 @@
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 import firebase_admin
-from firebase_admin import credentials, firestore, auth # ¡Importante! Añade 'auth'
 from firebase_admin import exceptions as firebase_exceptions
 import os
 from functools import wraps
 from google.cloud.firestore import SERVER_TIMESTAMP
+from google.cloud.firestore import FieldFilter
 import re
+
+from firebase_admin import credentials, firestore, auth # ¡Importante! Añade 'auth'
+# Importamos la clase FieldFilter para usar la sintaxis moderna
 
 # --- Configuración de Firebase ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -216,7 +219,8 @@ def get_viajes():
         estado_filter = request.args.get('estado', '').lower()
         conductor_nombre_filter = request.args.get('conductor_nombre', '').lower()
         if estado_filter:
-            query = query.where('estado', '==', estado_filter)
+            # FIX: Se actualiza la sintaxis de `where` para usar FieldFilter y evitar el UserWarning
+            query = query.where(FieldFilter('estado', '==', estado_filter))
         all_viajes = []
         for doc in query.stream():
             viaje_data = doc.to_dict()

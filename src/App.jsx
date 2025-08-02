@@ -1,16 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // Importamos las funciones necesarias de Firebase para la autenticación y el manejo de los estados de usuario.
-import { initializeApp, getApps } from "firebase/app"; 
+import { initializeApp, getApps } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 // Importamos las funciones de Firestore necesarias para la base de datos, la lectura de datos en tiempo real, agregar, actualizar y eliminar documentos.
 import { getFirestore, collection, onSnapshot, query, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
+// Componente para cargar los scripts de Tailwind y otros.
+// En una aplicación real de React, Tailwind se configuraría de forma diferente (con npm).
+const TailwindCDN = () => (
+  <script src="https://cdn.tailwindcss.com"></script>
+);
+
 // =================================================================================================
 // ARCHIVO: src/App.jsx
 // FUNCIÓN: Componente principal de la aplicación que gestiona el flujo de autenticación,
-//          la conexión a la base de datos de Firestore y la visualización de datos mejorada.
+//          la conexión a la base de datos de Firestore y la visualización de datos mejorada.
 // =================================================================================================
 
 const App = ({ firebaseConfig }) => {
@@ -25,6 +31,15 @@ const App = ({ firebaseConfig }) => {
   // Estados para almacenar los datos de conductores y viajes
   const [drivers, setDrivers] = useState([]);
   const [trips, setTrips] = useState([]);
+
+  // Estado para manejar las notificaciones
+  const [notification, setNotification] = useState({ message: '', type: '' });
+
+  // Función para mostrar notificaciones temporales
+  const showNotification = (message, type) => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification({ message: '', type: '' }), 3000); // Ocultar después de 3 segundos
+  };
 
   // =================================================================================================
   // LÓGICA DE INICIALIZACIÓN DE FIREBASE
@@ -46,7 +61,7 @@ const App = ({ firebaseConfig }) => {
       // onAuthStateChanged es un observador que se ejecuta cada vez que el estado de autenticación cambia
       const unsubscribeAuth = onAuthStateChanged(authInstance, (currentUser) => {
         setUser(currentUser); 
-        setLoading(false);    
+        setLoading(false);    
       });
 
       // La función de limpieza que devuelve useEffect se ejecuta cuando el componente se desmonta,
@@ -100,10 +115,10 @@ const App = ({ firebaseConfig }) => {
   const handleAddDriver = async (driverData) => {
     try {
       await addDoc(collection(db, "drivers"), driverData);
-      alert("Conductor agregado con éxito!");
+      showNotification("Conductor agregado con éxito!", "success");
     } catch (error) {
       console.error("Error al agregar el conductor:", error);
-      alert("Error al agregar el conductor.");
+      showNotification("Error al agregar el conductor.", "error");
     }
   };
 
@@ -111,10 +126,10 @@ const App = ({ firebaseConfig }) => {
     try {
       const driverDocRef = doc(db, "drivers", id);
       await updateDoc(driverDocRef, updatedData);
-      alert("Conductor actualizado con éxito!");
+      showNotification("Conductor actualizado con éxito!", "success");
     } catch (error) {
       console.error("Error al actualizar el conductor:", error);
-      alert("Error al actualizar el conductor.");
+      showNotification("Error al actualizar el conductor.", "error");
     }
   };
 
@@ -122,20 +137,20 @@ const App = ({ firebaseConfig }) => {
     try {
       const driverDocRef = doc(db, "drivers", id);
       await deleteDoc(driverDocRef);
-      alert("Conductor eliminado con éxito!");
+      showNotification("Conductor eliminado con éxito!", "success");
     } catch (error) {
       console.error("Error al eliminar el conductor:", error);
-      alert("Error al eliminar el conductor.");
+      showNotification("Error al eliminar el conductor.", "error");
     }
   };
 
   const handleAddTrip = async (tripData) => {
     try {
       await addDoc(collection(db, "trips"), tripData);
-      alert("Viaje agregado con éxito!");
+      showNotification("Viaje agregado con éxito!", "success");
     } catch (error) {
       console.error("Error al agregar el viaje:", error);
-      alert("Error al agregar el viaje.");
+      showNotification("Error al agregar el viaje.", "error");
     }
   };
 
@@ -143,10 +158,10 @@ const App = ({ firebaseConfig }) => {
     try {
       const tripDocRef = doc(db, "trips", id);
       await updateDoc(tripDocRef, updatedData);
-      alert("Viaje actualizado con éxito!");
+      showNotification("Viaje actualizado con éxito!", "success");
     } catch (error) {
       console.error("Error al actualizar el viaje:", error);
-      alert("Error al actualizar el viaje.");
+      showNotification("Error al actualizar el viaje.", "error");
     }
   };
 
@@ -154,10 +169,10 @@ const App = ({ firebaseConfig }) => {
     try {
       const tripDocRef = doc(db, "trips", id);
       await deleteDoc(tripDocRef);
-      alert("Viaje eliminado con éxito!");
+      showNotification("Viaje eliminado con éxito!", "success");
     } catch (error) {
       console.error("Error al eliminar el viaje:", error);
-      alert("Error al eliminar el viaje.");
+      showNotification("Error al eliminar el viaje.", "error");
     }
   };
 
@@ -170,7 +185,7 @@ const App = ({ firebaseConfig }) => {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
       console.error("Error al iniciar sesión:", error.message);
-      alert(`Error al iniciar sesión: ${error.message}`);
+      showNotification(`Error al iniciar sesión: ${error.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -193,13 +208,22 @@ const App = ({ firebaseConfig }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <TailwindCDN />
         <h1 className="text-xl">Cargando...</h1>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-gray-900 font-sans antialiased text-white">
+      <TailwindCDN />
+      {/* Sistema de notificación */}
+      {notification.message && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-opacity duration-500 ease-in-out ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+          {notification.message}
+        </div>
+      )}
+      
       {user ? (
         <Dashboard 
           user={user} 
@@ -212,6 +236,7 @@ const App = ({ firebaseConfig }) => {
           onAddTrip={handleAddTrip}
           onUpdateTrip={handleUpdateTrip}
           onDeleteTrip={handleDeleteTrip}
+          showNotification={showNotification}
         />
       ) : (
         <Login onLogin={handleLogin} />
@@ -269,7 +294,7 @@ const Login = ({ onLogin }) => {
 // =================================================================================================
 // COMPONENTE: DASHBOARD (SE HA MODIFICADO PARA INCLUIR LA LÓGICA DE EDICIÓN Y ELIMINACIÓN)
 // =================================================================================================
-const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver, onDeleteDriver, onAddTrip, onUpdateTrip, onDeleteTrip }) => {
+const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver, onDeleteDriver, onAddTrip, onUpdateTrip, onDeleteTrip, showNotification }) => {
   const [activeTab, setActiveTab] = useState('drivers');
   const [isAddingDriver, setIsAddingDriver] = useState(false);
   const [isAddingTrip, setIsAddingTrip] = useState(false);
@@ -290,9 +315,9 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
 
   // Función para confirmar la eliminación
   const confirmDelete = () => {
-    if (itemTypeToDelete === 'driver') {
+    if (itemTypeToDelete === 'driver' && itemToDelete) {
       onDeleteDriver(itemToDelete.id);
-    } else if (itemTypeToDelete === 'trip') {
+    } else if (itemTypeToDelete === 'trip' && itemToDelete) {
       onDeleteTrip(itemToDelete.id);
     }
     setShowDeleteModal(false);
@@ -305,12 +330,21 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
     setItemToDelete(null);
     setItemTypeToDelete('');
   };
+  
+  // Limpiar estados de formularios al cambiar de pestaña
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setIsAddingDriver(false);
+    setIsAddingTrip(false);
+    setEditingDriver(null);
+    setEditingTrip(null);
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Panel de Control de CIMCO</h1>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 mt-4 md:mt-0">
           <span className="text-sm text-gray-400">Bienvenido, {user.email}</span>
           <button
             onClick={onLogout}
@@ -324,13 +358,13 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
       {/* Navegación por pestañas */}
       <div className="flex space-x-2 mb-6 border-b border-gray-700">
         <button 
-          onClick={() => { setActiveTab('drivers'); setIsAddingDriver(false); setIsAddingTrip(false); setEditingDriver(null); setEditingTrip(null); }}
+          onClick={() => handleTabChange('drivers')}
           className={`py-2 px-4 transition-colors duration-300 ${activeTab === 'drivers' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400 hover:text-white'}`}
         >
           Conductores ({drivers.length})
         </button>
         <button 
-          onClick={() => { setActiveTab('trips'); setIsAddingTrip(false); setIsAddingDriver(false); setEditingDriver(null); setEditingTrip(null); }}
+          onClick={() => handleTabChange('trips')}
           className={`py-2 px-4 transition-colors duration-300 ${activeTab === 'trips' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400 hover:text-white'}`}
         >
           Viajes ({trips.length})
@@ -361,13 +395,13 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
 
         {/* Renderizado condicional de formularios o listas */}
         {isAddingDriver ? (
-          <AddDriverForm onAddDriver={onAddDriver} onCancel={() => setIsAddingDriver(false)} />
+          <AddDriverForm onAddDriver={onAddDriver} onCancel={() => setIsAddingDriver(false)} showNotification={showNotification} />
         ) : isAddingTrip ? (
-          <AddTripForm onAddTrip={onAddTrip} onCancel={() => setIsAddingTrip(false)} drivers={drivers} />
+          <AddTripForm onAddTrip={onAddTrip} onCancel={() => setIsAddingTrip(false)} drivers={drivers} showNotification={showNotification} />
         ) : editingDriver ? (
-          <EditDriverForm driver={editingDriver} onUpdateDriver={onUpdateDriver} onCancel={() => setEditingDriver(null)} />
+          <EditDriverForm driver={editingDriver} onUpdateDriver={onUpdateDriver} onCancel={() => setEditingDriver(null)} showNotification={showNotification} />
         ) : editingTrip ? (
-          <EditTripForm trip={editingTrip} onUpdateTrip={onUpdateTrip} onCancel={() => setEditingTrip(null)} drivers={drivers} />
+          <EditTripForm trip={editingTrip} onUpdateTrip={onUpdateTrip} onCancel={() => setEditingTrip(null)} drivers={drivers} showNotification={showNotification} />
         ) : (
           <>
             {activeTab === 'drivers' && (
@@ -376,8 +410,8 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
                 {drivers.length > 0 ? (
                   <ul className="space-y-4">
                     {drivers.map(driver => (
-                      <li key={driver.id} className="p-4 bg-gray-700 rounded-lg flex justify-between items-center">
-                        <div className="text-left">
+                      <li key={driver.id} className="p-4 bg-gray-700 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center">
+                        <div className="text-left mb-2 md:mb-0">
                           <p className="font-semibold text-lg text-indigo-300">{driver.name || 'Sin nombre'}</p>
                           <p className="text-sm text-gray-400">{driver.email || 'Sin correo'}</p>
                         </div>
@@ -409,8 +443,8 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
                 {trips.length > 0 ? (
                   <ul className="space-y-4">
                     {trips.map(trip => (
-                      <li key={trip.id} className="p-4 bg-gray-700 rounded-lg flex justify-between items-center">
-                        <div className="text-left">
+                      <li key={trip.id} className="p-4 bg-gray-700 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center">
+                        <div className="text-left mb-2 md:mb-0">
                           <p className="font-semibold text-lg text-teal-300">Viaje a {trip.destination || 'Desconocido'}</p>
                           <p className="text-sm text-gray-400">Conductor: {trip.driverName || 'Sin asignar'}</p>
                           {trip.location && (
@@ -606,18 +640,18 @@ const AddTripForm = ({ onAddTrip, onCancel, drivers }) => {
         },
         (error) => {
           console.error("Error al obtener la ubicación:", error);
-          alert("No se pudo obtener la ubicación. Por favor, ingresa los datos manualmente.");
+          // showNotification("No se pudo obtener la ubicación. Por favor, ingresa los datos manualmente.", "error");
         }
       );
     } else {
-      alert("Tu navegador no soporta la API de Geolocation.");
+      // showNotification("Tu navegador no soporta la API de Geolocation.", "error");
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!driverId) {
-      alert("Por favor, selecciona un conductor.");
+      // showNotification("Por favor, selecciona un conductor.", "error");
       return;
     }
     const newTrip = {
@@ -627,8 +661,8 @@ const AddTripForm = ({ onAddTrip, onCancel, drivers }) => {
       status,
       // NUEVO: Guardamos la ubicación en la base de datos
       location: {
-        latitude: latitude,
-        longitude: longitude
+        latitude: parseFloat(latitude) || null,
+        longitude: parseFloat(longitude) || null
       },
       createdAt: new Date(),
     };
@@ -710,7 +744,7 @@ const AddTripForm = ({ onAddTrip, onCancel, drivers }) => {
                 onClick={handleGetLocation}
                 className="w-auto px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-lg transition-colors duration-300"
             >
-                Obtener mi ubicación
+              Obtener mi ubicación
             </button>
         </div>
 
@@ -822,30 +856,43 @@ const EditTripForm = ({ trip, onUpdateTrip, onCancel, drivers }) => {
 };
 
 // =================================================================================================
-// NUEVO COMPONENTE: MODAL DE CONFIRMACIÓN
+// NUEVO COMPONENTE: Modal de confirmación para reemplazar `alert()`
 // =================================================================================================
 const Modal = ({ message, onConfirm, onCancel }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
-        <p className="text-lg mb-4">{message}</p>
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+      <div className="bg-gray-800 p-8 rounded-xl shadow-xl max-w-sm w-full text-center">
+        <p className="text-lg mb-6">{message}</p>
         <div className="flex justify-center space-x-4">
           <button
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-full"
-          >
-            Cancelar
-          </button>
-          <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-full"
+            className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-full transition-colors duration-300"
           >
             Confirmar
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-full transition-colors duration-300"
+          >
+            Cancelar
           </button>
         </div>
       </div>
     </div>
   );
 };
+
+// =================================================================================================
+// COMPONENTE: Renderizado de la aplicación
+// =================================================================================================
+// Para que el código funcione en el entorno de desarrollo del canvas,
+// asumimos que el componente `App` se renderiza directamente.
+// En una aplicación real de React, el código sería algo así en `index.js`:
+//
+// import { createRoot } from 'react-dom/client';
+// const container = document.getElementById('root');
+// const root = createRoot(container);
+// const firebaseConfig = { ... }; // Tu configuración de Firebase
+// root.render(<App firebaseConfig={firebaseConfig} />);
 
 export default App;

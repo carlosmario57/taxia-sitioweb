@@ -1,40 +1,49 @@
-// Importaciones de React y Axios para peticiones HTTP
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-// Componente DriverList: Muestra la lista de conductores, con opciones para editar, eliminar y búsqueda.
+// Importaciones de React y librerías externas.
+
+/**
+ * Componente DriverList: Muestra la lista de conductores con búsqueda, edición y eliminación.
+ *
+ * @param {Function} onDriverDeleted - Función para notificar al padre sobre la eliminación.
+ * @param {Function} onEditDriver - Función para iniciar el modo de edición de un conductor.
+ * @param {Function} setGlobalMessage - Función para establecer un mensaje global de éxito.
+ * @param {Function} setGlobalError - Función para establecer un mensaje global de error.
+ */
 function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobalError }) {
-  // Estados para gestionar los datos de la lista, el estado de carga y los errores.
+  // Estados para gestionar la lista de conductores, carga, errores y búsqueda.
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [deleteMessage, setDeleteMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Estados para el modal de confirmación de eliminación.
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [driverToDelete, setDriverToDelete] = useState(null);
 
   /**
-   * Esta es la función clave para obtener los datos de los conductores del backend.
-   * La corrección más importante está aquí.
-   * @param {string} currentSearchTerm - El término de búsqueda opcional.
+   * Función para obtener los conductores del backend.
    */
   const fetchDrivers = useCallback(async (currentSearchTerm = '') => {
     setLoading(true);
     setError(null);
-    setDeleteMessage('');
+    setGlobalMessage('');
+    setGlobalError('');
 
     try {
-      // CORRECCIÓN MANUAL AQUÍ: La URL debe usar '/drivers', no '/conductores'.
       const url = currentSearchTerm ? `http://localhost:5000/drivers?nombre=${currentSearchTerm}` : 'http://localhost:5000/drivers';
       const response = await axios.get(url);
       setDrivers(response.data);
     } catch (err) {
       console.error("Error al obtener conductores:", err);
-      const errorMessage = err.response?.data?.error || "Error al cargar los conductores. Asegúrate de que el backend esté funcionando y sea accesible.";
+      const errorMessage = err.response?.data?.error || "Error al cargar los conductores. Asegúrate de que el backend esté funcionando.";
       setError(errorMessage);
       setGlobalError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setGlobalError, setDrivers]);
+  }, [setGlobalError, setGlobalMessage]);
 
   /**
    * Maneja el cambio en el campo de búsqueda.
@@ -54,38 +63,53 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
   };
 
   /**
-   * Maneja la eliminación de un conductor.
-   * La segunda corrección importante está en esta función.
+   * Abre el modal de confirmación de eliminación.
    * @param {string} driverId - El ID del conductor a eliminar.
    */
-  const handleDelete = async (driverId) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este conductor de forma permanente?')) {
-      try {
-        // CORRECCIÓN MANUAL AQUÍ: La URL debe usar '/drivers', no '/conductores'.
-        await axios.delete(`http://localhost:5000/drivers/${driverId}`);
-        setDeleteMessage(`Conductor con ID ${driverId} eliminado exitosamente.`);
-        setGlobalMessage(`Conductor con ID ${driverId} eliminado exitosamente.`);
-        setGlobalError('');
-        
-        fetchDrivers(searchTerm);
-        if (onDriverDeleted) {
-          onDriverDeleted();
-        }
-      } catch (err) {
-        console.error("Error al eliminar conductor:", err);
-        const errorMessage = err.response?.data?.error || `Error al eliminar conductor con ID ${driverId}.`;
-        setDeleteMessage(errorMessage);
-        setGlobalError(errorMessage);
-        setGlobalMessage('');
+  const handleOpenDeleteModal = (driverId) => {
+    setDriverToDelete(driverId);
+    setShowDeleteModal(true);
+  };
+
+  /**
+   * Cierra el modal de confirmación.
+   */
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDriverToDelete(null);
+  };
+  
+  /**
+   * Función para ejecutar la eliminación del conductor después de la confirmación.
+   */
+  const handleDeleteConfirmed = async () => {
+    if (!driverToDelete) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/drivers/${driverToDelete}`);
+      setGlobalMessage(`Conductor con ID ${driverToDelete} eliminado exitosamente.`);
+      setGlobalError('');
+      
+      // Vuelve a cargar la lista de conductores después de la eliminación.
+      fetchDrivers(searchTerm);
+      if (onDriverDeleted) {
+        onDriverDeleted();
       }
+    } catch (err) {
+      console.error("Error al eliminar conductor:", err);
+      const errorMessage = err.response?.data?.error || `Error al eliminar conductor con ID ${driverToDelete}.`;
+      setGlobalError(errorMessage);
+    } finally {
+      handleCloseDeleteModal();
     }
   };
 
+  // Carga inicial de la lista de conductores.
   useEffect(() => {
     fetchDrivers();
   }, [fetchDrivers]);
 
-  // --- Renderizado Condicional de la Lista ---
+  // Renderizado condicional de la lista.
   if (loading) {
     return <p className="text-center text-gray-600 p-4">Cargando conductores...</p>;
   }
@@ -114,14 +138,8 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
         </button>
       </form>
           
-      {deleteMessage && (
-        <p className={`text-center mb-4 p-2 rounded ${deleteMessage.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-          {deleteMessage}
-        </p>
-      )}
-
       {drivers.length === 0 ? (
-        <p className="text-center text-gray-500 italic">No hay conductores disponibles o no coinciden con la búsqueda. ¡Crea uno!</p>
+        <p className="text-center text-gray-500 italic">No hay conductores disponibles.</p>
       ) : (
         <ul className="list-none p-0">
           {drivers.map(driver => (
@@ -140,7 +158,7 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
                   Editar
                 </button>
                 <button
-                  onClick={() => handleDelete(driver.id)}
+                  onClick={() => handleOpenDeleteModal(driver.id)}
                   className="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-md shadow-sm transition duration-150 ease-in-out text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
                 >
                   Eliminar
@@ -149,6 +167,32 @@ function DriverList({ onDriverDeleted, onEditDriver, setGlobalMessage, setGlobal
             </li>
           ))}
         </ul>
+      )}
+      
+      {/* Modal de Confirmación de Eliminación */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+          <div className="relative p-8 border rounded-xl shadow-lg bg-white mx-auto max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-900 text-center">Confirmar Eliminación</h3>
+            <div className="mt-2 text-center text-gray-600">
+              <p>¿Estás seguro de que quieres eliminar este conductor de forma permanente?</p>
+            </div>
+            <div className="flex justify-center gap-4 mt-6">
+              <button
+                onClick={handleDeleteConfirmed}
+                className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-700 transition duration-150"
+              >
+                Eliminar
+              </button>
+              <button
+                onClick={handleCloseDeleteModal}
+                className="px-4 py-2 bg-gray-300 text-gray-700 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-400 transition duration-150"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

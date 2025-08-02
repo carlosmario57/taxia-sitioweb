@@ -4,11 +4,12 @@
   "private": true,
   "dependencies": {
     "axios": "^1.10.0",
-    "firebase": "^12.0.0",
-    "prop-types": "^15.8.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-scripts": "5.0.1"
+    "bootstrap": "^5.3.7",
+    "firebase": "^10.14.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "sweetalert2": "^11.6.13"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -33,5 +34,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "prop-types": "^15.8.1"
   }
 }

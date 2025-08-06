@@ -1,120 +1,284 @@
 import React, { useState, useEffect, useRef } from 'react';
-
-// Importamos las funciones necesarias de Firebase para la autenticación y el manejo de los estados de usuario.
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
-
-// Importamos las funciones de Firestore necesarias para la base de datos, la lectura de datos en tiempo real, agregar, actualizar y eliminar documentos.
+import { getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously, signOut } from "firebase/auth";
 import { getFirestore, collection, onSnapshot, query, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { Plus, Edit, Trash2, Check, X, Volume2, MapPin, Map, Loader2, Locate, Clock, Car, Phone, Mail } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
-// Componente para cargar los scripts de Tailwind y otros.
-// En una aplicación real de React, Tailwind se configuraría de forma diferente (con npm).
-const TailwindCDN = () => (
-  <script src="https://cdn.tailwindcss.com"></script>
-);
+// Clave de API de Google Maps con la clave que proporcionaste.
+const GOOGLE_MAPS_API_KEY = "AIzaSyBkq202xtq_7v3kLB-yDAqyJ3kYjX3VmGE";
+const GOOGLE_MAPS_API_URL = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
 
 // =================================================================================================
-// ARCHIVO: src/App.jsx
-// FUNCIÓN: Componente principal de la aplicación que gestiona el flujo de autenticación,
-//          la conexión a la base de datos de Firestore y la visualización de datos mejorada.
+// FUNCIÓN UTILITARIA: Convierte PCM de 16 bits a formato WAV para la reproducción de audio.
+// La API de TTS de Gemini retorna audio en formato PCM, que debe ser convertido para reproducirse en el navegador.
 // =================================================================================================
+const pcmToWav = (pcmData, sampleRate) => {
+  const numChannels = 1;
+  const sampleBits = 16;
+  const pcm16 = new Int16Array(pcmData);
+  const dataLength = pcm16.length * (sampleBits / 8);
+  const buffer = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(buffer);
 
-const App = ({ firebaseConfig }) => {
-  // Estado para almacenar la instancia de autenticación y de la base de datos
-  const [auth, setAuth] = useState(null);
-  const [db, setDb] = useState(null);
-  // Estado para el usuario autenticado (null si no hay usuario)
-  const [user, setUser] = useState(null);
-  // Estado para manejar si la aplicación está cargando
-  const [loading, setLoading] = useState(true);
-
-  // Estados para almacenar los datos de conductores y viajes
-  const [drivers, setDrivers] = useState([]);
-  const [trips, setTrips] = useState([]);
-
-  // Estado para manejar las notificaciones
-  const [notification, setNotification] = useState({ message: '', type: '' });
-
-  // Función para mostrar notificaciones temporales
-  const showNotification = (message, type) => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification({ message: '', type: '' }), 3000); // Ocultar después de 3 segundos
+  let offset = 0;
+  const writeString = (str) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset++, str.charCodeAt(i));
+    }
   };
 
+  // Chunk RIFF
+  writeString('RIFF');
+  view.setUint32(offset, 36 + dataLength, true); offset += 4;
+  writeString('WAVE');
+
+  // Chunk fmt
+  writeString('fmt ');
+  view.setUint32(offset, 16, true); offset += 4;
+  view.setUint16(offset, 1, true); offset += 2; // Formato de Audio: PCM
+  view.setUint16(offset, numChannels, true); offset += 2;
+  view.setUint32(offset, sampleRate, true); offset += 4;
+  view.setUint32(offset, sampleRate * numChannels * (sampleBits / 8), true); offset += 4; // ByteRate
+  view.setUint16(offset, numChannels * (sampleBits / 8), true); offset += 2; // BlockAlign
+  view.setUint16(offset, sampleBits, true); offset += 2;
+
+  // Chunk de datos
+  writeString('data');
+  view.setUint32(offset, dataLength, true); offset += 4;
+
+  for (let i = 0; i < pcm16.length; i++, offset += 2) {
+    view.setInt16(offset, pcm16[i], true);
+  }
+
+  return new Blob([view], { type: 'audio/wav' });
+};
+
+// =================================================================================================
+// FUNCIÓN UTILITARIA: Decodifica datos de audio de base64 a un ArrayBuffer.
+// =================================================================================================
+const base64ToArrayBuffer = (base64) => {
+  const binaryString = window.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+};
+
+// =================================================================================================
+// COMPONENTE PRINCIPAL DE LA APLICACIÓN
+// =================================================================================================
+export default function App() {
+  const [auth, setAuth] = useState(null);
+  const [db, setDb] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [drivers, setDrivers] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [notification, setNotification] = useState({ message: '', type: '' });
+  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+  // Referencias para la instancia de Google Maps y los marcadores
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef({});
+
   // =================================================================================================
-  // LÓGICA DE INICIALIZACIÓN DE FIREBASE
+  // LÓGICA DE INICIALIZACIÓN DE FIREBASE Y AUTENTICACIÓN
   // =================================================================================================
   useEffect(() => {
-    if (firebaseConfig) { 
-      // Inicializamos la aplicación de Firebase si no se ha hecho ya, o usamos la existente.
-      const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-      console.log("Firebase inicializado con éxito desde App.jsx!");
-      
-      // Obtenemos la instancia de autenticación y la guardamos en el estado.
-      const authInstance = getAuth(app);
-      setAuth(authInstance);
+    // Definimos una configuración de Firebase de respaldo para el desarrollo local.
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ?
+      JSON.parse(__firebase_config) : {
+        apiKey: "fake-api-key",
+        authDomain: "fake-auth-domain.firebaseapp.com",
+        projectId: "fake-project-id",
+        storageBucket: "fake-project-id.appspot.com",
+        messagingSenderId: "123456789012",
+        appId: "1:123456789012:web:a1b2c3d4e5f6g7h8i9j0"
+      };
 
-      // Obtenemos la instancia de la base de datos de Firestore y la guardamos.
-      const dbInstance = getFirestore(app);
-      setDb(dbInstance);
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-      // onAuthStateChanged es un observador que se ejecuta cada vez que el estado de autenticación cambia
-      const unsubscribeAuth = onAuthStateChanged(authInstance, (currentUser) => {
-        setUser(currentUser); 
-        setLoading(false);    
-      });
+    // Inicializa la app de Firebase, previniendo reinicialización.
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const authInstance = getAuth(app);
+    const dbInstance = getFirestore(app);
 
-      // La función de limpieza que devuelve useEffect se ejecuta cuando el componente se desmonta,
-      // lo que limpia el observador de Firebase para evitar fugas de memoria.
-      return () => unsubscribeAuth();
-    }
-  }, [firebaseConfig]);
+    setAuth(authInstance);
+    setDb(dbInstance);
+
+    const unsubscribeAuth = onAuthStateChanged(authInstance, async (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    const signIn = async () => {
+      try {
+        if (initialAuthToken) {
+          await signInWithCustomToken(authInstance, initialAuthToken);
+        } else {
+          await signInAnonymously(authInstance);
+        }
+      } catch (error) {
+        console.error("Error de autenticación:", error);
+        showNotification(`Error de autenticación: ${error.message}`, "error");
+      }
+    };
+
+    signIn();
+    return () => unsubscribeAuth();
+  }, []);
 
   // =================================================================================================
-  // LÓGICA DE CONEXIÓN A FIRESTORE Y MEJORA DE VISUALIZACIÓN
+  // LÓGICA DE CONEXIÓN A FIRESTORE Y OBTENCIÓN DE DATOS EN TIEMPO REAL
   // =================================================================================================
   useEffect(() => {
-    // Solo intentamos obtener los datos si tenemos una instancia de la base de datos y un usuario autenticado.
     if (db && user) {
-      // Configuramos el observador de la colección de "conductores"
-      const driversQuery = query(collection(db, "drivers"));
-      const unsubscribeDrivers = onSnapshot(driversQuery, (querySnapshot) => {
-        const driversData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const userId = user.uid;
+      const driversCollectionPath = `/artifacts/${appId}/users/${userId}/drivers`;
+      const tripsCollectionPath = `/artifacts/${appId}/users/${userId}/trips`;
+
+      const driversQuery = query(collection(db, driversCollectionPath));
+      const tripsQuery = query(collection(db, tripsCollectionPath));
+
+      const unsubscribeDrivers = onSnapshot(driversQuery, (snapshot) => {
+        const driversData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setDrivers(driversData);
-        console.log("Datos de conductores actualizados en tiempo real:", driversData);
       });
 
-      // Configuramos el observador de la colección de "viajes"
-      const tripsQuery = query(collection(db, "trips"));
-      const unsubscribeTrips = onSnapshot(tripsQuery, (querySnapshot) => {
-        const tripsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        // Lógica: Buscamos el nombre del conductor para cada viaje
-        const tripsWithDriverNames = tripsData.map(trip => {
-          const driver = drivers.find(d => d.id === trip.driverId);
-          return {
-            ...trip,
-            driverName: driver ? driver.name : 'Conductor desconocido'
-          };
-        });
-        setTrips(tripsWithDriverNames);
-        console.log("Datos de viajes actualizados en tiempo real:", tripsWithDriverNames);
+      const unsubscribeTrips = onSnapshot(tripsQuery, (snapshot) => {
+        const tripsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setTrips(tripsData);
       });
 
-      // Devolvemos una función de limpieza para detener los observadores de Firestore.
       return () => {
         unsubscribeDrivers();
         unsubscribeTrips();
       };
     }
-  }, [db, user, drivers]); // Se ejecuta cada vez que 'db', 'user' o 'drivers' cambian
+  }, [db, user, appId]);
 
-  // ----------------------------------------------------------------------------------
-  // LÓGICA DE GESTIÓN DE DATOS EN FIRESTORE (AÑADIMOS EDITAR Y ELIMINAR)
-  // ----------------------------------------------------------------------------------
+  // =================================================================================================
+  // LÓGICA PARA ACTUALIZAR LOS VIAJES CON LA INFORMACIÓN DEL CONDUCTOR
+  // =================================================================================================
+  const enrichedTrips = trips.map(trip => {
+    const driver = drivers.find(d => d.id === trip.driverId);
+    return {
+      ...trip,
+      driverName: driver ? driver.name : 'Conductor desconocido',
+      driverStatus: driver ? driver.status : 'Desconocido'
+    };
+  });
+
+  // =================================================================================================
+  // LÓGICA DE GOOGLE MAPS
+  // =================================================================================================
+  useEffect(() => {
+    // Función para inicializar el mapa una vez que la API se carga.
+    window.initMap = () => {
+      if (!mapRef.current || !window.google) return;
+      const mapOptions = {
+        center: { lat: 19.4326, lng: -99.1332 }, // Centrado inicial en la Ciudad de México
+        zoom: 12,
+        mapId: "DEMO_MAP_ID", // Puedes reemplazar esto con tu propio ID de mapa si lo tienes
+      };
+      mapInstanceRef.current = new window.google.maps.Map(mapRef.current, mapOptions);
+    };
+
+    const loadScript = () => {
+      // Evita cargar el script múltiples veces.
+      const scriptExists = document.querySelector(`script[src^="${GOOGLE_MAPS_API_URL.split('&')[0]}"]`);
+      if (scriptExists) {
+        if (window.google) {
+          window.initMap();
+        }
+        return;
+      }
+      
+      const script = document.createElement('script');
+      script.src = GOOGLE_MAPS_API_URL;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+
+      return () => {
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
+        }
+      };
+    };
+
+    loadScript();
+  }, []);
+
+  // Efecto para actualizar los marcadores en el mapa cuando los datos de los conductores cambian.
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.google || !drivers.length) return;
+
+    // Remover marcadores antiguos que ya no existen
+    Object.keys(markersRef.current).forEach(driverId => {
+      if (!drivers.find(d => d.id === driverId)) {
+        markersRef.current[driverId].setMap(null);
+        delete markersRef.current[driverId];
+      }
+    });
+
+    drivers.forEach(driver => {
+      if (driver.status === 'en curso' && driver.location && driver.location.latitude && driver.location.longitude) {
+        const position = { lat: driver.location.latitude, lng: driver.location.longitude };
+        
+        if (markersRef.current[driver.id]) {
+          // Si el marcador ya existe, simplemente actualiza su posición
+          markersRef.current[driver.id].setPosition(position);
+        } else {
+          // Si no existe, crea uno nuevo
+          markersRef.current[driver.id] = new window.google.maps.Marker({
+            position,
+            map: mapInstanceRef.current,
+            title: `Conductor: ${driver.name}`,
+            icon: {
+              path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              fillColor: '#FDD835',
+              fillOpacity: 1,
+              strokeWeight: 0,
+              scale: 5,
+              rotation: driver.heading || 0, // Añadir rotación para simular dirección
+            },
+          });
+        }
+      } else {
+        // Elimina el marcador si el conductor ya no está en viaje
+        if (markersRef.current[driver.id]) {
+          markersRef.current[driver.id].setMap(null);
+          delete markersRef.current[driver.id];
+        }
+      }
+    });
+  }, [drivers]);
+
+  // =================================================================================================
+  // LÓGICA DE GESTIÓN DE DATOS EN FIRESTORE Y NOTIFICACIONES
+  // =================================================================================================
+  const showNotification = (message, type) => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification({ message: '', type: '' }), 3000);
+  };
+
   const handleAddDriver = async (driverData) => {
+    if (!db || !user) return showNotification("No hay conexión a la base de datos.", "error");
     try {
-      await addDoc(collection(db, "drivers"), driverData);
+      const userId = user.uid;
+      const newDriver = {
+        ...driverData,
+        status: 'disponible',
+        currentTripId: null,
+        createdAt: new Date().toISOString(),
+        location: { latitude: driverData.latitude, longitude: driverData.longitude }
+      };
+      await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/drivers`), newDriver);
       showNotification("Conductor agregado con éxito!", "success");
     } catch (error) {
       console.error("Error al agregar el conductor:", error);
@@ -123,8 +287,10 @@ const App = ({ firebaseConfig }) => {
   };
 
   const handleUpdateDriver = async (id, updatedData) => {
+    if (!db || !user) return showNotification("No hay conexión a la base de datos.", "error");
     try {
-      const driverDocRef = doc(db, "drivers", id);
+      const userId = user.uid;
+      const driverDocRef = doc(db, `/artifacts/${appId}/users/${userId}/drivers`, id);
       await updateDoc(driverDocRef, updatedData);
       showNotification("Conductor actualizado con éxito!", "success");
     } catch (error) {
@@ -134,8 +300,10 @@ const App = ({ firebaseConfig }) => {
   };
 
   const handleDeleteDriver = async (id) => {
+    if (!db || !user) return showNotification("No hay conexión a la base de datos.", "error");
     try {
-      const driverDocRef = doc(db, "drivers", id);
+      const userId = user.uid;
+      const driverDocRef = doc(db, `/artifacts/${appId}/users/${userId}/drivers`, id);
       await deleteDoc(driverDocRef);
       showNotification("Conductor eliminado con éxito!", "success");
     } catch (error) {
@@ -145,9 +313,17 @@ const App = ({ firebaseConfig }) => {
   };
 
   const handleAddTrip = async (tripData) => {
+    if (!db || !user) return showNotification("No hay conexión a la base de datos.", "error");
+    const userId = user.uid;
     try {
-      await addDoc(collection(db, "trips"), tripData);
-      showNotification("Viaje agregado con éxito!", "success");
+      const newTripRef = await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/trips`), tripData);
+      const driverDocRef = doc(db, `/artifacts/${appId}/users/${userId}/drivers`, tripData.driverId);
+      await updateDoc(driverDocRef, {
+        status: 'en curso',
+        currentTripId: newTripRef.id,
+        location: tripData.originLocation // Actualiza la ubicación del conductor al inicio del viaje
+      });
+      showNotification("Viaje agregado con éxito y conductor asignado!", "success");
     } catch (error) {
       console.error("Error al agregar el viaje:", error);
       showNotification("Error al agregar el viaje.", "error");
@@ -155,8 +331,10 @@ const App = ({ firebaseConfig }) => {
   };
 
   const handleUpdateTrip = async (id, updatedData) => {
+    if (!db || !user) return showNotification("No hay conexión a la base de datos.", "error");
     try {
-      const tripDocRef = doc(db, "trips", id);
+      const userId = user.uid;
+      const tripDocRef = doc(db, `/artifacts/${appId}/users/${userId}/trips`, id);
       await updateDoc(tripDocRef, updatedData);
       showNotification("Viaje actualizado con éxito!", "success");
     } catch (error) {
@@ -166,8 +344,10 @@ const App = ({ firebaseConfig }) => {
   };
 
   const handleDeleteTrip = async (id) => {
+    if (!db || !user) return showNotification("No hay conexión a la base de datos.", "error");
     try {
-      const tripDocRef = doc(db, "trips", id);
+      const userId = user.uid;
+      const tripDocRef = doc(db, `/artifacts/${appId}/users/${userId}/trips`, id);
       await deleteDoc(tripDocRef);
       showNotification("Viaje eliminado con éxito!", "success");
     } catch (error) {
@@ -176,144 +356,156 @@ const App = ({ firebaseConfig }) => {
     }
   };
 
-  // ----------------------------------------------------------------------------------
-  // LÓGICA DE INICIO Y CIERRE DE SESIÓN
-  // ----------------------------------------------------------------------------------
-  const handleLogin = async (email, password) => {
-    setLoading(true);
+  const handleEndTrip = async (tripId, driverId) => {
+    if (!db || !user) return showNotification("No hay conexión a la base de datos.", "error");
+    const userId = user.uid;
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const tripDocRef = doc(db, `/artifacts/${appId}/users/${userId}/trips`, tripId);
+      await updateDoc(tripDocRef, { status: 'finalizado' });
+      const driverDocRef = doc(db, `/artifacts/${appId}/users/${userId}/drivers`, driverId);
+      await updateDoc(driverDocRef, {
+        status: 'disponible',
+        currentTripId: null
+      });
+      showNotification("Viaje finalizado con éxito!", "success");
     } catch (error) {
-      console.error("Error al iniciar sesión:", error.message);
-      showNotification(`Error al iniciar sesión: ${error.message}`, "error");
-    } finally {
-      setLoading(false);
+      console.error("Error al finalizar el viaje:", error);
+      showNotification("Error al finalizar el viaje.", "error");
     }
   };
 
-  const handleLogout = async () => {
-    setLoading(true);
+  // Función para generar y reproducir audio para notificar a un conductor
+  const handleNotifyDriver = async (trip) => {
+    const textToSpeak = `Tienes una nueva solicitud de viaje. El pasajero te espera en la ubicación de origen: ${trip.origin}. El destino es ${trip.destination}.`;
+    
     try {
-      await signOut(auth);
+      const payload = {
+        contents: [{ parts: [{ text: textToSpeak }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
+        },
+        model: "gemini-2.5-flash-preview-tts"
+      };
+      
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+      const apiResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const result = await apiResponse.json();
+      const part = result?.candidates?.[0]?.content?.parts?.[0];
+      const audioData = part?.inlineData?.data;
+      const mimeType = part?.inlineData?.mimeType;
+
+      if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+        const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+        const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+        const pcmData = base64ToArrayBuffer(audioData);
+        const pcm16 = new Int16Array(pcmData);
+        const wavBlob = pcmToWav(pcm16, sampleRate);
+        const audioUrl = URL.createObjectURL(wavBlob);
+        
+        const audio = new Audio(audioUrl);
+        audio.play();
+        showNotification("Notificación de audio enviada!", "success");
+      } else {
+        console.error('La respuesta de la API de TTS no es válida:', result);
+        showNotification("Error al generar la notificación de audio.", "error");
+      }
     } catch (error) {
-      console.error("Error al cerrar sesión:", error.message);
-    } finally {
-      setLoading(false);
+      console.error('Error en la llamada a la API de TTS:', error);
+      showNotification("Error de red al generar la notificación.", "error");
     }
   };
 
-  // ----------------------------------------------------------------------------------
-  // RENDERIZADO CONDICIONAL DE COMPONENTES
-  // ----------------------------------------------------------------------------------
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <TailwindCDN />
-        <h1 className="text-xl">Cargando...</h1>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-950 text-white p-4">
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+          body { font-family: 'Inter', sans-serif; }
+          .animate-spin-slow { animation: spin 3s linear infinite; }
+          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        `}</style>
+        <Loader2 size={48} className="text-indigo-500 animate-spin-slow mb-4" />
+        <p className="text-xl font-semibold text-indigo-300">Cargando aplicación...</p>
+        <p className="mt-2 text-sm text-gray-400">Iniciando sesión en Firebase y cargando recursos.</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-950 text-white p-4">
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+          body { font-family: 'Inter', sans-serif; }
+        `}</style>
+        <h1 className="text-3xl font-bold text-red-500 mb-4">Error de Autenticación</h1>
+        <p className="text-gray-400 text-center">No se pudo iniciar sesión. Por favor, recarga la página.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 font-sans antialiased text-white">
-      <TailwindCDN />
-      {/* Sistema de notificación */}
+    <div className="min-h-screen bg-gray-950 font-sans antialiased text-white">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+      <script src="https://cdn.tailwindcss.com"></script>
       {notification.message && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-opacity duration-500 ease-in-out ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white animate-fadeIn ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
           {notification.message}
         </div>
       )}
       
-      {user ? (
-        <Dashboard 
-          user={user} 
-          onLogout={handleLogout} 
-          drivers={drivers} 
-          trips={trips} 
-          onAddDriver={handleAddDriver}
-          onUpdateDriver={handleUpdateDriver}
-          onDeleteDriver={handleDeleteDriver}
-          onAddTrip={handleAddTrip}
-          onUpdateTrip={handleUpdateTrip}
-          onDeleteTrip={handleDeleteTrip}
-          showNotification={showNotification}
-        />
-      ) : (
-        <Login onLogin={handleLogin} />
-      )}
+      <Dashboard
+        user={user}
+        onLogout={() => signOut(auth)}
+        drivers={drivers}
+        trips={enrichedTrips}
+        onAddDriver={handleAddDriver}
+        onUpdateDriver={handleUpdateDriver}
+        onDeleteDriver={handleDeleteDriver}
+        onAddTrip={handleAddTrip}
+        onUpdateTrip={handleUpdateTrip}
+        onDeleteTrip={handleDeleteTrip}
+        onEndTrip={handleEndTrip}
+        onNotifyDriver={handleNotifyDriver}
+        showNotification={showNotification}
+        mapRef={mapRef}
+      />
     </div>
   );
-};
+}
 
 // =================================================================================================
-// COMPONENTE: LOGIN
+// COMPONENTE: DASHBOARD (Panel de Control Principal)
 // =================================================================================================
-const Login = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onLogin(email, password);
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
-      <div className="flex flex-col items-center p-8 bg-gray-800 rounded-xl shadow-lg border border-gray-700 max-w-md w-full animate-fadeIn">
-        <span role="img" aria-label="login" className="text-6xl text-purple-400 mb-6 animate-pulse">🔑</span>
-        <h1 className="text-4xl font-extrabold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">
-          Iniciar Sesión
-        </h1>
-        <form onSubmit={handleSubmit} className="w-full space-y-4">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Correo electrónico"
-            className="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Contraseña"
-            className="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <button
-            type="submit"
-            className="w-full mt-4 px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50"
-          >
-            Entrar al Sistema
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// =================================================================================================
-// COMPONENTE: DASHBOARD (SE HA MODIFICADO PARA INCLUIR LA LÓGICA DE EDICIÓN Y ELIMINACIÓN)
-// =================================================================================================
-const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver, onDeleteDriver, onAddTrip, onUpdateTrip, onDeleteTrip, showNotification }) => {
+const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver, onDeleteDriver, onAddTrip, onUpdateTrip, onDeleteTrip, onEndTrip, onNotifyDriver, showNotification, mapRef }) => {
   const [activeTab, setActiveTab] = useState('drivers');
   const [isAddingDriver, setIsAddingDriver] = useState(false);
   const [isAddingTrip, setIsAddingTrip] = useState(false);
-
-  // Estados para manejar la edición y eliminación
   const [editingDriver, setEditingDriver] = useState(null);
   const [editingTrip, setEditingTrip] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [itemTypeToDelete, setItemTypeToDelete] = useState('');
 
-  // Función para abrir el modal de confirmación de eliminación
   const openDeleteModal = (item, type) => {
     setItemToDelete(item);
     setItemTypeToDelete(type);
     setShowDeleteModal(true);
   };
 
-  // Función para confirmar la eliminación
   const confirmDelete = () => {
     if (itemTypeToDelete === 'driver' && itemToDelete) {
       onDeleteDriver(itemToDelete.id);
@@ -331,7 +523,6 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
     setItemTypeToDelete('');
   };
   
-  // Limpiar estados de formularios al cambiar de pestaña
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setIsAddingDriver(false);
@@ -340,152 +531,184 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
     setEditingTrip(null);
   };
 
+  const getDriverStatusColor = (status) => {
+    switch (status) {
+      case 'disponible': return 'bg-green-500 text-white';
+      case 'en curso': return 'bg-yellow-500 text-gray-900';
+      default: return 'bg-gray-500 text-white';
+    }
+  };
+
+  const getTripStatusColor = (status) => {
+    switch (status) {
+      case 'pendiente': return 'bg-blue-500';
+      case 'en curso': return 'bg-yellow-500';
+      case 'finalizado': return 'bg-green-500';
+      case 'cancelado': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+  
+  const availableDrivers = drivers.filter(d => d.status === 'disponible');
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Panel de Control de CIMCO</h1>
-        <div className="flex items-center space-x-4 mt-4 md:mt-0">
-          <span className="text-sm text-gray-400">Bienvenido, {user.email}</span>
-          <button
-            onClick={onLogout}
-            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-full transition-all duration-300"
-          >
-            Cerrar Sesión
-          </button>
+    <div className="min-h-screen bg-gray-950 font-sans antialiased text-white">
+      <div className="p-4 md:p-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-indigo-400">Panel de Control de CIMCO</h1>
+          <div className="flex items-center space-x-4 mt-4 md:mt-0">
+            <span className="text-sm text-gray-400 hidden md:block">UID: {user.uid}</span>
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-full transition-all duration-300 shadow-lg"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+        
+        {/* Contenedor principal de pestañas y mapa */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Columna de Contenido Principal (Pestañas) */}
+          <div className="lg:col-span-2 bg-gray-900 p-6 rounded-xl shadow-2xl">
+            <div className="flex space-x-2 mb-6 border-b border-gray-700">
+              <button
+                onClick={() => handleTabChange('drivers')}
+                className={`py-2 px-4 transition-colors duration-300 font-semibold ${activeTab === 'drivers' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400 hover:text-white'}`}
+              >
+                Conductores ({drivers.length})
+              </button>
+              <button
+                onClick={() => handleTabChange('trips')}
+                className={`py-2 px-4 transition-colors duration-300 font-semibold ${activeTab === 'trips' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400 hover:text-white'}`}
+              >
+                Viajes ({trips.length})
+              </button>
+            </div>
+            
+            <div className="flex justify-end mb-4">
+              {activeTab === 'drivers' && !isAddingDriver && !editingDriver && (
+                <button
+                  onClick={() => setIsAddingDriver(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all duration-300 shadow-md"
+                >
+                  <Plus size={18} /> Agregar Conductor
+                </button>
+              )}
+              {activeTab === 'trips' && !isAddingTrip && !editingTrip && (
+                <button
+                  onClick={() => setIsAddingTrip(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all duration-300 shadow-md"
+                >
+                  <Plus size={18} /> Agregar Viaje
+                </button>
+              )}
+            </div>
+            
+            {/* Renderizado condicional de formularios o listas */}
+            {isAddingDriver ? (
+              <AddDriverForm onAddDriver={onAddDriver} onCancel={() => setIsAddingDriver(false)} showNotification={showNotification} />
+            ) : isAddingTrip ? (
+              <AddTripForm onAddTrip={onAddTrip} onCancel={() => setIsAddingTrip(false)} drivers={availableDrivers} showNotification={showNotification} />
+            ) : editingDriver ? (
+              <EditDriverForm driver={editingDriver} onUpdateDriver={onUpdateDriver} onCancel={() => setEditingDriver(null)} showNotification={showNotification} />
+            ) : editingTrip ? (
+              <EditTripForm trip={editingTrip} onUpdateTrip={onUpdateTrip} onCancel={() => setEditingTrip(null)} drivers={drivers} showNotification={showNotification} />
+            ) : (
+              <>
+                {activeTab === 'drivers' && (
+                  <div>
+                    <h2 className="text-2xl font-bold mb-4">Lista de Conductores</h2>
+                    {drivers.length > 0 ? (
+                      <ul className="space-y-4">
+                        {drivers.map(driver => (
+                          <li key={driver.id} className="p-4 bg-gray-800 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center animate-fadeIn">
+                            <div className="text-left mb-2 md:mb-0 flex-grow">
+                              <p className="font-semibold text-lg text-indigo-300">{driver.name || 'Sin nombre'}</p>
+                              <p className="text-sm text-gray-400">
+                                <span className="inline-flex items-center gap-1"><Mail size={12} /> {driver.email || 'Sin correo'}</span>
+                              </p>
+                              <p className="text-sm text-gray-400">
+                                <span className="inline-flex items-center gap-1"><Phone size={12} /> {driver.phone || 'Sin teléfono'}</span>
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Ubicación: Lat: {(driver.location?.latitude || 0).toFixed(4)}, Lng: {(driver.location?.longitude || 0).toFixed(4)}
+                              </p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-xs font-bold px-3 py-1 rounded-full ${getDriverStatusColor(driver.status)}`}>
+                                {driver.status || 'Desconocido'}
+                              </span>
+                              <button onClick={() => setEditingDriver(driver)} className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-all duration-300"><Edit size={16} /></button>
+                              <button onClick={() => openDeleteModal(driver, 'driver')} className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-300"><Trash2 size={16} /></button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-gray-400">No hay conductores registrados.</p>
+                    )}
+                  </div>
+                )}
+                {activeTab === 'trips' && (
+                  <div>
+                    <h2 className="text-2xl font-bold mb-4">Lista de Viajes</h2>
+                    {trips.length > 0 ? (
+                      <ul className="space-y-4">
+                        {trips.map(trip => (
+                          <li key={trip.id} className="p-4 bg-gray-800 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center animate-fadeIn">
+                            <div className="text-left mb-2 md:mb-0 flex-grow">
+                              <p className="font-semibold text-lg text-teal-300">Viaje a {trip.destination || 'Desconocido'}</p>
+                              <p className="text-sm text-gray-400">Conductor: {trip.driverName || 'Sin asignar'}</p>
+                              <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                                <Locate size={12} /> Origen: {trip.origin || 'Desconocido'}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-xs font-bold px-3 py-1 rounded-full text-white ${getTripStatusColor(trip.status)}`}>
+                                {trip.status || 'Desconocido'}
+                              </span>
+                              {trip.status === 'en curso' && (
+                                <button onClick={() => onEndTrip(trip.id, trip.driverId)} className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-colors duration-300" title="Finalizar viaje">
+                                  <Check size={16} />
+                                </button>
+                              )}
+                              {trip.status !== 'finalizado' && trip.status !== 'cancelado' && (
+                                <button onClick={() => onNotifyDriver(trip)} className="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition-colors duration-300" title="Notificar a conductor">
+                                  <Volume2 size={16} />
+                                </button>
+                              )}
+                              <button onClick={() => setEditingTrip(trip)} className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors duration-300" title="Editar viaje"><Edit size={16} /></button>
+                              <button onClick={() => openDeleteModal(trip, 'trip')} className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors duration-300" title="Eliminar viaje"><Trash2 size={16} /></button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-gray-400">No hay viajes registrados.</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          
+          {/* Columna de Mapa */}
+          <div className="bg-gray-900 p-6 rounded-xl shadow-2xl flex flex-col">
+            <h2 className="flex items-center gap-2 text-2xl font-bold mb-4">
+              <MapPin size={24} className="text-indigo-400" />
+              Ubicación de Conductores
+            </h2>
+            <div ref={mapRef} id="map" className="w-full flex-grow rounded-lg shadow-inner bg-gray-800"></div>
+          </div>
         </div>
       </div>
-
-      {/* Navegación por pestañas */}
-      <div className="flex space-x-2 mb-6 border-b border-gray-700">
-        <button 
-          onClick={() => handleTabChange('drivers')}
-          className={`py-2 px-4 transition-colors duration-300 ${activeTab === 'drivers' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400 hover:text-white'}`}
-        >
-          Conductores ({drivers.length})
-        </button>
-        <button 
-          onClick={() => handleTabChange('trips')}
-          className={`py-2 px-4 transition-colors duration-300 ${activeTab === 'trips' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-gray-400 hover:text-white'}`}
-        >
-          Viajes ({trips.length})
-        </button>
-      </div>
-
-      {/* Contenido de las pestañas */}
-      <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-        {/* Botones para agregar nuevos datos */}
-        <div className="flex justify-end mb-4">
-          {activeTab === 'drivers' && !isAddingDriver && !editingDriver && (
-            <button
-              onClick={() => setIsAddingDriver(true)}
-              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-colors duration-300"
-            >
-              + Agregar Conductor
-            </button>
-          )}
-          {activeTab === 'trips' && !isAddingTrip && !editingTrip && (
-            <button
-              onClick={() => setIsAddingTrip(true)}
-              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-colors duration-300"
-            >
-              + Agregar Viaje
-            </button>
-          )}
-        </div>
-
-        {/* Renderizado condicional de formularios o listas */}
-        {isAddingDriver ? (
-          <AddDriverForm onAddDriver={onAddDriver} onCancel={() => setIsAddingDriver(false)} showNotification={showNotification} />
-        ) : isAddingTrip ? (
-          <AddTripForm onAddTrip={onAddTrip} onCancel={() => setIsAddingTrip(false)} drivers={drivers} showNotification={showNotification} />
-        ) : editingDriver ? (
-          <EditDriverForm driver={editingDriver} onUpdateDriver={onUpdateDriver} onCancel={() => setEditingDriver(null)} showNotification={showNotification} />
-        ) : editingTrip ? (
-          <EditTripForm trip={editingTrip} onUpdateTrip={onUpdateTrip} onCancel={() => setEditingTrip(null)} drivers={drivers} showNotification={showNotification} />
-        ) : (
-          <>
-            {activeTab === 'drivers' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Lista de Conductores</h2>
-                {drivers.length > 0 ? (
-                  <ul className="space-y-4">
-                    {drivers.map(driver => (
-                      <li key={driver.id} className="p-4 bg-gray-700 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center">
-                        <div className="text-left mb-2 md:mb-0">
-                          <p className="font-semibold text-lg text-indigo-300">{driver.name || 'Sin nombre'}</p>
-                          <p className="text-sm text-gray-400">{driver.email || 'Sin correo'}</p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => setEditingDriver(driver)}
-                            className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-full transition-colors duration-300"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => openDeleteModal(driver, 'driver')}
-                            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-full transition-colors duration-300"
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-400">No hay conductores registrados.</p>
-                )}
-              </div>
-            )}
-            {activeTab === 'trips' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Lista de Viajes</h2>
-                {trips.length > 0 ? (
-                  <ul className="space-y-4">
-                    {trips.map(trip => (
-                      <li key={trip.id} className="p-4 bg-gray-700 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center">
-                        <div className="text-left mb-2 md:mb-0">
-                          <p className="font-semibold text-lg text-teal-300">Viaje a {trip.destination || 'Desconocido'}</p>
-                          <p className="text-sm text-gray-400">Conductor: {trip.driverName || 'Sin asignar'}</p>
-                          {trip.location && (
-                            <p className="text-xs text-gray-500">
-                              Lat: {trip.location.latitude}, Lng: {trip.location.longitude}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex space-x-2 items-center">
-                          <p className="text-gray-400">Estado: {trip.status || 'Desconocido'}</p>
-                          <button
-                            onClick={() => setEditingTrip(trip)}
-                            className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-full transition-colors duration-300"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => openDeleteModal(trip, 'trip')}
-                            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-full transition-colors duration-300"
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-400">No hay viajes registrados.</p>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-      
-      {/* Modal de confirmación para eliminar */}
       {showDeleteModal && (
-        <Modal 
-          message={`¿Estás seguro de que quieres eliminar este ${itemTypeToDelete === 'driver' ? 'conductor' : 'viaje'}?`} 
-          onConfirm={confirmDelete} 
-          onCancel={cancelDelete} 
+        <DeleteConfirmationModal
+          item={itemToDelete}
+          type={itemTypeToDelete}
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
         />
       )}
     </div>
@@ -493,406 +716,313 @@ const Dashboard = ({ user, onLogout, drivers, trips, onAddDriver, onUpdateDriver
 };
 
 // =================================================================================================
-// COMPONENTE: FORMULARIO PARA AGREGAR CONDUCTORES
+// COMPONENTES DE FORMULARIO
 // =================================================================================================
 const AddDriverForm = ({ onAddDriver, onCancel }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', latitude: 19.4326, longitude: -99.1332 });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
-    const newDriver = { name, email, phone, createdAt: new Date() };
-    onAddDriver(newDriver);
-    // Limpiamos el formulario y cerramos
-    setName('');
-    setEmail('');
-    setPhone('');
+    onAddDriver(formData);
     onCancel();
   };
-
   return (
-    <div className="p-6 bg-gray-700 rounded-xl shadow-lg">
-      <h3 className="text-xl font-bold mb-4">Agregar Nuevo Conductor</h3>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Nombre del conductor"
-          required
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Correo electrónico"
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <input
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="Número de teléfono"
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-full transition-colors duration-300"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-colors duration-300"
-          >
-            Guardar
-          </button>
+    <form onSubmit={handleSubmit} className="p-6 bg-gray-800 rounded-xl space-y-4">
+      <h3 className="text-xl font-bold">Nuevo Conductor</h3>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Nombre</label>
+        <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Email</label>
+        <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Teléfono</label>
+        <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="flex gap-4">
+        <div className="w-1/2 space-y-2">
+          <label className="block text-sm font-medium text-gray-300">Latitud</label>
+          <input type="number" name="latitude" step="any" value={formData.latitude} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
-      </form>
-    </div>
+        <div className="w-1/2 space-y-2">
+          <label className="block text-sm font-medium text-gray-300">Longitud</label>
+          <input type="number" name="longitude" step="any" value={formData.longitude} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+      <div className="flex gap-4 pt-4">
+        <button type="submit" className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-full font-semibold transition-colors duration-300">
+          <Check size={18} className="inline-block mr-2" /> Guardar
+        </button>
+        <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-full font-semibold transition-colors duration-300">
+          <X size={18} className="inline-block mr-2" /> Cancelar
+        </button>
+      </div>
+    </form>
   );
 };
 
-// =================================================================================================
-// NUEVO COMPONENTE: FORMULARIO PARA EDITAR CONDUCTORES
-// =================================================================================================
 const EditDriverForm = ({ driver, onUpdateDriver, onCancel }) => {
-  const [name, setName] = useState(driver.name || '');
-  const [email, setEmail] = useState(driver.email || '');
-  const [phone, setPhone] = useState(driver.phone || '');
-
+  const [formData, setFormData] = useState({
+    name: driver.name || '',
+    email: driver.email || '',
+    phone: driver.phone || '',
+    latitude: driver.location?.latitude || 0,
+    longitude: driver.location?.longitude || 0,
+    status: driver.status || 'disponible'
+  });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
-    const updatedData = { name, email, phone };
-    onUpdateDriver(driver.id, updatedData);
+    onUpdateDriver(driver.id, {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      status: formData.status,
+      location: { latitude: parseFloat(formData.latitude), longitude: parseFloat(formData.longitude) }
+    });
     onCancel();
   };
-
   return (
-    <div className="p-6 bg-gray-700 rounded-xl shadow-lg">
-      <h3 className="text-xl font-bold mb-4">Editar Conductor</h3>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Nombre del conductor"
-          required
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Correo electrónico"
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <input
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="Número de teléfono"
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-full transition-colors duration-300"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors duration-300"
-          >
-            Actualizar
-          </button>
+    <form onSubmit={handleSubmit} className="p-6 bg-gray-800 rounded-xl space-y-4">
+      <h3 className="text-xl font-bold">Editar Conductor</h3>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Nombre</label>
+        <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Email</label>
+        <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Teléfono</label>
+        <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Estado</label>
+        <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="disponible">Disponible</option>
+          <option value="en curso">En Curso</option>
+          <option value="ausente">Ausente</option>
+        </select>
+      </div>
+      <div className="flex gap-4">
+        <div className="w-1/2 space-y-2">
+          <label className="block text-sm font-medium text-gray-300">Latitud</label>
+          <input type="number" name="latitude" step="any" value={formData.latitude} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
-      </form>
-    </div>
+        <div className="w-1/2 space-y-2">
+          <label className="block text-sm font-medium text-gray-300">Longitud</label>
+          <input type="number" name="longitude" step="any" value={formData.longitude} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+      <div className="flex gap-4 pt-4">
+        <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full font-semibold transition-colors duration-300">
+          <Check size={18} className="inline-block mr-2" /> Actualizar
+        </button>
+        <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-full font-semibold transition-colors duration-300">
+          <X size={18} className="inline-block mr-2" /> Cancelar
+        </button>
+      </div>
+    </form>
   );
 };
 
-// =================================================================================================
-// COMPONENTE: FORMULARIO PARA AGREGAR VIAJES
-// =================================================================================================
-const AddTripForm = ({ onAddTrip, onCancel, drivers }) => {
-  const [destination, setDestination] = useState('');
-  const [origin, setOrigin] = useState('');
-  const [driverId, setDriverId] = useState('');
-  const [status, setStatus] = useState('pending');
-  // NUEVO: Estados para la ubicación del GPS
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+const AddTripForm = ({ onAddTrip, onCancel, drivers, showNotification }) => {
+  const [formData, setFormData] = useState({
+    origin: '',
+    destination: '',
+    originLocation: { latitude: 19.4326, longitude: -99.1332 },
+    destinationLocation: { latitude: 19.4326, longitude: -99.1332 },
+    driverId: '',
+    status: 'pendiente',
+    passengerName: '',
+    fare: 0
+  });
 
-  // NUEVO: Función para obtener la ubicación del usuario
-  const handleGetLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLatitude(position.coords.latitude);
-          setLongitude(position.coords.longitude);
-        },
-        (error) => {
-          console.error("Error al obtener la ubicación:", error);
-          // showNotification("No se pudo obtener la ubicación. Por favor, ingresa los datos manualmente.", "error");
-        }
-      );
-    } else {
-      // showNotification("Tu navegador no soporta la API de Geolocation.", "error");
-    }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleLocationChange = (e) => {
+    const { name, value } = e.target;
+    const [part, key] = name.split('-');
+    setFormData({
+      ...formData,
+      [part]: {
+        ...formData[part],
+        [key]: parseFloat(value)
+      }
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!driverId) {
-      // showNotification("Por favor, selecciona un conductor.", "error");
+    if (!formData.driverId) {
+      showNotification("Por favor, selecciona un conductor disponible.", "error");
       return;
     }
-    const newTrip = {
-      destination,
-      origin,
-      driverId,
-      status,
-      // NUEVO: Guardamos la ubicación en la base de datos
-      location: {
-        latitude: parseFloat(latitude) || null,
-        longitude: parseFloat(longitude) || null
-      },
-      createdAt: new Date(),
-    };
-    onAddTrip(newTrip);
-    // Limpiamos el formulario y cerramos
-    setDestination('');
-    setOrigin('');
-    setDriverId('');
-    setStatus('pending');
-    setLatitude('');
-    setLongitude('');
+    onAddTrip(formData);
     onCancel();
   };
 
   return (
-    <div className="p-6 bg-gray-700 rounded-xl shadow-lg">
-      <h3 className="text-xl font-bold mb-4">Agregar Nuevo Viaje</h3>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder="Destino"
-          required
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <input
-          type="text"
-          value={origin}
-          onChange={(e) => setOrigin(e.target.value)}
-          placeholder="Origen"
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        {/* ================================================================================= */}
-        {/* LÓGICA CLAVE: Menú desplegable para seleccionar el conductor */}
-        {/* ================================================================================= */}
-        <select
-          value={driverId}
-          onChange={(e) => setDriverId(e.target.value)}
-          required
-          className="w-full p-3 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
+    <form onSubmit={handleSubmit} className="p-6 bg-gray-800 rounded-xl space-y-4">
+      <h3 className="text-xl font-bold">Nuevo Viaje</h3>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Conductor</label>
+        <select name="driverId" value={formData.driverId} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
           <option value="" disabled>Selecciona un conductor</option>
           {drivers.map(driver => (
-            <option key={driver.id} value={driver.id}>
-              {driver.name}
-            </option>
+            <option key={driver.id} value={driver.id}>{driver.name}</option>
           ))}
         </select>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full p-3 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="pending">Pendiente</option>
-          <option value="in_progress">En progreso</option>
-          <option value="completed">Completado</option>
-          <option value="cancelled">Cancelado</option>
-        </select>
-
-        {/* NUEVO: Contenedor para los campos de GPS y el botón */}
-        <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              value={latitude}
-              placeholder="Latitud"
-              readOnly
-              className="w-1/2 p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none cursor-not-allowed"
-            />
-            <input
-              type="text"
-              value={longitude}
-              placeholder="Longitud"
-              readOnly
-              className="w-1/2 p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none cursor-not-allowed"
-            />
-            <button
-                type="button"
-                onClick={handleGetLocation}
-                className="w-auto px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-lg transition-colors duration-300"
-            >
-              Obtener mi ubicación
-            </button>
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Nombre del Pasajero</label>
+        <input type="text" name="passengerName" value={formData.passengerName} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Origen</label>
+        <input type="text" name="origin" value={formData.origin} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="flex gap-4">
+        <div className="w-1/2 space-y-2">
+          <label className="block text-sm font-medium text-gray-300">Latitud Origen</label>
+          <input type="number" name="originLocation-latitude" step="any" value={formData.originLocation.latitude} onChange={handleLocationChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
-
-        <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-full transition-colors duration-300"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-colors duration-300"
-          >
-            Guardar
-          </button>
+        <div className="w-1/2 space-y-2">
+          <label className="block text-sm font-medium text-gray-300">Longitud Origen</label>
+          <input type="number" name="originLocation-longitude" step="any" value={formData.originLocation.longitude} onChange={handleLocationChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
-      </form>
-    </div>
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Destino</label>
+        <input type="text" name="destination" value={formData.destination} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="flex gap-4">
+        <div className="w-1/2 space-y-2">
+          <label className="block text-sm font-medium text-gray-300">Latitud Destino</label>
+          <input type="number" name="destinationLocation-latitude" step="any" value={formData.destinationLocation.latitude} onChange={handleLocationChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div className="w-1/2 space-y-2">
+          <label className="block text-sm font-medium text-gray-300">Longitud Destino</label>
+          <input type="number" name="destinationLocation-longitude" step="any" value={formData.destinationLocation.longitude} onChange={handleLocationChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Tarifa</label>
+        <input type="number" name="fare" value={formData.fare} onChange={handleChange} className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="flex gap-4 pt-4">
+        <button type="submit" className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-full font-semibold transition-colors duration-300">
+          <Check size={18} className="inline-block mr-2" /> Iniciar Viaje
+        </button>
+        <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-full font-semibold transition-colors duration-300">
+          <X size={18} className="inline-block mr-2" /> Cancelar
+        </button>
+      </div>
+    </form>
   );
 };
 
-// =================================================================================================
-// NUEVO COMPONENTE: FORMULARIO PARA EDITAR VIAJES
-// =================================================================================================
 const EditTripForm = ({ trip, onUpdateTrip, onCancel, drivers }) => {
-  const [destination, setDestination] = useState(trip.destination || '');
-  const [origin, setOrigin] = useState(trip.origin || '');
-  const [driverId, setDriverId] = useState(trip.driverId || '');
-  const [status, setStatus] = useState(trip.status || 'pending');
+  const [formData, setFormData] = useState({
+    origin: trip.origin || '',
+    destination: trip.destination || '',
+    driverId: trip.driverId || '',
+    status: trip.status || 'pendiente',
+    passengerName: trip.passengerName || '',
+    fare: trip.fare || 0,
+  });
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!driverId) {
-      alert("Por favor, selecciona un conductor.");
-      return;
-    }
-    const updatedData = {
-      destination,
-      origin,
-      driverId,
-      status,
-    };
-    onUpdateTrip(trip.id, updatedData);
+    onUpdateTrip(trip.id, formData);
     onCancel();
   };
 
   return (
-    <div className="p-6 bg-gray-700 rounded-xl shadow-lg">
-      <h3 className="text-xl font-bold mb-4">Editar Viaje</h3>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder="Destino"
-          required
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <input
-          type="text"
-          value={origin}
-          onChange={(e) => setOrigin(e.target.value)}
-          placeholder="Origen"
-          className="w-full p-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <select
-          value={driverId}
-          onChange={(e) => setDriverId(e.target.value)}
-          required
-          className="w-full p-3 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="" disabled>Selecciona un conductor</option>
+    <form onSubmit={handleSubmit} className="p-6 bg-gray-800 rounded-xl space-y-4">
+      <h3 className="text-xl font-bold">Editar Viaje</h3>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Conductor</label>
+        <select name="driverId" value={formData.driverId} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
           {drivers.map(driver => (
-            <option key={driver.id} value={driver.id}>
-              {driver.name}
-            </option>
+            <option key={driver.id} value={driver.id}>{driver.name}</option>
           ))}
         </select>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full p-3 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="pending">Pendiente</option>
-          <option value="in_progress">En progreso</option>
-          <option value="completed">Completado</option>
-          <option value="cancelled">Cancelado</option>
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Nombre del Pasajero</label>
+        <input type="text" name="passengerName" value={formData.passengerName} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Origen</label>
+        <input type="text" name="origin" value={formData.origin} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Destino</label>
+        <input type="text" name="destination" value={formData.destination} onChange={handleChange} required className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Estado</label>
+        <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="pendiente">Pendiente</option>
+          <option value="en curso">En Curso</option>
+          <option value="finalizado">Finalizado</option>
+          <option value="cancelado">Cancelado</option>
         </select>
-        <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-full transition-colors duration-300"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors duration-300"
-          >
-            Actualizar
-          </button>
-        </div>
-      </form>
-    </div>
+      </div>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300">Tarifa</label>
+        <input type="number" name="fare" value={formData.fare} onChange={handleChange} className="w-full px-3 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div className="flex gap-4 pt-4">
+        <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full font-semibold transition-colors duration-300">
+          <Check size={18} className="inline-block mr-2" /> Actualizar
+        </button>
+        <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-full font-semibold transition-colors duration-300">
+          <X size={18} className="inline-block mr-2" /> Cancelar
+        </button>
+      </div>
+    </form>
   );
 };
 
 // =================================================================================================
-// NUEVO COMPONENTE: Modal de confirmación para reemplazar `alert()`
+// COMPONENTE: MODAL DE CONFIRMACIÓN DE ELIMINACIÓN
 // =================================================================================================
-const Modal = ({ message, onConfirm, onCancel }) => {
+const DeleteConfirmationModal = ({ item, type, onConfirm, onCancel }) => {
+  if (!item) return null;
   return (
-    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-8 rounded-xl shadow-xl max-w-sm w-full text-center">
-        <p className="text-lg mb-6">{message}</p>
-        <div className="flex justify-center space-x-4">
-          <button
-            onClick={onConfirm}
-            className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-full transition-colors duration-300"
-          >
-            Confirmar
-          </button>
-          <button
-            onClick={onCancel}
-            className="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-full transition-colors duration-300"
-          >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm">
+      <div className="bg-gray-900 p-6 rounded-xl shadow-2xl w-full max-w-md animate-fadeIn">
+        <h3 className="text-xl font-bold text-red-500 mb-4">Confirmar Eliminación</h3>
+        <p className="text-gray-300">
+          ¿Estás seguro de que quieres eliminar el {type === 'driver' ? `conductor ${item.name}` : `viaje a ${item.destination}`}? Esta acción no se puede deshacer.
+        </p>
+        <div className="flex justify-end gap-4 mt-6">
+          <button onClick={onCancel} className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-full font-semibold transition-colors duration-300">
             Cancelar
+          </button>
+          <button onClick={onConfirm} className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-semibold transition-colors duration-300">
+            <Trash2 size={18} className="inline-block mr-2" /> Eliminar
           </button>
         </div>
       </div>
     </div>
   );
 };
-
-// =================================================================================================
-// COMPONENTE: Renderizado de la aplicación
-// =================================================================================================
-// Para que el código funcione en el entorno de desarrollo del canvas,
-// asumimos que el componente `App` se renderiza directamente.
-// En una aplicación real de React, el código sería algo así en `index.js`:
-//
-// import { createRoot } from 'react-dom/client';
-// const container = document.getElementById('root');
-// const root = createRoot(container);
-// const firebaseConfig = { ... }; // Tu configuración de Firebase
-// root.render(<App firebaseConfig={firebaseConfig} />);
-
-export default App;

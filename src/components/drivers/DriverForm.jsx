@@ -2,47 +2,135 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getAuth } from 'firebase/auth';
 
-// Importaciones de React y librerías externas.
+/**
+ * Custom Hook para gestionar la autenticación de Firebase y el token de acceso.
+ *
+ * @returns {Object} - Un objeto con el usuario, el token de acceso y un estado de carga.
+ */
+const useFirebaseAuthToken = () => {
+  const [user, setUser] = useState(null);
+  const [idToken, setIdToken] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        try {
+          const token = await currentUser.getIdToken();
+          setIdToken(token);
+        } catch (error) {
+          console.error("Error al obtener el token de autenticación:", error);
+        }
+      } else {
+        setUser(null);
+        setIdToken(null);
+      }
+      setIsAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return { user, idToken, isAuthLoading };
+};
+
+/**
+ * Componente FeedbackMessage: Muestra mensajes animados de éxito o error.
+ *
+ * @param {string|null} message - El mensaje a mostrar.
+ * @param {string} type - 'success' o 'error' para definir el estilo.
+ */
+const FeedbackMessage = ({ message, type }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (message) {
+      setIsVisible(true);
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+      }, 5000); // El mensaje desaparece después de 5 segundos
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
+  const baseClasses = "fixed bottom-4 right-4 p-4 text-sm rounded-lg shadow-lg transition-all duration-500 ease-in-out";
+  const typeClasses = type === 'success'
+    ? "bg-green-100 text-green-700"
+    : "bg-red-100 text-red-700";
+
+  const visibilityClasses = isVisible
+    ? "translate-x-0 opacity-100"
+    : "translate-x-full opacity-0";
+
+  if (!message) return null;
+
+  return (
+    <div className={`${baseClasses} ${typeClasses} ${visibilityClasses}`} role="alert">
+      {message}
+    </div>
+  );
+};
 
 /**
  * Componente DriverForm: Proporciona un formulario para crear o editar conductores.
+ * Este componente es una versión profesional y mejorada del original, con feedback
+ * visual, manejo de errores optimizado y uso de variables de entorno.
  *
- * @param {Function} onDriverCreated - Función para notificar al padre sobre la creación/actualización.
+ * @param {Function} onDriverCreated - Función para notificar al padre sobre la creación/actualización exitosa.
  * @param {Object|null} editingDriver - Objeto del conductor a editar, o null si estamos creando.
- * @param {Function} onCancelEdit - Función para cancelar el modo de edición.
- * @param {Function} setMessage - Función para establecer un mensaje global de éxito.
- * @param {Function} setError - Función para establecer un mensaje global de error.
+ * @param {Function} onCancelEdit - Función para cancelar el modo de edición y limpiar el formulario.
  */
-function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, setError }) {
+function DriverForm({ onDriverCreated, editingDriver, onCancelEdit }) {
   // Estado consolidado para los datos del formulario.
   const [formData, setFormData] = useState({
     nombre: '',
     telefono: '',
-    tipoVehiculo: ''
+    tipoVehiculo: '',
+    licencia: '',
+    placa: '',
   });
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
 
-  // useEffect para precargar los datos del conductor si estamos en modo edición.
+  // Uso del custom hook para la autenticación de Firebase
+  const { user, idToken, isAuthLoading } = useFirebaseAuthToken();
+
+  // URL del API obtenida de las variables de entorno.
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+  /**
+   * useEffect para precargar los datos del conductor si estamos en modo edición.
+   * Se ejecuta cada vez que el objeto `editingDriver` cambia.
+   */
   useEffect(() => {
     if (editingDriver) {
       setFormData({
         nombre: editingDriver.nombre || '',
         telefono: editingDriver.telefono || '',
-        tipoVehiculo: editingDriver.tipoVehiculo || ''
+        tipoVehiculo: editingDriver.tipoVehiculo || '',
+        licencia: editingDriver.licencia || '',
+        placa: editingDriver.placa || '',
       });
-      setMessage('');
-      setError('');
+      // Limpiar mensajes globales y errores del formulario al iniciar la edición
+      setSuccessMessage(null);
+      setErrorMessage(null);
       setFormErrors({});
     } else {
+      // Limpiar el formulario y los errores si no hay un conductor para editar.
       setFormData({
         nombre: '',
         telefono: '',
-        tipoVehiculo: ''
+        tipoVehiculo: '',
+        licencia: '',
+        placa: '',
       });
       setFormErrors({});
     }
-  }, [editingDriver, setMessage, setError]);
+  }, [editingDriver]);
 
   /**
    * Maneja los cambios en los campos del formulario y actualiza el estado consolidado.
@@ -53,6 +141,11 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
     setFormData(prevState => ({
       ...prevState,
       [name]: value,
+    }));
+    // Limpiar el error específico del campo cuando el usuario comienza a escribir.
+    setFormErrors(prevErrors => ({
+      ...prevErrors,
+      [name]: undefined,
     }));
   };
 
@@ -73,6 +166,12 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
     if (!formData.tipoVehiculo.trim()) {
       errors.tipoVehiculo = 'El tipo de vehículo es obligatorio.';
     }
+    if (!formData.licencia.trim()) {
+      errors.licencia = 'La licencia es obligatoria.';
+    }
+    if (!formData.placa.trim()) {
+      errors.placa = 'La placa es obligatoria.';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -83,33 +182,35 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setError('');
+    setSuccessMessage(null);
+    setErrorMessage(null);
 
     if (!validateForm()) {
-      setError('Por favor, corrige los errores en el formulario.');
+      setErrorMessage('Por favor, corrige los errores en el formulario.');
       return;
     }
 
     setLoading(true);
 
+    if (isAuthLoading) {
+      setErrorMessage('Autenticación en curso, por favor espera.');
+      setLoading(false);
+      return;
+    }
+
+    if (!user || !idToken) {
+      setErrorMessage('Debes iniciar sesión para realizar esta operación.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Lógica de Autenticación de Firebase.
-      const auth = getAuth();
-      const user = auth.currentUser;
-
-      if (!user) {
-        setError('Debes iniciar sesión para realizar esta operación.');
-        setLoading(false);
-        return;
-      }
-
-      const idToken = await user.getIdToken();
-      
       const driverData = {
         nombre: formData.nombre.trim(),
         telefono: formData.telefono.trim(),
-        tipoVehiculo: formData.tipoVehiculo.trim()
+        tipoVehiculo: formData.tipoVehiculo.trim(),
+        licencia: formData.licencia.trim(),
+        placa: formData.placa.trim(),
       };
 
       const axiosConfig = {
@@ -120,20 +221,22 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
 
       if (editingDriver) {
         // Modo Edición: Petición PUT
-        await axios.put(`http://localhost:5000/drivers/${editingDriver.id}`, driverData, axiosConfig);
-        setMessage(`Conductor "${formData.nombre}" (ID: ${editingDriver.id}) actualizado exitosamente.`);
+        await axios.put(`${API_URL}/drivers/${editingDriver.id}`, driverData, axiosConfig);
+        setSuccessMessage(`Conductor "${formData.nombre}" (ID: ${editingDriver.id}) actualizado exitosamente.`);
         onCancelEdit();
       } else {
         // Modo Creación: Petición POST
-        const response = await axios.post('http://localhost:5000/drivers', driverData, axiosConfig);
-        setMessage(`Conductor "${response.data.nombre}" (ID: ${response.data.id}) creado exitosamente.`);
+        const response = await axios.post(`${API_URL}/drivers`, driverData, axiosConfig);
+        setSuccessMessage(`Conductor "${response.data.nombre}" (ID: ${response.data.id}) creado exitosamente.`);
       }
 
       // Limpia el formulario y los errores después de un envío exitoso.
       setFormData({
         nombre: '',
         telefono: '',
-        tipoVehiculo: ''
+        tipoVehiculo: '',
+        licencia: '',
+        placa: '',
       });
       setFormErrors({});
 
@@ -143,27 +246,27 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
 
     } catch (err) {
       console.error("Error al procesar conductor:", err);
-      // Manejo mejorado de errores del backend.
-      let errorMessage = `Error al ${editingDriver ? 'actualizar' : 'crear'} el conductor: `;
+      let errorMsg = `Error al ${editingDriver ? 'actualizar' : 'crear'} el conductor: `;
       if (err.response) {
-        errorMessage += err.response.data?.error || `Código ${err.response.status}`;
+        errorMsg += err.response.data?.error || `Código ${err.response.status}`;
       } else if (err.request) {
-        errorMessage += 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.';
+        errorMsg += 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.';
       } else {
-        errorMessage += err.message;
+        errorMsg += err.message;
       }
-      setError(errorMessage);
+      setErrorMessage(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="mt-8 p-6 border border-gray-200 rounded-lg shadow-xl bg-white w-full max-w-md mx-auto transform hover:scale-105 transition-transform duration-300">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
+    <div className="mt-8 p-6 border border-gray-200 rounded-xl shadow-2xl bg-white w-full max-w-lg mx-auto transform hover:scale-105 transition-transform duration-300">
+      <h2 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
         {editingDriver ? 'Editar Conductor' : 'Crear Nuevo Conductor'}
       </h2>
-      <form onSubmit={handleSubmit}>
+
+      <form onSubmit={handleSubmit} noValidate>
         {/* Campo Nombre */}
         <div className="mb-4">
           <label htmlFor="nombre" className="block text-gray-700 text-sm font-bold mb-2">Nombre:</label>
@@ -173,11 +276,14 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
             name="nombre"
             value={formData.nombre}
             onChange={handleInputChange}
-            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 ${formErrors.nombre ? 'border-red-500' : 'focus:ring-blue-500'} transition duration-150`}
+            className={`shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-4 focus:ring-blue-500/50 focus:shadow-outline transition duration-150 ${formErrors.nombre ? 'border-red-500' : 'border-gray-300'}`}
             required
+            aria-invalid={!!formErrors.nombre}
+            aria-describedby="nombre-error"
           />
-          {formErrors.nombre && <p className="text-red-500 text-xs italic mt-1">{formErrors.nombre}</p>}
+          {formErrors.nombre && <p id="nombre-error" className="text-red-500 text-xs italic mt-1">{formErrors.nombre}</p>}
         </div>
+
         {/* Campo Teléfono */}
         <div className="mb-4">
           <label htmlFor="telefono" className="block text-gray-700 text-sm font-bold mb-2">Teléfono:</label>
@@ -187,13 +293,14 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
             name="telefono"
             value={formData.telefono}
             onChange={handleInputChange}
-            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 ${formErrors.telefono ? 'border-red-500' : 'focus:ring-blue-500'} transition duration-150`}
+            className={`shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-4 focus:ring-blue-500/50 focus:shadow-outline transition duration-150 ${formErrors.telefono ? 'border-red-500' : 'border-gray-300'}`}
             required
-            pattern="[0-9]{7,15}"
-            title="Ingresa solo números (7-15 dígitos)"
+            aria-invalid={!!formErrors.telefono}
+            aria-describedby="telefono-error"
           />
-          {formErrors.telefono && <p className="text-red-500 text-xs italic mt-1">{formErrors.telefono}</p>}
+          {formErrors.telefono && <p id="telefono-error" className="text-red-500 text-xs italic mt-1">{formErrors.telefono}</p>}
         </div>
+
         {/* Campo Tipo de Vehículo */}
         <div className="mb-6">
           <label htmlFor="tipoVehiculo" className="block text-gray-700 text-sm font-bold mb-2">Tipo de Vehículo:</label>
@@ -202,8 +309,10 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
             name="tipoVehiculo"
             value={formData.tipoVehiculo}
             onChange={handleInputChange}
-            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 ${formErrors.tipoVehiculo ? 'border-red-500' : 'focus:ring-blue-500'} transition duration-150`}
+            className={`shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-4 focus:ring-blue-500/50 focus:shadow-outline transition duration-150 ${formErrors.tipoVehiculo ? 'border-red-500' : 'border-gray-300'}`}
             required
+            aria-invalid={!!formErrors.tipoVehiculo}
+            aria-describedby="tipoVehiculo-error"
           >
             <option value="">Seleccione un tipo</option>
             <option value="Mototaxi">Mototaxi</option>
@@ -211,30 +320,72 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
             <option value="Taxi (particular)">Taxi (particular)</option>
             <option value="Automóvil">Automóvil</option>
             <option value="Camioneta">Camioneta</option>
+            <option value="Furgón">Furgón</option>
+            <option value="Camión">Camión</option>
           </select>
-          {formErrors.tipoVehiculo && <p className="text-red-500 text-xs italic mt-1">{formErrors.tipoVehiculo}</p>}
+          {formErrors.tipoVehiculo && <p id="tipoVehiculo-error" className="text-red-500 text-xs italic mt-1">{formErrors.tipoVehiculo}</p>}
         </div>
+
+        {/* Campo Licencia */}
+        <div className="mb-4">
+          <label htmlFor="licencia" className="block text-gray-700 text-sm font-bold mb-2">Número de Licencia:</label>
+          <input
+            type="text"
+            id="licencia"
+            name="licencia"
+            value={formData.licencia}
+            onChange={handleInputChange}
+            className={`shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-4 focus:ring-blue-500/50 focus:shadow-outline transition duration-150 ${formErrors.licencia ? 'border-red-500' : 'border-gray-300'}`}
+            required
+            aria-invalid={!!formErrors.licencia}
+            aria-describedby="licencia-error"
+          />
+          {formErrors.licencia && <p id="licencia-error" className="text-red-500 text-xs italic mt-1">{formErrors.licencia}</p>}
+        </div>
+
+        {/* Campo Placa */}
+        <div className="mb-6">
+          <label htmlFor="placa" className="block text-gray-700 text-sm font-bold mb-2">Placa del Vehículo:</label>
+          <input
+            type="text"
+            id="placa"
+            name="placa"
+            value={formData.placa}
+            onChange={handleInputChange}
+            className={`shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-4 focus:ring-blue-500/50 focus:shadow-outline transition duration-150 ${formErrors.placa ? 'border-red-500' : 'border-gray-300'}`}
+            required
+            aria-invalid={!!formErrors.placa}
+            aria-describedby="placa-error"
+          />
+          {formErrors.placa && <p id="placa-error" className="text-red-500 text-xs italic mt-1">{formErrors.placa}</p>}
+        </div>
+
         {/* Botones de acción */}
         <div className="flex items-center justify-between space-x-4">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isAuthLoading}
             className={`
-              flex-1 py-2 px-4 rounded font-bold focus:outline-none focus:shadow-outline transition duration-150 ease-in-out
+              flex-1 flex items-center justify-center py-2 px-4 rounded-lg font-bold text-white focus:outline-none focus:shadow-outline transition duration-150 ease-in-out focus:ring-4 focus:ring-offset-2
               ${editingDriver ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'}
-              text-white focus:ring-2 focus:ring-offset-2
-              ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+              ${loading || isAuthLoading ? 'opacity-70 cursor-not-allowed' : ''}
             `}
           >
-            {loading ? (editingDriver ? 'Actualizando...' : 'Creando...') : (editingDriver ? 'Actualizar Conductor' : 'Crear Conductor')}
+            {loading || isAuthLoading ? (
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : null}
+            {loading || isAuthLoading ? (editingDriver ? 'Actualizando...' : 'Creando...') : (editingDriver ? 'Actualizar Conductor' : 'Crear Conductor')}
           </button>
           {editingDriver && (
             <button
               type="button"
               onClick={onCancelEdit}
-              disabled={loading}
-              className={`flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out focus:ring-2 focus:ring-offset-2 focus:ring-gray-500
-                ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+              disabled={loading || isAuthLoading}
+              className={`flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out focus:ring-4 focus:ring-offset-2 focus:ring-gray-500
+                ${loading || isAuthLoading ? 'opacity-70 cursor-not-allowed' : ''}
               `}
             >
               Cancelar Edición
@@ -242,6 +393,9 @@ function DriverForm({ onDriverCreated, editingDriver, onCancelEdit, setMessage, 
           )}
         </div>
       </form>
+
+      <FeedbackMessage message={successMessage} type="success" />
+      <FeedbackMessage message={errorMessage} type="error" />
     </div>
   );
 }

@@ -3,1051 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplicación de Despacho Profesional con Firebase</title>
+    <title>Taxia - Gestión de Despachos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
+            background-color: #f3f4f6;
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
         }
-        #map {
-            height: 600px;
-            width: 100%;
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        /* Custom scrollbar for better aesthetics */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #e5e7eb;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #9ca3af;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
-        }
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            transition: opacity 0.3s ease-in-out;
-        }
-        .modal-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        .modal-content {
-            transition: transform 0.3s ease-in-out;
-            transform: scale(0.95);
-        }
-        .modal-overlay.active .modal-content {
-            transform: scale(1);
-        }
-        .toast-notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #4CAF50;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out, top 0.5s ease-in-out;
-        }
-        .toast-notification.show {
-            opacity: 1;
-            top: 30px;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
         }
     </style>
 </head>
-<body class="p-6 md:p-10 flex flex-col items-center">
+<body class="bg-gray-100">
 
-    <!-- ========================================================= -->
-    <!-- CABECERA Y NAVEGACIÓN MEJORADA -->
-    <!-- ========================================================= -->
-    <header class="bg-white rounded-xl shadow-lg p-6 md:p-8 w-full max-w-4xl mx-auto mb-8 flex justify-between items-center">
-        <div class="flex items-center space-x-4">
-            <h1 class="text-3xl font-bold text-gray-800">Taxia</h1>
+    <header class="bg-white shadow-md py-4">
+        <div class="container flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">Taxia</h1>
             <nav>
-                <ul class="flex space-x-4">
-                    <li><a href="index.html" class="text-blue-600 font-bold transition-colors">Inicio</a></li>
-                    <li><a href="acerca-de.html" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Acerca de Nosotros</a></li>
-                </ul>
+                <a href="index.html" class="text-blue-600 font-semibold mx-2">Inicio</a>
+                <a href="acerca-de.html" class="text-gray-600 hover:text-blue-600 mx-2">Acerca de Nosotros</a>
+                <button id="cerrar-sesion" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">Cerrar Sesión</button>
             </nav>
-        </div>
-        <div class="flex items-center space-x-4">
-            <p id="user-info" class="text-gray-600 text-sm md:text-base hidden"></p>
-            <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
-                Cerrar Sesión
-            </button>
         </div>
     </header>
 
-    <!-- El resto de tu código se mueve dentro de esta etiqueta main para mejor organización -->
-    <main class="w-full max-w-4xl mx-auto">
-        <div id="app-container" class="container mx-auto">
-            <div id="main-content" class="hidden">
-                <div class="flex justify-center space-x-4 mb-8">
-                    <!-- ... Tu código de botones de vista ... -->
-                    <button id="show-map-view-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 text-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Vista de Mapa
-                    </button>
-                    <button id="show-dashboard-view-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 text-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        Dashboard
-                    </button>
-                </div>
-
-                <!-- Tu notificación, vistas, modales y scripts permanecen aquí. -->
-                <!-- ... Tu código anterior de #realtime-notification, #map-view, #dashboard-view, etc. ... -->
-                
-                <!-- Notificación en tiempo real (toast) -->
-                <div id="realtime-notification" class="toast-notification hidden"></div>
-
-                <!-- Vista de Mapa -->
-                <div id="map-view" class="w-full">
-                    <!-- ... Contenido de la vista del mapa ... -->
-                    <div id="success-alert-map" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-8" role="alert">
-                        <strong class="font-bold">¡Todo listo!</strong>
-                        <span class="block sm:inline">Tu configuración de Google Cloud ha sido completada. El mapa debería funcionar correctamente.</span>
-                    </div>
-
-                    <div id="error-alert-map" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8 hidden" role="alert">
-                        <strong class="font-bold">¡Error!</strong>
-                        <span class="block sm:inline" id="error-message">Se produjo un error al cargar el mapa. Verifica tu clave de API y la consola.</span>
-                    </div>
-
-                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
-                        <div id="map"></div>
-                    </div>
-
-                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
-                        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Controles y Estado</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div class="bg-gray-50 p-5 rounded-lg shadow-inner">
-                                <h3 class="text-lg font-medium text-gray-600 mb-2">Conductor (arrastrable)</h3>
-                                <p id="driver-location-text" class="text-gray-500 text-sm mb-3">Ubicación: Cargando...</p>
-                                <button id="update-driver-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                    Simular GPS Conductor
-                                </button>
-                            </div>
-                            <div class="bg-gray-50 p-5 rounded-lg shadow-inner">
-                                <h3 class="text-lg font-medium text-gray-600 mb-2">Cliente (arrastrable)</h3>
-                                <p id="client-location-text" class="text-gray-500 text-sm mb-3">Ubicación: Cargando...</p>
-                                <button id="update-client-btn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                    Simular GPS Cliente
-                                </button>
-                            </div>
-                            <div class="bg-gray-50 p-5 rounded-lg shadow-inner col-span-1 md:col-span-2 lg:col-span-1">
-                                <h3 class="text-lg font-medium text-gray-600 mb-2">Notas de Ubicación</h3>
-                                <div id="notes-container" class="space-y-3">
-                                    <div class="bg-white p-3 rounded-md border border-gray-200">
-                                        <p class="text-sm font-semibold text-gray-700">Ubicación del Conductor:</p>
-                                        <p id="driver-note" class="text-gray-500 text-sm">Arrastra el marcador para actualizar.</p>
-                                    </div>
-                                    <div class="bg-white p-3 rounded-md border border-gray-200">
-                                        <p class="text-sm font-semibold text-gray-700">Ubicación del Cliente:</p>
-                                        <p id="client-note" class="text-gray-500 text-sm">Arrastra el marcador para actualizar.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mb-8">
-                        <button id="show-route-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
-                            Mostrar Ruta
-                        </button>
-                        <button id="toggle-heatmap-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
-                            Mostrar Mapa de Calor
-                        </button>
-                        <button id="save-dispatch-map-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
-                            Guardar Despacho desde Mapa
-                        </button>
+    <main class="container mt-8">
+        <!-- Contenido principal de la página, visible después de iniciar sesión -->
+        <div id="dashboard" class="hidden">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-6">Gestión de Despachos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Tarjeta para el conductor -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold text-gray-700 mb-4">Controles y Estado</h3>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Conductor (provisional)</span>
+                        <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Estado: Libre</button>
                     </div>
                 </div>
 
-                <!-- Vista del Dashboard -->
-                <div id="dashboard-view" class="hidden w-full">
-                    <!-- ... Contenido de la vista del dashboard ... -->
-                    <div class="bg-white shadow-xl rounded-2xl p-6 md:p-8 w-full max-w-4xl mx-auto">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Dashboard de Rendimiento</h2>
-    
-                        <!-- Panel de Resumen -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-center">
-                            <div class="bg-blue-50 p-6 rounded-xl shadow-md border-b-4 border-blue-400">
-                                <p class="text-sm font-medium text-blue-600">Total de Despachos</p>
-                                <p id="total-dispatches" class="text-3xl font-bold text-gray-800 mt-1">0</p>
-                            </div>
-                            <div class="bg-green-50 p-6 rounded-xl shadow-md border-b-4 border-green-400">
-                                <p class="text-sm font-medium text-green-600">Costo Promedio</p>
-                                <p id="average-cost" class="text-3xl font-bold text-gray-800 mt-1">$0.00</p>
-                            </div>
-                        </div>
-    
-                        <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 p-4 bg-gray-100 rounded-lg">
-                            <div class="flex items-center gap-2 w-full md:w-auto">
-                                <label for="search-input" class="text-gray-700 font-medium">Buscar:</label>
-                                <input type="text" id="search-input" placeholder="Conductor o Cliente" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
-                            </div>
-                            <div class="flex items-center gap-2 w-full md:w-auto">
-                                <label for="startDate" class="text-gray-700 font-medium">Desde:</label>
-                                <input type="date" id="startDate" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
-                            </div>
-                            <div class="flex items-center gap-2 w-full md:w-auto">
-                                <label for="endDate" class="text-gray-700 font-medium">Hasta:</label>
-                                <input type="date" id="endDate" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
-                            </div>
-                            <button id="export-csv-btn" class="w-full md:w-auto bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                Exportar a CSV
-                            </button>
-                            <button id="toggle-form-btn" class="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                Añadir Nuevo Despacho
-                            </button>
-                        </div>
-    
-                        <!-- Mensaje de confirmación (oculto por defecto) -->
-                        <div id="confirmation-message" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4 hidden" role="alert">
-                            <strong class="font-bold">¡Éxito!</strong>
-                            <span class="block sm:inline">El despacho ha sido guardado correctamente.</span>
-                        </div>
-    
-                        <div class="bg-gray-50 rounded-xl p-4 shadow-inner mb-8">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Registro de Despachos</h3>
-                            <div id="data-container" class="overflow-y-auto max-h-96">
-                                <div class="flex justify-center items-center h-full text-gray-500">Cargando datos...</div>
-                            </div>
-                        </div>
-    
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <!-- Gráfico de rendimiento de conductores -->
-                            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
-                                <h3 class="text-xl font-semibold text-gray-800 mb-4">Rendimiento de Conductores (Costo Total)</h3>
-                                <div class="h-64">
-                                    <canvas id="driver-chart"></canvas>
-                                </div>
-                            </div>
-                            <!-- Gráfico de tendencia de costos -->
-                            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
-                                <h3 class="text-xl font-semibold text-gray-800 mb-4">Tendencia de Costos de Despachos</h3>
-                                <div class="h-64">
-                                    <canvas id="cost-trend-chart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Tarjeta para el cliente -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold text-gray-700 mb-4">Clientes</h3>
+                    <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">Solicitar GPS Cliente</button>
+                </div>
+
+                <!-- Tarjeta para la ubicación -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold text-gray-700 mb-4">Notas de Ubicación</h3>
+                    <p class="text-gray-600">
+                        Ubicación del Conductor:<br>
+                        Calle 123 #45-67, La Jagua de Ibirico, Colombia
+                    </p>
+                    <p class="text-gray-600 mt-4">
+                        Ubicación del Cliente:<br>
+                        Calle 987 #65-43, La Jagua de Ibirico, Colombia
+                    </p>
                 </div>
             </div>
+            <button class="mt-6 bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">Mostrar Ruta</button>
+        </div>
+
+        <!-- Formulario de inicio de sesión, visible si el usuario no ha iniciado sesión -->
+        <div id="login-form" class="bg-white p-8 rounded-lg shadow-xl max-w-sm mx-auto mt-20">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Iniciar Sesión</h2>
+            <form>
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 font-semibold mb-2">Correo Electrónico</label>
+                    <input type="email" id="email" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-700 font-semibold mb-2">Contraseña</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-between">
+                    <button type="submit" class="bg-blue-500 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">Iniciar Sesión</button>
+                    <button type="button" class="bg-gray-200 text-gray-800 font-semibold px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors">Registrarse</button>
+                </div>
+                <p id="error-message" class="text-red-500 text-center mt-4"></p>
+            </form>
         </div>
     </main>
 
-    <!-- Modales, scripts y librerías se mantienen fuera del <main> -->
-    <!-- ... Tu código de los modales de despacho y autenticación ... -->
-    <!-- Modal para el formulario de despacho -->
-    <div id="dispatch-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
-        <div id="dispatch-modal" class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-lg modal-content">
-            <h3 id="form-title" class="text-2xl font-semibold text-gray-800 mb-4 text-center">Agregar Nuevo Despacho</h3>
-            <form id="dispatch-form">
-                <input type="hidden" id="dispatch-id">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label for="driver-name" class="block text-sm font-medium text-gray-700">Conductor</label>
-                        <input type="text" id="driver-name" name="driver" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label for="client-name" class="block text-sm font-medium text-gray-700">Cliente</label>
-                        <input type="text" id="client-name" name="client" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label for="dispatch-date" class="block text-sm font-medium text-gray-700">Fecha</label>
-                        <input type="date" id="dispatch-date" name="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label for="dispatch-cost" class="block text-sm font-medium text-gray-700">Costo ($)</label>
-                        <input type="number" id="dispatch-cost" name="cost" required min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
-                </div>
-                <div class="flex justify-end space-x-3 mt-6">
-                    <button type="button" id="close-form-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                        Cancelar
-                    </button>
-                    <button type="submit" id="save-dispatch-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                        Guardar Despacho
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Modal para autenticación de usuario (login/registro) -->
-    <div id="auth-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-md modal-content">
-            <h3 id="auth-form-title" class="text-2xl font-semibold text-gray-800 mb-4 text-center">Iniciar Sesión</h3>
-            <form id="auth-form" class="space-y-4">
-                <div>
-                    <label for="auth-email" class="block text-sm font-medium text-gray-700">Correo Electrónico</label>
-                    <input type="email" id="auth-email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="auth-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
-                    <input type="password" id="auth-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <p id="auth-error-message" class="text-red-500 text-sm hidden"></p>
-                <div class="flex justify-center space-x-3">
-                    <button type="submit" id="login-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
-                        Iniciar Sesión
-                    </button>
-                    <button type="button" id="register-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
-                        Registrarse
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Librería de Google Maps con la librería de 'visualization' -->
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADIXxztNuwb1MflnKA7AdOBlOHez8VKIM&callback=initMap&libraries=places,geometry,marker,visualization&map_ids=d69a23d242767073"></script>
-    <!-- Librería de Chart.js para los gráficos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Aquí iría la lógica para manejar el inicio de sesión y el cambio entre formularios
+        const dashboard = document.getElementById('dashboard');
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const cerrarSesionBtn = document.getElementById('cerrar-sesion');
 
-    <!-- Firebase SDKs y lógica de la aplicación -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Para simular el estado de sesión
+        let loggedIn = false;
 
-        // =======================================================
-        // CONFIGURACIÓN E INICIALIZACIÓN DE FIREBASE
-        // =======================================================
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = {
-            apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
-            authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
-            projectId: "pelagic-chalice-467818-e1",
-            storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
-            messagingSenderId: "191106268804",
-            appId: "1:191106268804:web:bffbd9aac41f5bf1880cd1",
-            measurementId: "G-TGN734FDGT"
-        };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        let userLoggedIn = false;
-        let currentUserId = null;
-        let currentUserEmail = null;
-        let unsubscribeFromFirestore = null;
-
-        // =======================================================
-        // LÓGICA DE LA APLICACIÓN
-        // =======================================================
-        
-        // Variables globales para el mapa
-        let map;
-        let driverMarker, clientMarker;
-        let directionsService;
-        let directionsRenderer;
-        let geocoder;
-        let geocodeId = 0;
-        let heatmap;
-        let heatmapEnabled = false;
-        let dispatchMarkers = [];
-        let infoWindow;
-        let clientMarkers = [];
-
-        // Variables globales para el dashboard
-        let dispatchesData = []; 
-        let filteredDispatchesData = [];
-        let driverChart;
-        let costTrendChart;
-
-        // Referencias a los elementos del DOM
-        const appContainer = document.getElementById('app-container');
-        const mainContent = document.getElementById('main-content');
-        const authModalOverlay = document.getElementById('auth-modal-overlay');
-        const authForm = document.getElementById('auth-form');
-        const authEmailInput = document.getElementById('auth-email');
-        const authPasswordInput = document.getElementById('auth-password');
-        const authErrorMessage = document.getElementById('auth-error-message');
-        const showMapViewBtn = document.getElementById('show-map-view-btn');
-        const showDashboardViewBtn = document.getElementById('show-dashboard-view-btn');
-        const mapView = document.getElementById('map-view');
-        const dashboardView = document.getElementById('dashboard-view');
-        const startDateInput = document.getElementById('startDate');
-        const endDateInput = document.getElementById('endDate');
-        const searchInput = document.getElementById('search-input');
-        const dataContainer = document.getElementById('data-container');
-        const toggleFormBtn = document.getElementById('toggle-form-btn');
-        const dispatchModalOverlay = document.getElementById('dispatch-modal-overlay');
-        const closeFormBtn = document.getElementById('close-form-btn');
-        const dispatchForm = document.getElementById('dispatch-form');
-        const formTitle = document.getElementById('form-title');
-        const confirmationMessage = document.getElementById('confirmation-message');
-        const totalDispatchesElement = document.getElementById('total-dispatches');
-        const averageCostElement = document.getElementById('average-cost');
-        const realtimeNotification = document.getElementById('realtime-notification');
-        const userEmailInfo = document.getElementById('user-info');
-        const logoutBtn = document.getElementById('logout-btn');
-        const toggleHeatmapBtn = document.getElementById('toggle-heatmap-btn');
-        const showRouteBtn = document.getElementById('show-route-btn');
-        const saveDispatchMapBtn = document.getElementById('save-dispatch-map-btn');
-        
-        // Función para cambiar de vista
-        function showView(viewName) {
-            if (viewName === 'map') {
-                mapView.classList.remove('hidden');
-                dashboardView.classList.add('hidden');
-                showMapViewBtn.classList.replace('bg-gray-400', 'bg-blue-600');
-                showMapViewBtn.classList.replace('hover:bg-gray-500', 'hover:bg-blue-700');
-                showDashboardViewBtn.classList.replace('bg-blue-600', 'bg-gray-400');
-                showDashboardViewBtn.classList.replace('hover:bg-blue-700', 'hover:bg-gray-500');
-                google.maps.event.trigger(map, 'resize');
+        function updateUI() {
+            if (loggedIn) {
+                loginForm.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+                cerrarSesionBtn.classList.remove('hidden');
             } else {
-                mapView.classList.add('hidden');
-                dashboardView.classList.remove('hidden');
-                showMapViewBtn.classList.replace('bg-blue-600', 'bg-gray-400');
-                showMapViewBtn.classList.replace('hover:bg-blue-700', 'hover:bg-gray-500');
-                showDashboardViewBtn.classList.replace('bg-gray-400', 'bg-blue-600');
-                showDashboardViewBtn.classList.replace('hover:bg-gray-500', 'hover:bg-blue-700');
-                filterAndRenderDashboard();
+                loginForm.classList.remove('hidden');
+                dashboard.classList.add('hidden');
+                cerrarSesionBtn.classList.add('hidden');
             }
         }
 
-        // =======================================================
-        // LÓGICA DE FIREBASE Y DASHBOARD
-        // =======================================================
-
-        function renderDashboard(data) {
-            if (data.length === 0) {
-                dataContainer.innerHTML = '<p class="text-center text-gray-500 p-4">No hay despachos para el rango de fechas o búsqueda seleccionados.</p>';
-                totalDispatchesElement.textContent = '0';
-                averageCostElement.textContent = '$0.00';
-                return;
-            }
-
-            // Calcular métricas de resumen
-            const totalCost = data.reduce((sum, item) => sum + item.cost, 0);
-            const averageCost = totalCost / data.length;
-
-            totalDispatchesElement.textContent = data.length;
-            averageCostElement.textContent = `$${averageCost.toFixed(2)}`;
-
-            const tableHtml = `
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-100 sticky top-0">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Fecha</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conductor</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-lg">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        ${data.map(item => `
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap">${item.date}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">${item.driver}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">${item.client}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">$${item.cost.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="editDispatch('${item.id}', '${item.driver.replace(/'/g, "\\'")}', '${item.client.replace(/'/g, "\\'")}', '${item.date}', ${item.cost})">Editar</button>
-                                    <button class="text-red-600 hover:text-red-900" onclick="deleteDispatch('${item.id}')">Eliminar</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            dataContainer.innerHTML = tableHtml;
-        }
-
-        function filterAndRenderDashboard() {
-            const startDate = startDateInput.value;
-            const endDate = endDateInput.value;
-            const searchText = searchInput.value.toLowerCase();
-
-            let tempFilteredData = dispatchesData;
-
-            // Filtrar por fecha
-            if (startDate && endDate) {
-                tempFilteredData = tempFilteredData.filter(item => {
-                    const itemDate = new Date(item.date);
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
-                    
-                    // Normalizar fechas para comparar solo la fecha, no la hora
-                    start.setHours(0, 0, 0, 0);
-                    end.setHours(23, 59, 59, 999);
-                    
-                    return itemDate >= start && itemDate <= end;
-                });
-            }
-
-            // Filtrar por búsqueda de texto
-            if (searchText) {
-                tempFilteredData = tempFilteredData.filter(item => 
-                    item.driver.toLowerCase().includes(searchText) || 
-                    item.client.toLowerCase().includes(searchText)
-                );
-            }
-
-            // Ordenar por fecha de forma descendente
-            tempFilteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            filteredDispatchesData = tempFilteredData;
-            renderDashboard(filteredDispatchesData);
-            renderDriverChart(filteredDispatchesData);
-            renderLineChart(filteredDispatchesData);
-        }
-        
-        window.deleteDispatch = async function(id) {
-            const isConfirmed = await new Promise(resolve => {
-                const modalHtml = `
-                    <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-                        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-sm modal-content">
-                            <h3 class="text-2xl font-semibold text-gray-800 mb-4">Confirmar Eliminación</h3>
-                            <p class="text-gray-700 mb-6">¿Estás seguro de que quieres eliminar este despacho? Esta acción no se puede deshacer.</p>
-                            <div class="flex justify-end space-x-3">
-                                <button id="cancel-delete-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                    Cancelar
-                                </button>
-                                <button id="confirm-delete-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                    Eliminar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-                const modal = document.getElementById('confirmation-modal');
-                document.getElementById('confirm-delete-btn').addEventListener('click', () => {
-                    modal.remove();
-                    resolve(true);
-                });
-                document.getElementById('cancel-delete-btn').addEventListener('click', () => {
-                    modal.remove();
-                    resolve(false);
-                });
-            });
-
-            if (!isConfirmed) {
-                return;
-            }
-
-            try {
-                const dispatchRef = doc(db, `artifacts/${appId}/public/data/dispatches`, id);
-                await deleteDoc(dispatchRef);
-                showToast('Despacho eliminado correctamente.', 'success');
-            } catch (e) {
-                console.error("Error al eliminar el documento: ", e);
-                showToast('Error al eliminar el despacho.', 'error');
-            }
-        };
-        
-        window.editDispatch = function(id, driver, client, date, cost) {
-            formTitle.textContent = "Editar Despacho";
-            document.getElementById('dispatch-id').value = id;
-            document.getElementById('driver-name').value = driver;
-            document.getElementById('client-name').value = client;
-            document.getElementById('dispatch-date').value = date;
-            document.getElementById('dispatch-cost').value = cost;
-            toggleModal('dispatch-modal-overlay', true);
-        }
-
-        async function saveDispatch(event) {
-            event.preventDefault();
-            if (!userLoggedIn || !currentUserId) return;
-
-            const id = document.getElementById('dispatch-id').value;
-            const driver = document.getElementById('driver-name').value;
-            const client = document.getElementById('client-name').value;
-            const date = document.getElementById('dispatch-date').value;
-            const cost = parseFloat(document.getElementById('dispatch-cost').value);
-            
-            if (!driver || !client || !date || isNaN(cost)) {
-                console.error("Todos los campos son requeridos.");
-                return;
-            }
-            
-            const dispatchData = { driver, client, date, cost, driverId: currentUserId };
-            
-            try {
-                if (id) {
-                    // Actualizar documento
-                    const dispatchRef = doc(db, `artifacts/${appId}/public/data/dispatches`, id);
-                    await updateDoc(dispatchRef, dispatchData);
-                    showToast('Despacho actualizado correctamente.', 'success');
-                } else {
-                    // Crear nuevo documento
-                    await addDoc(collection(db, `artifacts/${appId}/public/data/dispatches`), dispatchData);
-                    showToast('Nuevo despacho guardado correctamente.', 'success');
-                }
-                toggleModal('dispatch-modal-overlay', false);
-                dispatchForm.reset();
-            } catch (e) {
-                console.error("Error al guardar el documento: ", e);
-                showToast('Error al guardar el despacho.', 'error');
-            }
-        }
-        
-        // ... El resto del código JS que proporcionaste...
-        // Aquí va todo el resto del script que controlaba el mapa, los gráficos y los modales.
-        
-        // =======================================================
-        // LÓGICA DE GOOGLE MAPS
-        // =======================================================
-
-        function initMap() {
-            // Se inicializa el mapa, marcadores, etc.
-            const colombo_co = { lat: 4.6097, lng: -74.0817 }; // Coordenadas de Colombia
-            map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 12,
-                center: colombo_co,
-                mapId: "d69a23d242767073",
-                fullscreenControl: false,
-                mapTypeControl: false,
-                streetViewControl: false,
-                zoomControl: true
-            });
-            
-            // Inicializar servicios de Google Maps
-            directionsService = new google.maps.DirectionsService();
-            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
-            geocoder = new google.maps.Geocoder();
-            infoWindow = new google.maps.InfoWindow();
-
-            // Marcadores de conductor y cliente
-            driverMarker = new google.maps.Marker({
-                map: map,
-                position: colombo_co,
-                draggable: true,
-                title: "Conductor",
-                icon: {
-                    url: "https://maps.google.com/mapfiles/kml/paddle/red-circle.png",
-                    scaledSize: new google.maps.Size(40, 40)
-                }
-            });
-
-            clientMarker = new google.maps.Marker({
-                map: map,
-                position: { lat: 4.65, lng: -74.05 },
-                draggable: true,
-                title: "Cliente",
-                icon: {
-                    url: "https://maps.google.com/mapfiles/kml/paddle/blue-circle.png",
-                    scaledSize: new google.maps.Size(40, 40)
-                }
-            });
-
-            // Eventos para arrastrar marcadores
-            driverMarker.addListener('dragend', updateNotes);
-            clientMarker.addListener('dragend', updateNotes);
-            
-            updateNotes();
-            fetchAndRenderClientMarkers();
-        }
-
-        function updateNotes() {
-            const driverPos = driverMarker.getPosition();
-            const clientPos = clientMarker.getPosition();
-            
-            document.getElementById('driver-location-text').textContent = `Ubicación: ${driverPos.lat().toFixed(4)}, ${driverPos.lng().toFixed(4)}`;
-            document.getElementById('client-location-text').textContent = `Ubicación: ${clientPos.lat().toFixed(4)}, ${clientPos.lng().toFixed(4)}`;
-
-            // Reverse geocoding para obtener direcciones
-            geocodeLatLng(driverPos, 'driver-note', geocodeId);
-            geocodeLatLng(clientPos, 'client-note', geocodeId);
-        }
-
-        async function geocodeLatLng(latlng, elementId, currentGeocodeId) {
-            const element = document.getElementById(elementId);
-            element.textContent = "Obteniendo dirección...";
-
-            try {
-                const response = await geocoder.geocode({ 'location': latlng });
-                if (response.results[0] && geocodeId === currentGeocodeId) {
-                    element.textContent = response.results[0].formatted_address;
-                } else if (geocodeId === currentGeocodeId) {
-                    element.textContent = "Dirección no encontrada";
-                }
-            } catch (e) {
-                console.error("Error en geocodificación inversa: ", e);
-                if (geocodeId === currentGeocodeId) {
-                    element.textContent = "Error al obtener la dirección";
-                }
-            }
-        }
-
-        function calculateAndDisplayRoute() {
-            const start = driverMarker.getPosition();
-            const end = clientMarker.getPosition();
-
-            if (!start || !end) {
-                console.error("Los marcadores no están definidos.");
-                return;
-            }
-
-            directionsService.route({
-                origin: start,
-                destination: end,
-                travelMode: google.maps.TravelMode.DRIVING
-            }, (response, status) => {
-                if (status === 'OK') {
-                    directionsRenderer.setDirections(response);
-                    showToast('Ruta calculada correctamente.', 'success');
-                } else {
-                    console.error('La solicitud de dirección falló debido a ' + status);
-                    showToast('Error al calcular la ruta.', 'error');
-                }
-            });
-        }
-        
-        async function fetchAndRenderClientMarkers() {
-            if (!userLoggedIn || !currentUserId) return;
-            
-            // Limpiar marcadores antiguos
-            clientMarkers.forEach(marker => marker.setMap(null));
-            clientMarkers = [];
-            
-            // Obtener ubicaciones de clientes de la base de datos
-            // Este es un ejemplo. En una app real se usarían las ubicaciones guardadas.
-            const dummyLocations = [
-                { lat: 4.6097 + 0.05, lng: -74.0817 + 0.05, name: 'Cliente A' },
-                { lat: 4.6097 - 0.03, lng: -74.0817 + 0.02, name: 'Cliente B' },
-                { lat: 4.6097 + 0.01, lng: -74.0817 - 0.04, name: 'Cliente C' },
-            ];
-            
-            dummyLocations.forEach(loc => {
-                const marker = new google.maps.Marker({
-                    position: loc,
-                    map: map,
-                    title: loc.name,
-                    icon: {
-                        url: "https://maps.google.com/mapfiles/kml/paddle/blue-square.png",
-                        scaledSize: new google.maps.Size(40, 40)
-                    }
-                });
-                clientMarkers.push(marker);
-            });
-        }
-        
-        // ... Código de heatmap y demás funciones del mapa ...
-        function toggleHeatmap() {
-            heatmapEnabled = !heatmapEnabled;
-            if (heatmapEnabled) {
-                const dispatchLocations = dispatchesData.map(d => new google.maps.LatLng(d.location.latitude, d.location.longitude));
-                heatmap = new google.maps.visualization.HeatmapLayer({
-                    data: dispatchLocations,
-                    map: map
-                });
-                toggleHeatmapBtn.classList.replace('bg-yellow-500', 'bg-red-500');
-                toggleHeatmapBtn.textContent = 'Ocultar Mapa de Calor';
-            } else {
-                if (heatmap) {
-                    heatmap.setMap(null);
-                }
-                toggleHeatmapBtn.classList.replace('bg-red-500', 'bg-yellow-500');
-                toggleHeatmapBtn.textContent = 'Mostrar Mapa de Calor';
-            }
-        }
-        
-        async function saveDispatchFromMap() {
-            if (!userLoggedIn || !currentUserId) return;
-            
-            const driverPos = driverMarker.getPosition();
-            const clientPos = clientMarker.getPosition();
-            
-            const driverAddressPromise = new Promise((resolve) => {
-                geocoder.geocode({ 'location': driverPos }, (results, status) => {
-                    resolve(status === 'OK' && results[0] ? results[0].formatted_address : 'Dirección del Conductor');
-                });
-            });
-            const clientAddressPromise = new Promise((resolve) => {
-                geocoder.geocode({ 'location': clientPos }, (results, status) => {
-                    resolve(status === 'OK' && results[0] ? results[0].formatted_address : 'Dirección del Cliente');
-                });
-            });
-
-            const [driverAddress, clientAddress] = await Promise.all([driverAddressPromise, clientAddressPromise]);
-
-            const dispatchData = {
-                driver: driverAddress,
-                client: clientAddress,
-                date: new Date().toISOString().split('T')[0],
-                cost: Math.floor(Math.random() * 50) + 10,
-                driverId: currentUserId,
-                driverLocation: {
-                    latitude: driverPos.lat(),
-                    longitude: driverPos.lng()
-                },
-                clientLocation: {
-                    latitude: clientPos.lat(),
-                    longitude: clientPos.lng()
-                }
-            };
-
-            try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/dispatches`), dispatchData);
-                showToast('Despacho desde el mapa guardado correctamente.', 'success');
-            } catch (e) {
-                console.error("Error al guardar el despacho desde el mapa: ", e);
-                showToast('Error al guardar el despacho desde el mapa.', 'error');
-            }
-        }
-
-
-        // =======================================================
-        // LÓGICA DE GRÁFICOS (CHART.JS)
-        // =======================================================
-        
-        function renderDriverChart(data) {
-            // ... Lógica para renderizar el gráfico de conductores ...
-            if (driverChart) {
-                driverChart.destroy();
-            }
-            
-            const driverData = {};
-            data.forEach(d => {
-                driverData[d.driver] = (driverData[d.driver] || 0) + d.cost;
-            });
-            
-            const labels = Object.keys(driverData);
-            const values = Object.values(driverData);
-            
-            const ctx = document.getElementById('driver-chart').getContext('2d');
-            driverChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Costo Total por Conductor',
-                        data: values,
-                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                        borderColor: 'rgba(59, 130, 246, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-        
-        function renderLineChart(data) {
-            // ... Lógica para renderizar el gráfico de línea ...
-            if (costTrendChart) {
-                costTrendChart.destroy();
-            }
-            
-            data.sort((a, b) => new Date(a.date) - new Date(b.date));
-            const dates = data.map(d => d.date);
-            const costs = data.map(d => d.cost);
-            
-            const ctx = document.getElementById('cost-trend-chart').getContext('2d');
-            costTrendChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dates,
-                    datasets: [{
-                        label: 'Costo de Despachos',
-                        data: costs,
-                        fill: false,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-        
-        // =======================================================
-        // LÓGICA DE UTILIDADES
-        // =======================================================
-        
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('realtime-notification');
-            toast.textContent = message;
-            toast.style.backgroundColor = type === 'success' ? '#4CAF50' : '#f44336';
-            toast.classList.remove('hidden');
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.classList.add('hidden'), 500);
-            }, 3000);
-        }
-        
-        function toggleModal(id, show) {
-            const modal = document.getElementById(id);
-            if (show) {
-                modal.classList.remove('hidden');
-                setTimeout(() => modal.classList.add('active'), 10);
-            } else {
-                modal.classList.remove('active');
-                setTimeout(() => modal.classList.add('hidden'), 300);
-            }
-        }
-
-
-        // =======================================================
-        // GESTIÓN DE EVENTOS
-        // =======================================================
-        showMapViewBtn.addEventListener('click', () => showView('map'));
-        showDashboardViewBtn.addEventListener('click', () => showView('dashboard'));
-        toggleFormBtn.addEventListener('click', () => {
-            formTitle.textContent = "Añadir Nuevo Despacho";
-            dispatchForm.reset();
-            document.getElementById('dispatch-id').value = '';
-            toggleModal('dispatch-modal-overlay', true);
-        });
-        closeFormBtn.addEventListener('click', () => toggleModal('dispatch-modal-overlay', false));
-        dispatchForm.addEventListener('submit', saveDispatch);
-        startDateInput.addEventListener('change', filterAndRenderDashboard);
-        endDateInput.addEventListener('change', filterAndRenderDashboard);
-        searchInput.addEventListener('input', filterAndRenderDashboard);
-        toggleHeatmapBtn.addEventListener('click', toggleHeatmap);
-        showRouteBtn.addEventListener('click', calculateAndDisplayRoute);
-        saveDispatchMapBtn.addEventListener('click', saveDispatchFromMap);
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.initMap) {
-                window.initMap();
-            }
-            // Aseguramos que la vista del dashboard se muestre correctamente al cargar
-            showView('map');
-        });
-
-        // =======================================================
-        // GESTIÓN DE AUTENTICACIÓN
-        // =======================================================
-        
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userLoggedIn = true;
-                currentUserId = user.uid;
-                currentUserEmail = user.email;
-                console.log("Usuario autenticado:", currentUserId);
-                
-                // Mover el contenedor de la aplicación al cuerpo principal
-                document.body.append(appContainer);
-                appContainer.classList.remove('hidden');
-                
-                authModalOverlay.classList.add('hidden');
-                mainContent.classList.remove('hidden');
-                
-                userEmailInfo.textContent = `Usuario: ${currentUserEmail}`;
-                userEmailInfo.classList.remove('hidden');
-
-                // Iniciar listener de Firestore para la colección pública de dispatches
-                const publicDispatchesRef = collection(db, `artifacts/${appId}/public/data/dispatches`);
-                unsubscribeFromFirestore = onSnapshot(publicDispatchesRef, (snapshot) => {
-                    const changes = snapshot.docChanges();
-                    const updatedDispatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    dispatchesData = updatedDispatches;
-                    filterAndRenderDashboard();
-
-                    // Notificaciones en tiempo real
-                    changes.forEach(change => {
-                        const dispatchData = change.doc.data();
-                        if (change.type === 'added') {
-                            showToast(`Nuevo despacho para ${dispatchData.client}`, 'success');
-                        } else if (change.type === 'modified') {
-                            showToast(`Despacho para ${dispatchData.client} actualizado`, 'info');
-                        } else if (change.type === 'removed') {
-                            showToast(`Despacho de ${dispatchData.client} eliminado`, 'error');
-                        }
-                    });
-                });
-                
-            } else {
-                userLoggedIn = false;
-                currentUserId = null;
-                currentUserEmail = null;
-                console.log("Usuario no autenticado.");
-                
-                if (unsubscribeFromFirestore) {
-                    unsubscribeFromFirestore();
-                    unsubscribeFromFirestore = null;
-                }
-                
-                mainContent.classList.add('hidden');
-                authModalOverlay.classList.remove('hidden');
-                userEmailInfo.classList.add('hidden');
-                appContainer.classList.add('hidden');
-
-                // Intentar iniciar sesión con un token anónimo
-                try {
-                    await signInAnonymously(auth);
-                } catch (error) {
-                    console.error("Error al iniciar sesión anónimamente:", error);
-                }
-            }
-        });
-        
-        authForm.addEventListener('submit', async (e) => {
+        document.querySelector('#login-form form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const email = authEmailInput.value;
-            const password = authPasswordInput.value;
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (error) {
-                console.error("Error al iniciar sesión:", error);
-                authErrorMessage.textContent = error.message;
-                authErrorMessage.classList.remove('hidden');
-            }
-        });
-        
-        document.getElementById('register-btn').addEventListener('click', async (e) => {
-            e.preventDefault();
-            const email = authEmailInput.value;
-            const password = authPasswordInput.value;
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-            } catch (error) {
-                console.error("Error al registrarse:", error);
-                authErrorMessage.textContent = error.message;
-                authErrorMessage.classList.remove('hidden');
+            // Simular un intento de inicio de sesión
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (email === 'admin@taxia.com' && password === 'password123') {
+                loggedIn = true;
+                updateUI();
+                errorMessage.textContent = '';
+            } else {
+                errorMessage.textContent = 'Error: Correo o contraseña incorrectos.';
             }
         });
 
-        logoutBtn.addEventListener('click', async () => {
-            try {
-                await signOut(auth);
-                console.log("Sesión cerrada.");
-            } catch (error) {
-                console.error("Error al cerrar sesión:", error);
-            }
+        cerrarSesionBtn.addEventListener('click', () => {
+            loggedIn = false;
+            updateUI();
         });
+
+        // Inicializar la UI al cargar la página
+        updateUI();
     </script>
 </body>
 </html>

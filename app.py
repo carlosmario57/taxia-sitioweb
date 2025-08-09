@@ -51,6 +51,9 @@ CORS(app)
 
 # La ruta a la clave de servicio ahora se obtiene de una variable de entorno.
 # Esto es una práctica de seguridad estándar.
+# NOTA: Para que esto funcione, debes tener un archivo JSON con tu clave de servicio
+# en algún lugar y haber configurado la variable de entorno:
+# export FIREBASE_SERVICE_ACCOUNT_KEY_PATH="/ruta/a/tu/archivo/serviceAccountKey.json"
 SERVICE_ACCOUNT_KEY_PATH = os.environ.get('FIREBASE_SERVICE_ACCOUNT_KEY_PATH')
 
 # Inicialización de Firebase Admin SDK
@@ -59,30 +62,21 @@ SERVICE_ACCOUNT_KEY_PATH = os.environ.get('FIREBASE_SERVICE_ACCOUNT_KEY_PATH')
 if not firebase_admin._apps:
     try:
         if not SERVICE_ACCOUNT_KEY_PATH or not os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
-            raise FileNotFoundError(
-                "La ruta a la clave de servicio no está definida o el archivo no existe. "
-                "Por favor, configura la variable de entorno 'FIREBASE_SERVICE_ACCOUNT_KEY_PATH'."
-            )
-        cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
-        firebase_admin.initialize_app(cred)
-        print("✅ Firebase Admin SDK inicializado exitosamente.")
+            # En lugar de solo fallar, devolvemos un mensaje más claro.
+            print("❌ ERROR FATAL: La variable de entorno 'FIREBASE_SERVICE_ACCOUNT_KEY_PATH' no está configurada o el archivo no existe.")
+            db = None
+        else:
+            cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase Admin SDK inicializado exitosamente.")
+            db = firestore.client()
+            print("✅ Firestore client inicializado.")
     except Exception as e:
-        print(f"❌ ERROR FATAL al inicializar Firebase Admin SDK: {e}")
-        # Asignar db a None es una buena práctica si la inicialización falla.
-        db = None
-
-# Inicialización del cliente de Firestore
-# Se asegura que 'db' solo se cree si Firebase fue inicializado correctamente.
-if 'firebase_admin' in locals() and firebase_admin._apps:
-    try:
-        db = firestore.client()
-        print("✅ Firestore client inicializado.")
-    except Exception as e:
-        print(f"❌ ERROR al inicializar Firestore client: {e}")
+        print(f"❌ ERROR FATAL al inicializar Firebase Admin SDK o Firestore: {e}")
         db = None
 else:
-    db = None
-    print("❌ Firestore client no pudo ser inicializado. Las operaciones de base de datos fallarán.")
+    db = firestore.client() # Re-utilizar el cliente si ya está inicializado.
+    print("✅ Firestore client ya estaba inicializado.")
 
 # =================================================================================================
 # --- Constantes y Funciones de Utilidad ---

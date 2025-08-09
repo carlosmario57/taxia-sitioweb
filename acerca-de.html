@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acerca de Nosotros</title>
+    <!-- Incluimos Tailwind CSS para el mismo estilo que tu app -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+    </style>
+</head>
+<body class="p-6 md:p-10 flex flex-col items-center">
+
+    <!-- CABECERA: Adaptada de la estructura de tu app principal -->
+    <header class="bg-white rounded-xl shadow-lg p-6 md:p-8 w-full max-w-4xl mx-auto mb-8 flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+            <h1 class="text-3xl font-bold text-gray-800">Taxia</h1>
+            <!-- Barra de navegación para moverte entre páginas -->
+            <nav>
+                <ul class="flex space-x-4">
+                    <li><a href="index.html" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Inicio</a></li>
+                    <li><a href="acerca-de.html" class="text-blue-600 font-bold transition-colors">Acerca de Nosotros</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL: Información sobre la empresa -->
+    <main class="w-full max-w-4xl mx-auto">
+        <section class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Nuestra Historia</h2>
+            <p class="text-gray-700 leading-relaxed mb-4">Taxia es una empresa dedicada a proporcionar soluciones de transporte seguras y eficientes. Fundada con la visión de mejorar la movilidad urbana, nos enfocamos en combinar tecnología de punta con un servicio al cliente excepcional.</p>
+            <p class="text-gray-700 leading-relaxed">Nuestro equipo de conductores profesionales y nuestra plataforma de gestión de despachos están diseñados para garantizar puntualidad, comodidad y total transparencia en cada viaje. Creemos firmemente que la tecnología puede hacer que cada desplazamiento sea una experiencia más fluida y placentera para todos.</p>
+        </section>
+
+        <section class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Nuestra Misión y Visión</h2>
+            <p class="text-gray-700 leading-relaxed mb-4">**Misión:** Ofrecer un servicio de transporte confiable y de alta calidad, utilizando tecnología innovadora para optimizar los despachos y garantizar la satisfacción de nuestros clientes y conductores.</p>
+            <p class="text-gray-700 leading-relaxed">**Visión:** Ser el líder en soluciones de transporte, reconocido por nuestra eficiencia, seguridad y el impacto positivo que generamos en las comunidades donde operamos.</p>
+        </section>
+    </main>
+</body>
+</html>

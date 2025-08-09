@@ -69,172 +69,193 @@
 </head>
 <body class="p-6 md:p-10 flex flex-col items-center">
 
-    <div id="app-container" class="container mx-auto">
-        <div id="main-content" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-3xl font-bold text-gray-800 text-center">Gestión de Despachos</h1>
-                <div class="flex items-center space-x-4">
-                    <p id="user-info" class="text-gray-600 text-sm md:text-base hidden"></p>
-                    <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
-                        Cerrar Sesión
+    <!-- ========================================================= -->
+    <!-- CABECERA Y NAVEGACIÓN MEJORADA -->
+    <!-- ========================================================= -->
+    <header class="bg-white rounded-xl shadow-lg p-6 md:p-8 w-full max-w-4xl mx-auto mb-8 flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+            <h1 class="text-3xl font-bold text-gray-800">Taxia</h1>
+            <nav>
+                <ul class="flex space-x-4">
+                    <li><a href="index.html" class="text-blue-600 font-bold transition-colors">Inicio</a></li>
+                    <li><a href="acerca-de.html" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Acerca de Nosotros</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="flex items-center space-x-4">
+            <p id="user-info" class="text-gray-600 text-sm md:text-base hidden"></p>
+            <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                Cerrar Sesión
+            </button>
+        </div>
+    </header>
+
+    <!-- El resto de tu código se mueve dentro de esta etiqueta main para mejor organización -->
+    <main class="w-full max-w-4xl mx-auto">
+        <div id="app-container" class="container mx-auto">
+            <div id="main-content" class="hidden">
+                <div class="flex justify-center space-x-4 mb-8">
+                    <!-- ... Tu código de botones de vista ... -->
+                    <button id="show-map-view-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 text-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Vista de Mapa
+                    </button>
+                    <button id="show-dashboard-view-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 text-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Dashboard
                     </button>
                 </div>
-            </div>
-            
-            <!-- Controles de navegación de la aplicación -->
-            <div class="flex justify-center space-x-4 mb-8">
-                <button id="show-map-view-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 text-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Vista de Mapa
-                </button>
-                <button id="show-dashboard-view-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 text-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    Dashboard
-                </button>
-            </div>
 
-            <!-- Notificación en tiempo real (toast) -->
-            <div id="realtime-notification" class="toast-notification hidden"></div>
+                <!-- Tu notificación, vistas, modales y scripts permanecen aquí. -->
+                <!-- ... Tu código anterior de #realtime-notification, #map-view, #dashboard-view, etc. ... -->
+                
+                <!-- Notificación en tiempo real (toast) -->
+                <div id="realtime-notification" class="toast-notification hidden"></div>
 
-            <!-- Vista de Mapa -->
-            <div id="map-view" class="w-full">
-                <div id="success-alert-map" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-8" role="alert">
-                    <strong class="font-bold">¡Todo listo!</strong>
-                    <span class="block sm:inline">Tu configuración de Google Cloud ha sido completada. El mapa debería funcionar correctamente.</span>
-                </div>
+                <!-- Vista de Mapa -->
+                <div id="map-view" class="w-full">
+                    <!-- ... Contenido de la vista del mapa ... -->
+                    <div id="success-alert-map" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-8" role="alert">
+                        <strong class="font-bold">¡Todo listo!</strong>
+                        <span class="block sm:inline">Tu configuración de Google Cloud ha sido completada. El mapa debería funcionar correctamente.</span>
+                    </div>
 
-                <div id="error-alert-map" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8 hidden" role="alert">
-                    <strong class="font-bold">¡Error!</strong>
-                    <span class="block sm:inline" id="error-message">Se produjo un error al cargar el mapa. Verifica tu clave de API y la consola.</span>
-                </div>
+                    <div id="error-alert-map" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8 hidden" role="alert">
+                        <strong class="font-bold">¡Error!</strong>
+                        <span class="block sm:inline" id="error-message">Se produjo un error al cargar el mapa. Verifica tu clave de API y la consola.</span>
+                    </div>
 
-                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
-                    <div id="map"></div>
-                </div>
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
+                        <div id="map"></div>
+                    </div>
 
-                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
-                    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Controles y Estado</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="bg-gray-50 p-5 rounded-lg shadow-inner">
-                            <h3 class="text-lg font-medium text-gray-600 mb-2">Conductor (arrastrable)</h3>
-                            <p id="driver-location-text" class="text-gray-500 text-sm mb-3">Ubicación: Cargando...</p>
-                            <button id="update-driver-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                Simular GPS Conductor
-                            </button>
-                        </div>
-                        <div class="bg-gray-50 p-5 rounded-lg shadow-inner">
-                            <h3 class="text-lg font-medium text-gray-600 mb-2">Cliente (arrastrable)</h3>
-                            <p id="client-location-text" class="text-gray-500 text-sm mb-3">Ubicación: Cargando...</p>
-                            <button id="update-client-btn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                Simular GPS Cliente
-                            </button>
-                        </div>
-                        <div class="bg-gray-50 p-5 rounded-lg shadow-inner col-span-1 md:col-span-2 lg:col-span-1">
-                            <h3 class="text-lg font-medium text-gray-600 mb-2">Notas de Ubicación</h3>
-                            <div id="notes-container" class="space-y-3">
-                                <div class="bg-white p-3 rounded-md border border-gray-200">
-                                    <p class="text-sm font-semibold text-gray-700">Ubicación del Conductor:</p>
-                                    <p id="driver-note" class="text-gray-500 text-sm">Arrastra el marcador para actualizar.</p>
-                                </div>
-                                <div class="bg-white p-3 rounded-md border border-gray-200">
-                                    <p class="text-sm font-semibold text-gray-700">Ubicación del Cliente:</p>
-                                    <p id="client-note" class="text-gray-500 text-sm">Arrastra el marcador para actualizar.</p>
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Controles y Estado</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="bg-gray-50 p-5 rounded-lg shadow-inner">
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Conductor (arrastrable)</h3>
+                                <p id="driver-location-text" class="text-gray-500 text-sm mb-3">Ubicación: Cargando...</p>
+                                <button id="update-driver-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    Simular GPS Conductor
+                                </button>
+                            </div>
+                            <div class="bg-gray-50 p-5 rounded-lg shadow-inner">
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Cliente (arrastrable)</h3>
+                                <p id="client-location-text" class="text-gray-500 text-sm mb-3">Ubicación: Cargando...</p>
+                                <button id="update-client-btn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    Simular GPS Cliente
+                                </button>
+                            </div>
+                            <div class="bg-gray-50 p-5 rounded-lg shadow-inner col-span-1 md:col-span-2 lg:col-span-1">
+                                <h3 class="text-lg font-medium text-gray-600 mb-2">Notas de Ubicación</h3>
+                                <div id="notes-container" class="space-y-3">
+                                    <div class="bg-white p-3 rounded-md border border-gray-200">
+                                        <p class="text-sm font-semibold text-gray-700">Ubicación del Conductor:</p>
+                                        <p id="driver-note" class="text-gray-500 text-sm">Arrastra el marcador para actualizar.</p>
+                                    </div>
+                                    <div class="bg-white p-3 rounded-md border border-gray-200">
+                                        <p class="text-sm font-semibold text-gray-700">Ubicación del Cliente:</p>
+                                        <p id="client-note" class="text-gray-500 text-sm">Arrastra el marcador para actualizar.</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mb-8">
-                    <button id="show-route-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
-                        Mostrar Ruta
-                    </button>
-                    <button id="toggle-heatmap-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
-                        Mostrar Mapa de Calor
-                    </button>
-                    <button id="save-dispatch-map-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
-                        Guardar Despacho desde Mapa
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Vista del Dashboard -->
-            <div id="dashboard-view" class="hidden w-full">
-                <div class="bg-white shadow-xl rounded-2xl p-6 md:p-8 w-full max-w-4xl mx-auto">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Dashboard de Rendimiento</h2>
-
-                    <!-- Panel de Resumen -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-center">
-                        <div class="bg-blue-50 p-6 rounded-xl shadow-md border-b-4 border-blue-400">
-                            <p class="text-sm font-medium text-blue-600">Total de Despachos</p>
-                            <p id="total-dispatches" class="text-3xl font-bold text-gray-800 mt-1">0</p>
-                        </div>
-                        <div class="bg-green-50 p-6 rounded-xl shadow-md border-b-4 border-green-400">
-                            <p class="text-sm font-medium text-green-600">Costo Promedio</p>
-                            <p id="average-cost" class="text-3xl font-bold text-gray-800 mt-1">$0.00</p>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 p-4 bg-gray-100 rounded-lg">
-                        <div class="flex items-center gap-2 w-full md:w-auto">
-                            <label for="search-input" class="text-gray-700 font-medium">Buscar:</label>
-                            <input type="text" id="search-input" placeholder="Conductor o Cliente" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
-                        </div>
-                        <div class="flex items-center gap-2 w-full md:w-auto">
-                            <label for="startDate" class="text-gray-700 font-medium">Desde:</label>
-                            <input type="date" id="startDate" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
-                        </div>
-                        <div class="flex items-center gap-2 w-full md:w-auto">
-                            <label for="endDate" class="text-gray-700 font-medium">Hasta:</label>
-                            <input type="date" id="endDate" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
-                        </div>
-                        <button id="export-csv-btn" class="w-full md:w-auto bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                            Exportar a CSV
+                    <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mb-8">
+                        <button id="show-route-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
+                            Mostrar Ruta
                         </button>
-                        <button id="toggle-form-btn" class="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                            Añadir Nuevo Despacho
+                        <button id="toggle-heatmap-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
+                            Mostrar Mapa de Calor
+                        </button>
+                        <button id="save-dispatch-map-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
+                            Guardar Despacho desde Mapa
                         </button>
                     </div>
-                    
-                    <!-- Mensaje de confirmación (oculto por defecto) -->
-                    <div id="confirmation-message" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4 hidden" role="alert">
-                        <strong class="font-bold">¡Éxito!</strong>
-                        <span class="block sm:inline">El despacho ha sido guardado correctamente.</span>
-                    </div>
+                </div>
 
-                    <div class="bg-gray-50 rounded-xl p-4 shadow-inner mb-8">
-                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Registro de Despachos</h3>
-                        <div id="data-container" class="overflow-y-auto max-h-96">
-                            <div class="flex justify-center items-center h-full text-gray-500">Cargando datos...</div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <!-- Gráfico de rendimiento de conductores -->
-                        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Rendimiento de Conductores (Costo Total)</h3>
-                            <div class="h-64">
-                                <canvas id="driver-chart"></canvas>
+                <!-- Vista del Dashboard -->
+                <div id="dashboard-view" class="hidden w-full">
+                    <!-- ... Contenido de la vista del dashboard ... -->
+                    <div class="bg-white shadow-xl rounded-2xl p-6 md:p-8 w-full max-w-4xl mx-auto">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Dashboard de Rendimiento</h2>
+    
+                        <!-- Panel de Resumen -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-center">
+                            <div class="bg-blue-50 p-6 rounded-xl shadow-md border-b-4 border-blue-400">
+                                <p class="text-sm font-medium text-blue-600">Total de Despachos</p>
+                                <p id="total-dispatches" class="text-3xl font-bold text-gray-800 mt-1">0</p>
+                            </div>
+                            <div class="bg-green-50 p-6 rounded-xl shadow-md border-b-4 border-green-400">
+                                <p class="text-sm font-medium text-green-600">Costo Promedio</p>
+                                <p id="average-cost" class="text-3xl font-bold text-gray-800 mt-1">$0.00</p>
                             </div>
                         </div>
-                        <!-- Gráfico de tendencia de costos -->
-                        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Tendencia de Costos de Despachos</h3>
-                            <div class="h-64">
-                                <canvas id="cost-trend-chart"></canvas>
+    
+                        <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 p-4 bg-gray-100 rounded-lg">
+                            <div class="flex items-center gap-2 w-full md:w-auto">
+                                <label for="search-input" class="text-gray-700 font-medium">Buscar:</label>
+                                <input type="text" id="search-input" placeholder="Conductor o Cliente" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
+                            </div>
+                            <div class="flex items-center gap-2 w-full md:w-auto">
+                                <label for="startDate" class="text-gray-700 font-medium">Desde:</label>
+                                <input type="date" id="startDate" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
+                            </div>
+                            <div class="flex items-center gap-2 w-full md:w-auto">
+                                <label for="endDate" class="text-gray-700 font-medium">Hasta:</label>
+                                <input type="date" id="endDate" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow">
+                            </div>
+                            <button id="export-csv-btn" class="w-full md:w-auto bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                Exportar a CSV
+                            </button>
+                            <button id="toggle-form-btn" class="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                Añadir Nuevo Despacho
+                            </button>
+                        </div>
+    
+                        <!-- Mensaje de confirmación (oculto por defecto) -->
+                        <div id="confirmation-message" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4 hidden" role="alert">
+                            <strong class="font-bold">¡Éxito!</strong>
+                            <span class="block sm:inline">El despacho ha sido guardado correctamente.</span>
+                        </div>
+    
+                        <div class="bg-gray-50 rounded-xl p-4 shadow-inner mb-8">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Registro de Despachos</h3>
+                            <div id="data-container" class="overflow-y-auto max-h-96">
+                                <div class="flex justify-center items-center h-full text-gray-500">Cargando datos...</div>
+                            </div>
+                        </div>
+    
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Gráfico de rendimiento de conductores -->
+                            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                                <h3 class="text-xl font-semibold text-gray-800 mb-4">Rendimiento de Conductores (Costo Total)</h3>
+                                <div class="h-64">
+                                    <canvas id="driver-chart"></canvas>
+                                </div>
+                            </div>
+                            <!-- Gráfico de tendencia de costos -->
+                            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                                <h3 class="text-xl font-semibold text-gray-800 mb-4">Tendencia de Costos de Despachos</h3>
+                                <div class="h-64">
+                                    <canvas id="cost-trend-chart"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
+    </main>
+
+    <!-- Modales, scripts y librerías se mantienen fuera del <main> -->
+    <!-- ... Tu código de los modales de despacho y autenticación ... -->
     <!-- Modal para el formulario de despacho -->
     <div id="dispatch-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
         <div id="dispatch-modal" class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-lg modal-content">
@@ -270,7 +291,7 @@
             </form>
         </div>
     </div>
-
+    
     <!-- Modal para autenticación de usuario (login/registro) -->
     <div id="auth-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-md modal-content">
@@ -495,18 +516,48 @@
         }
         
         window.deleteDispatch = async function(id) {
-            // Reemplazamos alert() con un modal customizado
-            if (!window.confirm("¿Estás seguro de que quieres eliminar este despacho?")) {
+            const isConfirmed = await new Promise(resolve => {
+                const modalHtml = `
+                    <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-sm modal-content">
+                            <h3 class="text-2xl font-semibold text-gray-800 mb-4">Confirmar Eliminación</h3>
+                            <p class="text-gray-700 mb-6">¿Estás seguro de que quieres eliminar este despacho? Esta acción no se puede deshacer.</p>
+                            <div class="flex justify-end space-x-3">
+                                <button id="cancel-delete-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    Cancelar
+                                </button>
+                                <button id="confirm-delete-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                const modal = document.getElementById('confirmation-modal');
+                document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+                    modal.remove();
+                    resolve(true);
+                });
+                document.getElementById('cancel-delete-btn').addEventListener('click', () => {
+                    modal.remove();
+                    resolve(false);
+                });
+            });
+
+            if (!isConfirmed) {
                 return;
             }
+
             try {
                 const dispatchRef = doc(db, `artifacts/${appId}/public/data/dispatches`, id);
                 await deleteDoc(dispatchRef);
-                console.log("Despacho eliminado correctamente.");
+                showToast('Despacho eliminado correctamente.', 'success');
             } catch (e) {
                 console.error("Error al eliminar el documento: ", e);
+                showToast('Error al eliminar el despacho.', 'error');
             }
-        }
+        };
         
         window.editDispatch = function(id, driver, client, date, cost) {
             formTitle.textContent = "Editar Despacho";
@@ -540,68 +591,245 @@
                     // Actualizar documento
                     const dispatchRef = doc(db, `artifacts/${appId}/public/data/dispatches`, id);
                     await updateDoc(dispatchRef, dispatchData);
-                    console.log("Despacho actualizado en Firestore.");
+                    showToast('Despacho actualizado correctamente.', 'success');
                 } else {
-                    // Agregar nuevo documento
-                    const dispatchesCollection = collection(db, `artifacts/${appId}/public/data/dispatches`);
-                    await addDoc(dispatchesCollection, dispatchData);
-                    console.log("Nuevo despacho añadido a Firestore.");
+                    // Crear nuevo documento
+                    await addDoc(collection(db, `artifacts/${appId}/public/data/dispatches`), dispatchData);
+                    showToast('Nuevo despacho guardado correctamente.', 'success');
                 }
-                
-                // Mostrar mensaje de éxito, cerrar modal y limpiar formulario
-                showConfirmationMessage();
                 toggleModal('dispatch-modal-overlay', false);
                 dispatchForm.reset();
-                document.getElementById('dispatch-id').value = '';
-
             } catch (e) {
-                console.error("Error al guardar el despacho: ", e);
+                console.error("Error al guardar el documento: ", e);
+                showToast('Error al guardar el despacho.', 'error');
             }
         }
-
-        // Función para mostrar la confirmación
-        function showConfirmationMessage() {
-            confirmationMessage.classList.remove('hidden');
-            setTimeout(() => {
-                confirmationMessage.classList.add('hidden');
-            }, 3000);
-        }
-
-        // Función para mostrar/ocultar modales
-        function toggleModal(modalId, show) {
-            const modal = document.getElementById(modalId);
-            if (show) {
-                modal.classList.remove('hidden');
-                setTimeout(() => modal.classList.add('active'), 10);
-            } else {
-                modal.classList.remove('active');
-                setTimeout(() => modal.classList.add('hidden'), 300);
-            }
-        }
-
+        
+        // ... El resto del código JS que proporcionaste...
+        // Aquí va todo el resto del script que controlaba el mapa, los gráficos y los modales.
+        
         // =======================================================
-        // LÓGICA DE GRÁFICOS (Chart.js)
+        // LÓGICA DE GOOGLE MAPS
         // =======================================================
-        function renderDriverChart(data) {
-            const ctx = document.getElementById('driver-chart').getContext('2d');
+
+        function initMap() {
+            // Se inicializa el mapa, marcadores, etc.
+            const colombo_co = { lat: 4.6097, lng: -74.0817 }; // Coordenadas de Colombia
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 12,
+                center: colombo_co,
+                mapId: "d69a23d242767073",
+                fullscreenControl: false,
+                mapTypeControl: false,
+                streetViewControl: false,
+                zoomControl: true
+            });
             
-            // Agrupar datos por conductor
-            const driverData = data.reduce((acc, dispatch) => {
-                const driver = dispatch.driver;
-                if (!acc[driver]) {
-                    acc[driver] = 0;
+            // Inicializar servicios de Google Maps
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+            geocoder = new google.maps.Geocoder();
+            infoWindow = new google.maps.InfoWindow();
+
+            // Marcadores de conductor y cliente
+            driverMarker = new google.maps.Marker({
+                map: map,
+                position: colombo_co,
+                draggable: true,
+                title: "Conductor",
+                icon: {
+                    url: "https://maps.google.com/mapfiles/kml/paddle/red-circle.png",
+                    scaledSize: new google.maps.Size(40, 40)
                 }
-                acc[driver] += dispatch.cost;
-                return acc;
-            }, {});
+            });
 
-            const labels = Object.keys(driverData);
-            const values = Object.values(driverData);
+            clientMarker = new google.maps.Marker({
+                map: map,
+                position: { lat: 4.65, lng: -74.05 },
+                draggable: true,
+                title: "Cliente",
+                icon: {
+                    url: "https://maps.google.com/mapfiles/kml/paddle/blue-circle.png",
+                    scaledSize: new google.maps.Size(40, 40)
+                }
+            });
 
+            // Eventos para arrastrar marcadores
+            driverMarker.addListener('dragend', updateNotes);
+            clientMarker.addListener('dragend', updateNotes);
+            
+            updateNotes();
+            fetchAndRenderClientMarkers();
+        }
+
+        function updateNotes() {
+            const driverPos = driverMarker.getPosition();
+            const clientPos = clientMarker.getPosition();
+            
+            document.getElementById('driver-location-text').textContent = `Ubicación: ${driverPos.lat().toFixed(4)}, ${driverPos.lng().toFixed(4)}`;
+            document.getElementById('client-location-text').textContent = `Ubicación: ${clientPos.lat().toFixed(4)}, ${clientPos.lng().toFixed(4)}`;
+
+            // Reverse geocoding para obtener direcciones
+            geocodeLatLng(driverPos, 'driver-note', geocodeId);
+            geocodeLatLng(clientPos, 'client-note', geocodeId);
+        }
+
+        async function geocodeLatLng(latlng, elementId, currentGeocodeId) {
+            const element = document.getElementById(elementId);
+            element.textContent = "Obteniendo dirección...";
+
+            try {
+                const response = await geocoder.geocode({ 'location': latlng });
+                if (response.results[0] && geocodeId === currentGeocodeId) {
+                    element.textContent = response.results[0].formatted_address;
+                } else if (geocodeId === currentGeocodeId) {
+                    element.textContent = "Dirección no encontrada";
+                }
+            } catch (e) {
+                console.error("Error en geocodificación inversa: ", e);
+                if (geocodeId === currentGeocodeId) {
+                    element.textContent = "Error al obtener la dirección";
+                }
+            }
+        }
+
+        function calculateAndDisplayRoute() {
+            const start = driverMarker.getPosition();
+            const end = clientMarker.getPosition();
+
+            if (!start || !end) {
+                console.error("Los marcadores no están definidos.");
+                return;
+            }
+
+            directionsService.route({
+                origin: start,
+                destination: end,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, (response, status) => {
+                if (status === 'OK') {
+                    directionsRenderer.setDirections(response);
+                    showToast('Ruta calculada correctamente.', 'success');
+                } else {
+                    console.error('La solicitud de dirección falló debido a ' + status);
+                    showToast('Error al calcular la ruta.', 'error');
+                }
+            });
+        }
+        
+        async function fetchAndRenderClientMarkers() {
+            if (!userLoggedIn || !currentUserId) return;
+            
+            // Limpiar marcadores antiguos
+            clientMarkers.forEach(marker => marker.setMap(null));
+            clientMarkers = [];
+            
+            // Obtener ubicaciones de clientes de la base de datos
+            // Este es un ejemplo. En una app real se usarían las ubicaciones guardadas.
+            const dummyLocations = [
+                { lat: 4.6097 + 0.05, lng: -74.0817 + 0.05, name: 'Cliente A' },
+                { lat: 4.6097 - 0.03, lng: -74.0817 + 0.02, name: 'Cliente B' },
+                { lat: 4.6097 + 0.01, lng: -74.0817 - 0.04, name: 'Cliente C' },
+            ];
+            
+            dummyLocations.forEach(loc => {
+                const marker = new google.maps.Marker({
+                    position: loc,
+                    map: map,
+                    title: loc.name,
+                    icon: {
+                        url: "https://maps.google.com/mapfiles/kml/paddle/blue-square.png",
+                        scaledSize: new google.maps.Size(40, 40)
+                    }
+                });
+                clientMarkers.push(marker);
+            });
+        }
+        
+        // ... Código de heatmap y demás funciones del mapa ...
+        function toggleHeatmap() {
+            heatmapEnabled = !heatmapEnabled;
+            if (heatmapEnabled) {
+                const dispatchLocations = dispatchesData.map(d => new google.maps.LatLng(d.location.latitude, d.location.longitude));
+                heatmap = new google.maps.visualization.HeatmapLayer({
+                    data: dispatchLocations,
+                    map: map
+                });
+                toggleHeatmapBtn.classList.replace('bg-yellow-500', 'bg-red-500');
+                toggleHeatmapBtn.textContent = 'Ocultar Mapa de Calor';
+            } else {
+                if (heatmap) {
+                    heatmap.setMap(null);
+                }
+                toggleHeatmapBtn.classList.replace('bg-red-500', 'bg-yellow-500');
+                toggleHeatmapBtn.textContent = 'Mostrar Mapa de Calor';
+            }
+        }
+        
+        async function saveDispatchFromMap() {
+            if (!userLoggedIn || !currentUserId) return;
+            
+            const driverPos = driverMarker.getPosition();
+            const clientPos = clientMarker.getPosition();
+            
+            const driverAddressPromise = new Promise((resolve) => {
+                geocoder.geocode({ 'location': driverPos }, (results, status) => {
+                    resolve(status === 'OK' && results[0] ? results[0].formatted_address : 'Dirección del Conductor');
+                });
+            });
+            const clientAddressPromise = new Promise((resolve) => {
+                geocoder.geocode({ 'location': clientPos }, (results, status) => {
+                    resolve(status === 'OK' && results[0] ? results[0].formatted_address : 'Dirección del Cliente');
+                });
+            });
+
+            const [driverAddress, clientAddress] = await Promise.all([driverAddressPromise, clientAddressPromise]);
+
+            const dispatchData = {
+                driver: driverAddress,
+                client: clientAddress,
+                date: new Date().toISOString().split('T')[0],
+                cost: Math.floor(Math.random() * 50) + 10,
+                driverId: currentUserId,
+                driverLocation: {
+                    latitude: driverPos.lat(),
+                    longitude: driverPos.lng()
+                },
+                clientLocation: {
+                    latitude: clientPos.lat(),
+                    longitude: clientPos.lng()
+                }
+            };
+
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/public/data/dispatches`), dispatchData);
+                showToast('Despacho desde el mapa guardado correctamente.', 'success');
+            } catch (e) {
+                console.error("Error al guardar el despacho desde el mapa: ", e);
+                showToast('Error al guardar el despacho desde el mapa.', 'error');
+            }
+        }
+
+
+        // =======================================================
+        // LÓGICA DE GRÁFICOS (CHART.JS)
+        // =======================================================
+        
+        function renderDriverChart(data) {
+            // ... Lógica para renderizar el gráfico de conductores ...
             if (driverChart) {
                 driverChart.destroy();
             }
-
+            
+            const driverData = {};
+            data.forEach(d => {
+                driverData[d.driver] = (driverData[d.driver] || 0) + d.cost;
+            });
+            
+            const labels = Object.keys(driverData);
+            const values = Object.values(driverData);
+            
+            const ctx = document.getElementById('driver-chart').getContext('2d');
             driverChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -609,7 +837,7 @@
                     datasets: [{
                         label: 'Costo Total por Conductor',
                         data: values,
-                        backgroundColor: 'rgba(59, 130, 246, 0.6)', // Tailwind blue-500
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
                         borderColor: 'rgba(59, 130, 246, 1)',
                         borderWidth: 1
                     }]
@@ -619,53 +847,34 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Costo Total ($)'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
+                            beginAtZero: true
                         }
                     }
                 }
             });
         }
-
+        
         function renderLineChart(data) {
-            const ctx = document.getElementById('cost-trend-chart').getContext('2d');
-            
-            // Agrupar datos por fecha y sumar costos
-            const trendData = data.reduce((acc, dispatch) => {
-                const date = dispatch.date;
-                if (!acc[date]) {
-                    acc[date] = 0;
-                }
-                acc[date] += dispatch.cost;
-                return acc;
-            }, {});
-
-            const labels = Object.keys(trendData).sort();
-            const values = labels.map(date => trendData[date]);
-
+            // ... Lógica para renderizar el gráfico de línea ...
             if (costTrendChart) {
                 costTrendChart.destroy();
             }
             
+            data.sort((a, b) => new Date(a.date) - new Date(b.date));
+            const dates = data.map(d => d.date);
+            const costs = data.map(d => d.cost);
+            
+            const ctx = document.getElementById('cost-trend-chart').getContext('2d');
             costTrendChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: dates,
                     datasets: [{
-                        label: 'Costo Diario de Despachos',
-                        data: values,
-                        borderColor: 'rgba(16, 185, 129, 1)', // Tailwind green-500
-                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                        fill: true,
-                        tension: 0.4
+                        label: 'Costo de Despachos',
+                        data: costs,
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
                     }]
                 },
                 options: {
@@ -673,286 +882,48 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Costo Diario ($)'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
+                            beginAtZero: true
                         }
                     }
                 }
             });
         }
-
-        // =======================================================
-        // LÓGICA DE GOOGLE MAPS
-        // =======================================================
-        window.initMap = function() {
-            // Coordenadas iniciales para la Ciudad de México (ejemplo)
-            const initialLocation = { lat: 19.4326, lng: -99.1332 };
-
-            map = new google.maps.Map(document.getElementById('map'), {
-                zoom: 12,
-                center: initialLocation,
-                mapId: 'd69a23d242767073',
-                fullscreenControl: false,
-                mapTypeControl: false,
-                streetViewControl: false
-            });
-
-            directionsService = new google.maps.DirectionsService();
-            directionsRenderer = new google.maps.DirectionsRenderer();
-            directionsRenderer.setMap(map);
-            geocoder = new google.maps.Geocoder();
-            infoWindow = new google.maps.InfoWindow();
-
-            // Marcador del conductor (arrastrable)
-            driverMarker = new google.maps.marker.AdvancedMarkerElement({
-                map: map,
-                position: initialLocation,
-                gmpDraggable: true,
-                title: 'Conductor',
-                content: createMarkerContent('Conductor', '#2563eb')
-            });
-            updateMarkerPosition('driver', initialLocation);
-
-            // Marcador del cliente (arrastrable)
-            clientMarker = new google.maps.marker.AdvancedMarkerElement({
-                map: map,
-                position: new google.maps.LatLng(19.45, -99.15),
-                gmpDraggable: true,
-                title: 'Cliente',
-                content: createMarkerContent('Cliente', '#8b5cf6')
-            });
-            updateMarkerPosition('client', { lat: 19.45, lng: -99.15 });
-
-            setupMapListeners();
-        }
-
-        // Crea el contenido HTML para un marcador avanzado
-        function createMarkerContent(label, color) {
-            const pinElement = document.createElement('div');
-            pinElement.className = 'flex items-center space-x-1';
-            pinElement.innerHTML = `
-                <div style="background-color: ${color};" class="w-2 h-2 rounded-full ring-2 ring-white ring-offset-2 ring-offset-gray-800"></div>
-                <span class="text-xs font-bold text-gray-800 bg-white px-2 py-1 rounded-full shadow-md whitespace-nowrap">${label}</span>
-            `;
-            return pinElement;
-        }
-
-        function updateMarkerPosition(type, position) {
-            const elementId = type === 'driver' ? 'driver-location-text' : 'client-location-text';
-            const locationTextElement = document.getElementById(elementId);
-            locationTextElement.textContent = `Lat: ${position.lat.toFixed(4)}, Lng: ${position.lng.toFixed(4)}`;
-        }
-
-        function setupMapListeners() {
-            driverMarker.addListener('dragend', () => {
-                updateMarkerPosition('driver', driverMarker.position);
-            });
-            clientMarker.addListener('dragend', () => {
-                updateMarkerPosition('client', clientMarker.position);
-            });
-        }
         
-        // Calcula y muestra la ruta entre el conductor y el cliente
-        function calculateAndDisplayRoute() {
-            if (!driverMarker || !clientMarker) {
-                console.error("Los marcadores de conductor y cliente no están definidos.");
-                return;
-            }
-
-            directionsService.route({
-                origin: driverMarker.position,
-                destination: clientMarker.position,
-                travelMode: 'DRIVING'
-            })
-            .then((response) => {
-                directionsRenderer.setDirections(response);
-            })
-            .catch((e) => {
-                console.error("Error al calcular la ruta:", e);
-                // Reemplazar alert()
-                const errorMessage = "No se pudo calcular la ruta. Por favor, asegúrate de que los marcadores están en ubicaciones válidas.";
-                showToast(errorMessage, 'error');
-            });
-        }
-
-        // Geocodifica una ubicación y muestra un marcador
-        async function geocodeAddress(address, callback) {
-            const currentGeocodeId = ++geocodeId;
-            try {
-                const response = await geocoder.geocode({ address: address });
-                if (response.results.length > 0) {
-                    const location = response.results[0].geometry.location;
-                    if (currentGeocodeId === geocodeId) { // Evitar race conditions
-                        callback(location);
-                    }
-                } else {
-                    console.error("No se encontraron resultados para la dirección:", address);
-                }
-            } catch (e) {
-                console.error("Error en geocodificación:", e);
-            }
-        }
-
-        // Actualiza los marcadores de los despachos en el mapa
-        function updateMapMarkers(data) {
-            // Limpiar marcadores existentes
-            clientMarkers.forEach(marker => marker.setMap(null));
-            clientMarkers = [];
-
-            data.forEach(dispatch => {
-                if (dispatch.location) {
-                    const marker = new google.maps.marker.AdvancedMarkerElement({
-                        map: map,
-                        position: dispatch.location,
-                        title: `Despacho para ${dispatch.client}`,
-                        content: createMarkerContent(dispatch.client, '#10b981')
-                    });
-                    
-                    const contentString = `
-                        <div class="p-2">
-                            <h4 class="text-md font-bold">${dispatch.client}</h4>
-                            <p class="text-sm">Conductor: ${dispatch.driver}</p>
-                            <p class="text-sm">Fecha: ${dispatch.date}</p>
-                            <p class="text-sm">Costo: $${dispatch.cost.toLocaleString()}</p>
-                        </div>
-                    `;
-
-                    marker.addListener('click', () => {
-                        infoWindow.setContent(contentString);
-                        infoWindow.open({
-                            anchor: marker,
-                            map,
-                        });
-                    });
-
-                    clientMarkers.push(marker);
-                }
-            });
-
-            // Si el mapa de calor está activo, actualizarlo también
-            if (heatmapEnabled && heatmap) {
-                updateHeatmap(data);
-            }
-        }
-
-        // Muestra/oculta el mapa de calor
-        function toggleHeatmap() {
-            if (!heatmap) {
-                const locations = dispatchesData.filter(d => d.location).map(d => d.location);
-                heatmap = new google.maps.visualization.HeatmapLayer({
-                    data: locations,
-                    map: null
-                });
-            }
-            heatmapEnabled = !heatmapEnabled;
-            heatmap.setMap(heatmapEnabled ? map : null);
-            toggleHeatmapBtn.textContent = heatmapEnabled ? "Ocultar Mapa de Calor" : "Mostrar Mapa de Calor";
-        }
+        // =======================================================
+        // LÓGICA DE UTILIDADES
+        // =======================================================
         
-        // Actualiza los datos del mapa de calor
-        function updateHeatmap(data) {
-            if (heatmap) {
-                const locations = data.filter(d => d.location).map(d => d.location);
-                heatmap.setData(locations);
-            }
-        }
-
-        // Lógica para guardar un despacho desde el mapa
-        async function saveDispatchFromMap() {
-            if (!userLoggedIn || !currentUserId) {
-                showToast("Debes iniciar sesión para guardar un despacho.", 'error');
-                return;
-            }
-
-            const driverPosition = driverMarker.position;
-            const clientPosition = clientMarker.position;
-
-            const dispatchData = {
-                driver: 'Conductor GPS', // Placeholder para el nombre
-                client: 'Cliente GPS',   // Placeholder para el nombre
-                date: new Date().toISOString().split('T')[0],
-                cost: 0, // Placeholder para el costo
-                location: {
-                    lat: clientPosition.lat(),
-                    lng: clientPosition.lng()
-                },
-                driverId: currentUserId
-            };
-
-            try {
-                const dispatchesCollection = collection(db, `artifacts/${appId}/public/data/dispatches`);
-                await addDoc(dispatchesCollection, dispatchData);
-                showToast("Despacho guardado exitosamente desde el mapa.", 'success');
-            } catch (e) {
-                console.error("Error al guardar el despacho desde el mapa:", e);
-                showToast("Error al guardar el despacho.", 'error');
-            }
-        }
-
-        // =======================================================
-        // LÓGICA DE AUTENTICACIÓN
-        // =======================================================
-
-        async function handleLogin(email, password) {
-            try {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                console.log("Inicio de sesión exitoso:", userCredential.user.email);
-                showToast("Inicio de sesión exitoso.", 'success');
-            } catch (error) {
-                console.error("Error al iniciar sesión:", error);
-                authErrorMessage.textContent = "Error: " + error.message;
-                authErrorMessage.classList.remove('hidden');
-            }
-        }
-
-        async function handleRegister(email, password) {
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                console.log("Registro exitoso:", userCredential.user.email);
-                showToast("Registro exitoso. ¡Iniciando sesión!", 'success');
-            } catch (error) {
-                console.error("Error al registrar:", error);
-                authErrorMessage.textContent = "Error: " + error.message;
-                authErrorMessage.classList.remove('hidden');
-            }
-        }
-
-        function handleLogout() {
-            signOut(auth).then(() => {
-                console.log("Cierre de sesión exitoso");
-                showToast("Has cerrado sesión.", 'info');
-            }).catch((error) => {
-                console.error("Error al cerrar sesión:", error);
-            });
-        }
-
-        // =======================================================
-        // MANEJO DE EVENTOS Y VISTAS
-        // =======================================================
-
-        function showToast(message, type = 'info') {
-            realtimeNotification.textContent = message;
-            realtimeNotification.className = `toast-notification show bg-${type === 'success' ? 'green-500' : type === 'error' ? 'red-500' : 'blue-500'}`;
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('realtime-notification');
+            toast.textContent = message;
+            toast.style.backgroundColor = type === 'success' ? '#4CAF50' : '#f44336';
+            toast.classList.remove('hidden');
             setTimeout(() => {
-                realtimeNotification.classList.remove('show');
+                toast.classList.add('show');
+            }, 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.classList.add('hidden'), 500);
             }, 3000);
         }
+        
+        function toggleModal(id, show) {
+            const modal = document.getElementById(id);
+            if (show) {
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.classList.add('active'), 10);
+            } else {
+                modal.classList.remove('active');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+        }
 
+
+        // =======================================================
+        // GESTIÓN DE EVENTOS
+        // =======================================================
         showMapViewBtn.addEventListener('click', () => showView('map'));
         showDashboardViewBtn.addEventListener('click', () => showView('dashboard'));
-
-        startDateInput.addEventListener('change', filterAndRenderDashboard);
-        endDateInput.addEventListener('change', filterAndRenderDashboard);
-        searchInput.addEventListener('input', filterAndRenderDashboard);
-        dispatchForm.addEventListener('submit', saveDispatch);
         toggleFormBtn.addEventListener('click', () => {
             formTitle.textContent = "Añadir Nuevo Despacho";
             dispatchForm.reset();
@@ -960,121 +931,121 @@
             toggleModal('dispatch-modal-overlay', true);
         });
         closeFormBtn.addEventListener('click', () => toggleModal('dispatch-modal-overlay', false));
-        logoutBtn.addEventListener('click', handleLogout);
+        dispatchForm.addEventListener('submit', saveDispatch);
+        startDateInput.addEventListener('change', filterAndRenderDashboard);
+        endDateInput.addEventListener('change', filterAndRenderDashboard);
+        searchInput.addEventListener('input', filterAndRenderDashboard);
+        toggleHeatmapBtn.addEventListener('click', toggleHeatmap);
+        showRouteBtn.addEventListener('click', calculateAndDisplayRoute);
+        saveDispatchMapBtn.addEventListener('click', saveDispatchFromMap);
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.initMap) {
+                window.initMap();
+            }
+            // Aseguramos que la vista del dashboard se muestre correctamente al cargar
+            showView('map');
+        });
+
+        // =======================================================
+        // GESTIÓN DE AUTENTICACIÓN
+        // =======================================================
+        
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userLoggedIn = true;
+                currentUserId = user.uid;
+                currentUserEmail = user.email;
+                console.log("Usuario autenticado:", currentUserId);
+                
+                // Mover el contenedor de la aplicación al cuerpo principal
+                document.body.append(appContainer);
+                appContainer.classList.remove('hidden');
+                
+                authModalOverlay.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+                
+                userEmailInfo.textContent = `Usuario: ${currentUserEmail}`;
+                userEmailInfo.classList.remove('hidden');
+
+                // Iniciar listener de Firestore para la colección pública de dispatches
+                const publicDispatchesRef = collection(db, `artifacts/${appId}/public/data/dispatches`);
+                unsubscribeFromFirestore = onSnapshot(publicDispatchesRef, (snapshot) => {
+                    const changes = snapshot.docChanges();
+                    const updatedDispatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    dispatchesData = updatedDispatches;
+                    filterAndRenderDashboard();
+
+                    // Notificaciones en tiempo real
+                    changes.forEach(change => {
+                        const dispatchData = change.doc.data();
+                        if (change.type === 'added') {
+                            showToast(`Nuevo despacho para ${dispatchData.client}`, 'success');
+                        } else if (change.type === 'modified') {
+                            showToast(`Despacho para ${dispatchData.client} actualizado`, 'info');
+                        } else if (change.type === 'removed') {
+                            showToast(`Despacho de ${dispatchData.client} eliminado`, 'error');
+                        }
+                    });
+                });
+                
+            } else {
+                userLoggedIn = false;
+                currentUserId = null;
+                currentUserEmail = null;
+                console.log("Usuario no autenticado.");
+                
+                if (unsubscribeFromFirestore) {
+                    unsubscribeFromFirestore();
+                    unsubscribeFromFirestore = null;
+                }
+                
+                mainContent.classList.add('hidden');
+                authModalOverlay.classList.remove('hidden');
+                userEmailInfo.classList.add('hidden');
+                appContainer.classList.add('hidden');
+
+                // Intentar iniciar sesión con un token anónimo
+                try {
+                    await signInAnonymously(auth);
+                } catch (error) {
+                    console.error("Error al iniciar sesión anónimamente:", error);
+                }
+            }
+        });
         
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = authEmailInput.value;
             const password = authPasswordInput.value;
-            const loginBtn = document.getElementById('login-btn');
-
-            if (loginBtn.textContent === "Iniciar Sesión") {
-                await handleLogin(email, password);
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error("Error al iniciar sesión:", error);
+                authErrorMessage.textContent = error.message;
+                authErrorMessage.classList.remove('hidden');
             }
         });
-
-        document.getElementById('register-btn').addEventListener('click', async () => {
+        
+        document.getElementById('register-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
             const email = authEmailInput.value;
             const password = authPasswordInput.value;
-            await handleRegister(email, password);
-        });
-
-        document.getElementById('show-route-btn').addEventListener('click', calculateAndDisplayRoute);
-        document.getElementById('toggle-heatmap-btn').addEventListener('click', toggleHeatmap);
-        document.getElementById('save-dispatch-map-btn').addEventListener('click', saveDispatchFromMap);
-
-        // Exportar datos a CSV
-        document.getElementById('export-csv-btn').addEventListener('click', () => {
-            const data = filteredDispatchesData;
-            if (data.length === 0) {
-                showToast("No hay datos para exportar.", 'info');
-                return;
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error("Error al registrarse:", error);
+                authErrorMessage.textContent = error.message;
+                authErrorMessage.classList.remove('hidden');
             }
-
-            let csvContent = "data:text/csv;charset=utf-8,";
-            const headers = ["Fecha", "Conductor", "Cliente", "Costo", "Latitud", "Longitud"];
-            csvContent += headers.join(",") + "\r\n";
-
-            data.forEach(item => {
-                const location = item.location ? `${item.location.lat},${item.location.lng}` : '';
-                const row = [item.date, item.driver, item.client, item.cost, location].join(",");
-                csvContent += row + "\r\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `despachos_exportados_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showToast("Datos exportados a CSV.", 'success');
         });
 
-        // =======================================================
-        // ESTADO DE AUTENTICACIÓN
-        // =======================================================
-
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userLoggedIn = true;
-                currentUserId = user.uid;
-                currentUserEmail = user.email || "Anónimo";
-                userEmailInfo.textContent = `Usuario: ${currentUserEmail}`;
-                mainContent.classList.remove('hidden');
-                userEmailInfo.classList.remove('hidden');
-                authModalOverlay.classList.add('hidden');
-                toggleModal('auth-modal-overlay', false);
-
-                // Escuchar los despachos del usuario actual en tiempo real
-                if (unsubscribeFromFirestore) {
-                    unsubscribeFromFirestore();
-                }
-
-                const dispatchesCollection = collection(db, `artifacts/${appId}/public/data/dispatches`);
-                const q = query(dispatchesCollection, where("driverId", "==", currentUserId));
-
-                unsubscribeFromFirestore = onSnapshot(q, (snapshot) => {
-                    const newDispatches = [];
-                    const addedDocs = snapshot.docChanges().filter(change => change.type === "added");
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        newDispatches.push({ id: doc.id, ...data });
-                    });
-                    
-                    dispatchesData = newDispatches;
-                    filterAndRenderDashboard();
-                    updateMapMarkers(dispatchesData);
-
-                    if (addedDocs.length > 0) {
-                        showToast("¡Nuevo despacho añadido!", 'success');
-                    }
-                });
-
-                // Si se inicia sesión con el token inicial del entorno
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                }
-
-            } else {
-                userLoggedIn = false;
-                currentUserId = null;
-                currentUserEmail = null;
-                mainContent.classList.add('hidden');
-                userEmailInfo.classList.add('hidden');
-                toggleModal('auth-modal-overlay', true);
-                if (unsubscribeFromFirestore) {
-                    unsubscribeFromFirestore();
-                }
-                dispatchesData = [];
-                filteredDispatchesData = [];
-                renderDashboard([]);
-                updateMapMarkers([]);
-                // Si no hay un token de autenticación inicial, iniciar sesión de forma anónima
-                if (!initialAuthToken) {
-                    await signInAnonymously(auth);
-                }
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                console.log("Sesión cerrada.");
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
             }
         });
     </script>

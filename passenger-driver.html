@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pasajero / Conductor App (v9)</title>
+    <title>TAXI A CIMCO</title>
     <!-- Incluir Tailwind CSS para un diseño moderno y responsive -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Incluir Font Awesome para los iconos de redes sociales -->
+    <!-- Incluir Font Awesome para los iconos de redes sociales y otros -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         /* Estilos personalizados para la interfaz */
@@ -14,6 +14,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
+            scroll-behavior: smooth; /* Desplazamiento suave para las anclas */
         }
         .container {
             max-width: 90%;
@@ -29,10 +30,17 @@
             z-index: 1000;
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
-            color: white; /* Asegura que el texto sea blanco */
+            color: white;
         }
         .message-box.show {
             opacity: 1;
+        }
+        /* Estilos para ocultar y mostrar secciones con JavaScript */
+        .page-section {
+            display: none;
+        }
+        .page-section.active {
+            display: block;
         }
     </style>
     <!-- Firebase SDKs - Versión 11 Modular -->
@@ -63,15 +71,20 @@
         window.isAvailable = false;
 
         // --- Funciones para la navegación de la Interfaz ---
-        window.showContactanos = function() {
-            document.getElementById('contactanosApp').classList.remove('hidden');
-            document.getElementById('roleSelection').classList.add('hidden');
-            document.getElementById('passengerApp').classList.add('hidden');
-            document.getElementById('driverApp').classList.add('hidden');
+        window.showSection = function(sectionId) {
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
         }
 
         window.showRoleSelection = function() {
-            document.getElementById('contactanosApp').classList.add('hidden');
+            // Ocultar todas las secciones de la página
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            // Mostrar solo la sección del contenedor de la App
+            document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('roleSelection').classList.remove('hidden');
             document.getElementById('passengerApp').classList.add('hidden');
             document.getElementById('driverApp').classList.add('hidden');
@@ -232,37 +245,65 @@
             }
         }
 
-        // Ejecutar la función inicial al cargar la página
+        // Al cargar la página, mostrar la sección de "Contacto" por defecto y ocultar la App
         window.onload = function() {
-            showContactanos();
+            showSection('contactanos');
+            document.getElementById('app-container').classList.add('hidden');
         };
 
     </script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body class="bg-gray-100 p-4">
 
-    <!-- Mensaje de estado -->
-    <div id="messageBox" class="message-box text-white font-semibold"></div>
+    <!-- Barra de navegación fija y responsiva -->
+    <header class="bg-white shadow-md fixed top-0 left-0 w-full z-50">
+        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <!-- Logo -->
+            <a href="#inicio" class="text-2xl font-bold text-blue-600">TAXI A CIMCO</a>
+            <!-- Menú de Navegación -->
+            <div class="flex space-x-6">
+                <a href="#contactanos" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Pide tu Servicio</a>
+                <a href="#servicios" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Servicios</a>
+                <a href="#inicio" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Inicio</a>
+                <a href="#quienes-somos" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Quiénes Somos?</a>
+                <a href="#afiliacion" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Afiliación</a>
+                <a href="#galeria" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Galería</a>
+            </div>
+        </nav>
+    </header>
 
-    <!-- Contenedor principal de la aplicación -->
-    <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg space-y-6">
+    <!-- Contenido principal de la página, con padding para no solaparse con el header -->
+    <main class="mt-20">
 
-        <!-- Nueva sección de "Contáctanos y Pide tu Servicio" (visible por defecto) -->
-        <div id="contactanosApp" class="text-center space-y-4">
+        <!-- Mensaje de estado -->
+        <div id="messageBox" class="message-box text-white font-semibold"></div>
+
+        <!-- Secciones de contenido para la navegación (con texto de ejemplo) -->
+        <!-- La sección de Contacto está de primera para garantizar su visibilidad inicial -->
+        <section id="contactanos" class="page-section active bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8 space-y-6 text-center">
             <h1 class="text-3xl font-bold text-gray-800">Contáctanos y Pide tu Servicio</h1>
             <p class="text-gray-600">¿Listo para viajar con TAXIA CIMCO? ¡Contáctanos al instante!</p>
-            <div class="flex justify-center space-x-4 mt-6">
-                <a href="#" class="bg-green-500 text-white p-4 rounded-full shadow-lg hover:bg-green-600 transition duration-300 transform hover:scale-110">
+            <div class="flex flex-wrap justify-center gap-4 mt-6">
+                <!-- Botones de redes sociales, con estilos de la captura de pantalla -->
+                <a href="#" class="bg-green-500 text-white p-4 rounded-lg shadow-lg hover:bg-green-600 transition duration-300 flex items-center space-x-2">
                     <i class="fab fa-whatsapp text-2xl"></i>
+                    <span class="font-bold">WhatsApp</span>
                 </a>
-                <a href="#" class="bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 transition duration-300 transform hover:scale-110">
+                <a href="#" class="bg-blue-500 text-white p-4 rounded-lg shadow-lg hover:bg-blue-600 transition duration-300 flex items-center space-x-2">
                     <i class="fab fa-facebook-f text-2xl"></i>
+                    <span class="font-bold">Facebook</span>
                 </a>
-                <a href="#" class="bg-blue-400 text-white p-4 rounded-full shadow-lg hover:bg-blue-500 transition duration-300 transform hover:scale-110">
+                <a href="#" class="bg-blue-400 text-white p-4 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 flex items-center space-x-2">
                     <i class="fab fa-telegram-plane text-2xl"></i>
+                    <span class="font-bold">Telegram</span>
                 </a>
-                <a href="#" class="bg-pink-500 text-white p-4 rounded-full shadow-lg hover:bg-pink-600 transition duration-300 transform hover:scale-110">
+                <a href="#" class="bg-pink-500 text-white p-4 rounded-lg shadow-lg hover:bg-pink-600 transition duration-300 flex items-center space-x-2">
                     <i class="fab fa-instagram text-2xl"></i>
+                    <span class="font-bold">Instagram</span>
+                </a>
+                <a href="#" class="bg-blue-500 text-white p-4 rounded-lg shadow-lg hover:bg-blue-600 transition duration-300 flex items-center space-x-2">
+                    <i class="fab fa-facebook-messenger text-2xl"></i>
+                    <span class="font-bold">Messenger</span>
                 </a>
             </div>
             <div class="mt-8 space-y-2">
@@ -273,59 +314,98 @@
             <button onclick="showRoleSelection()" class="mt-8 w-full bg-blue-600 text-white font-bold py-4 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
                 ¡Continuar a la App!
             </button>
-        </div>
+        </section>
 
-        <!-- Selección de rol (oculta por defecto) -->
-        <div id="roleSelection" class="hidden text-center space-y-4">
-            <h1 class="text-3xl font-bold text-gray-800">Selecciona tu rol</h1>
-            <div class="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 justify-center">
-                <button onclick="setRole('pasajero')" class="w-full md:w-auto bg-green-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
-                    Soy Pasajero
-                </button>
-                <button onclick="setRole('conductor')" class="w-full md:w-auto bg-blue-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
-                    Soy Conductor
-                </button>
+        <!-- Sección de servicios -->
+        <section id="servicios" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Nuestra Flota y Servicios</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <!-- Botones de servicios -->
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">Mototaxi Urbano</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">Moto Parrillero</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">MotoCarga</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">Viaje Intermunicipal</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300" onclick="showRoleSelection()">App Cliente</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">Equipo TAXIA</button>
             </div>
-        </div>
+        </section>
 
-        <!-- Interfaz del Pasajero (oculta por defecto) -->
-        <div id="passengerApp" class="hidden text-center space-y-6">
-            <h2 class="text-3xl font-bold text-gray-800">App del Pasajero</h2>
-            <p class="text-gray-600">Pide un viaje y sigue a tu conductor en tiempo real.</p>
-            <div class="space-y-4">
-                <input type="text" id="passengerLocation" placeholder="Tu ubicación" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-                <input type="text" id="destination" placeholder="Destino" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-                <button onclick="requestRide()" class="w-full bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-green-600 transition duration-300">
-                    Solicitar Viaje
-                </button>
-            </div>
-            <div id="rideStatus" class="mt-6 p-4 bg-gray-50 rounded-lg text-left hidden">
-                <p class="text-gray-700 font-semibold">Estado del Viaje: <span id="statusText" class="font-normal text-green-600">Buscando conductor...</span></p>
-                <p class="text-gray-700 font-semibold mt-2">Ubicación del Conductor: <span id="driverLocationText" class="font-normal">N/A</span></p>
-            </div>
-        </div>
+        <section id="inicio" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Inicio</h2>
+            <p class="text-gray-600 mt-4">¡Bienvenido a la página principal de TAXIA CIMCO! Explora nuestros servicios y conócenos mejor.</p>
+        </section>
 
-        <!-- Interfaz del Conductor (oculta por defecto) -->
-        <div id="driverApp" class="hidden text-center space-y-6">
-            <h2 class="text-3xl font-bold text-gray-800">App del Conductor</h2>
-            <p class="text-gray-600">Espera nuevas solicitudes de viaje.</p>
-            <button onclick="toggleAvailability()" id="availabilityButton" class="w-full bg-red-500 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-red-600 transition duration-300">
-                Conectarme
-            </button>
-            <div id="pendingRide" class="mt-6 p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200 text-left hidden">
-                <p class="text-gray-800 font-bold text-lg">Nueva Solicitud de Viaje</p>
-                <p class="text-gray-700 mt-2">Ubicación del Pasajero: <span id="pendingLocation" class="font-normal"></span></p>
-                <p class="text-gray-700">Destino: <span id="pendingDestination" class="font-normal"></span></p>
-                <button onclick="acceptRide()" class="mt-4 w-full bg-blue-500 text-white font-bold py-2 rounded-lg shadow hover:bg-blue-600 transition duration-300">
-                    Aceptar Viaje
-                </button>
+        <section id="quienes-somos" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Quiénes Somos?</h2>
+            <p class="text-gray-600 mt-4">Somos una empresa comprometida con el transporte seguro y eficiente en La Jagua de Ibirico.</p>
+        </section>
+
+        <section id="afiliacion" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Afiliación</h2>
+            <p class="text-gray-600 mt-4">¿Eres conductor y quieres unirte a nuestra red? Conoce los requisitos y beneficios de afiliarte con nosotros.</p>
+        </section>
+
+        <section id="galeria" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Galería</h2>
+            <p class="text-gray-600 mt-4">Mira algunas fotos de nuestros vehículos y eventos especiales.</p>
+        </section>
+    </main>
+
+    <!-- Contenedor de la app de Pasajero/Conductor (oculta por defecto) -->
+    <div id="app-container" class="hidden flex items-center justify-center min-h-screen fixed inset-0 z-50 bg-gray-900 bg-opacity-75 p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg space-y-6 text-center">
+            <!-- Selección de rol -->
+            <div id="roleSelection" class="text-center space-y-4">
+                <h1 class="text-3xl font-bold text-gray-800">Selecciona tu rol</h1>
+                <div class="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 justify-center">
+                    <button onclick="setRole('pasajero')" class="w-full md:w-auto bg-green-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
+                        Soy Pasajero
+                    </button>
+                    <button onclick="setRole('conductor')" class="w-full md:w-auto bg-blue-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                        Soy Conductor
+                    </button>
+                </div>
             </div>
-            <div id="acceptedRide" class="mt-6 p-4 bg-green-50 rounded-lg border-2 border-green-200 text-left hidden">
-                <p class="text-gray-800 font-bold text-lg">Viaje en Curso</p>
-                <p class="text-gray-700 mt-2">Destino: <span id="acceptedDestination" class="font-normal"></span></p>
-                <button onclick="completeRide()" class="mt-4 w-full bg-green-500 text-white font-bold py-2 rounded-lg shadow hover:bg-green-600 transition duration-300">
-                    Finalizar Viaje
+
+            <!-- Interfaz del Pasajero -->
+            <div id="passengerApp" class="hidden text-center space-y-6">
+                <h2 class="text-3xl font-bold text-gray-800">App del Pasajero</h2>
+                <p class="text-gray-600">Pide un viaje y sigue a tu conductor en tiempo real.</p>
+                <div class="space-y-4">
+                    <input type="text" id="passengerLocation" placeholder="Tu ubicación" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <input type="text" id="destination" placeholder="Destino" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <button onclick="requestRide()" class="w-full bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-green-600 transition duration-300">
+                        Solicitar Viaje
+                    </button>
+                </div>
+                <div id="rideStatus" class="mt-6 p-4 bg-gray-50 rounded-lg text-left hidden">
+                    <p class="text-gray-700 font-semibold">Estado del Viaje: <span id="statusText" class="font-normal text-green-600">Buscando conductor...</span></p>
+                    <p class="text-gray-700 font-semibold mt-2">Ubicación del Conductor: <span id="driverLocationText" class="font-normal">N/A</span></p>
+                </div>
+            </div>
+
+            <!-- Interfaz del Conductor -->
+            <div id="driverApp" class="hidden text-center space-y-6">
+                <h2 class="text-3xl font-bold text-gray-800">App del Conductor</h2>
+                <p class="text-gray-600">Espera nuevas solicitudes de viaje.</p>
+                <button onclick="toggleAvailability()" id="availabilityButton" class="w-full bg-red-500 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-red-600 transition duration-300">
+                    Conectarme
                 </button>
+                <div id="pendingRide" class="mt-6 p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200 text-left hidden">
+                    <p class="text-gray-800 font-bold text-lg">Nueva Solicitud de Viaje</p>
+                    <p class="text-gray-700 mt-2">Ubicación del Pasajero: <span id="pendingLocation" class="font-normal"></span></p>
+                    <p class="text-gray-700">Destino: <span id="pendingDestination" class="font-normal"></span></p>
+                    <button onclick="acceptRide()" class="mt-4 w-full bg-blue-500 text-white font-bold py-2 rounded-lg shadow hover:bg-blue-600 transition duration-300">
+                        Aceptar Viaje
+                    </button>
+                </div>
+                <div id="acceptedRide" class="mt-6 p-4 bg-green-50 rounded-lg border-2 border-green-200 text-left hidden">
+                    <p class="text-gray-800 font-bold text-lg">Viaje en Curso</p>
+                    <p class="text-gray-700 mt-2">Destino: <span id="acceptedDestination" class="font-normal"></span></p>
+                    <button onclick="completeRide()" class="mt-4 w-full bg-green-500 text-white font-bold py-2 rounded-lg shadow hover:bg-green-600 transition duration-300">
+                        Finalizar Viaje
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pasajero / Conductor App</title>
+    <title>Pasajero / Conductor App (v9)</title>
     <!-- Incluir Tailwind CSS para un diseño moderno y responsive -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
     <style>
         /* Estilos personalizados para la interfaz */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -35,6 +32,190 @@
             opacity: 1;
         }
     </style>
+    <!-- Firebase SDKs - Versión 9 Modular -->
+    <script type="module">
+        // Importar funciones específicas de la versión 9
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
+            authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
+            projectId: "pelagic-chalice-467818-e1",
+            storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
+            messagingSenderId: "191106268804",
+            appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
+            measurementId: "G-CPWSCLGKP2"
+        };
+        
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+
+        // Variables globales
+        window.userRole = null;
+        window.userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        window.currentRideId = null;
+        window.isAvailable = false;
+
+        // --- Funciones de la Interfaz ---
+
+        window.showMessage = function(text, type = 'success') {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = text;
+            messageBox.className = 'message-box show';
+            if (type === 'success') {
+                messageBox.style.backgroundColor = '#10B981';
+            } else if (type === 'error') {
+                messageBox.style.backgroundColor = '#EF4444';
+            } else {
+                messageBox.style.backgroundColor = '#F59E0B';
+            }
+            setTimeout(() => {
+                messageBox.className = 'message-box';
+            }, 3000);
+        }
+
+        window.setRole = function(role) {
+            window.userRole = role;
+            document.getElementById('roleSelection').classList.add('hidden');
+            if (role === 'pasajero') {
+            document.getElementById('passengerApp').classList.remove('hidden');
+            } else if (role === 'conductor') {
+                document.getElementById('driverApp').classList.remove('hidden');
+                // Al iniciar como conductor, escuchar solicitudes de viaje
+                window.listenForRides();
+            }
+        }
+
+        // --- Lógica del Pasajero ---
+
+        window.requestRide = async function() {
+            const location = document.getElementById('passengerLocation').value;
+            const destination = document.getElementById('destination').value;
+
+            if (!location || !destination) {
+                window.showMessage('Por favor, ingresa tu ubicación y destino.', 'error');
+                return;
+            }
+
+            try {
+                // Crear un nuevo documento para el viaje en la colección 'viajes'
+                const ridesCollection = collection(window.db, 'viajes');
+                const rideRef = await addDoc(ridesCollection, {
+                    passengerId: window.userId,
+                    passengerLocation: location,
+                    destination: destination,
+                    status: 'pending', // Estado inicial del viaje
+                    createdAt: new Date() // Se puede usar new Date() en v9
+                });
+                
+                window.currentRideId = rideRef.id;
+                document.getElementById('rideStatus').classList.remove('hidden');
+                document.getElementById('statusText').textContent = 'Buscando conductor...';
+                window.showMessage('Solicitud de viaje enviada. Esperando conductor...', 'success');
+
+                // Escuchar en tiempo real los cambios en el estado del viaje
+                const rideDoc = doc(window.db, 'viajes', window.currentRideId);
+                onSnapshot(rideDoc, (doc) => {
+                    const data = doc.data();
+                    if (data.status === 'accepted') {
+                        document.getElementById('statusText').textContent = 'Conductor en camino!';
+                        document.getElementById('driverLocationText').textContent = data.driverLocation;
+                        window.showMessage('¡Tu conductor aceptó el viaje!', 'success');
+                    } else if (data.status === 'completed') {
+                        document.getElementById('statusText').textContent = 'Viaje finalizado';
+                        document.getElementById('driverLocationText').textContent = 'N/A';
+                        window.showMessage('¡El viaje ha finalizado!', 'success');
+                        setTimeout(() => {
+                            window.location.reload(); // Recargar la página para un nuevo viaje
+                        }, 5000);
+                    }
+                });
+
+            } catch (e) {
+                console.error("Error al solicitar el viaje: ", e);
+                window.showMessage('Error al solicitar el viaje.', 'error');
+            }
+        }
+
+        // --- Lógica del Conductor ---
+
+        window.toggleAvailability = function() {
+            window.isAvailable = !window.isAvailable;
+            const button = document.getElementById('availabilityButton');
+            if (window.isAvailable) {
+                button.textContent = 'Desconectarme';
+                button.classList.remove('bg-red-500', 'hover:bg-red-600');
+                button.classList.add('bg-green-500', 'hover:bg-green-600');
+                window.showMessage('Ahora estás en línea y disponible.', 'success');
+            } else {
+                button.textContent = 'Conectarme';
+                button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                button.classList.add('bg-red-500', 'hover:bg-red-600');
+                window.showMessage('Te has desconectado.', 'warning');
+            }
+        }
+
+        window.listenForRides = function() {
+            // Escuchar nuevas solicitudes de viaje pendientes
+            const ridesCollection = collection(window.db, 'viajes');
+            onSnapshot(ridesCollection, (snapshot) => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added' && window.isAvailable) {
+                        const ride = change.doc.data();
+                        if (ride.status === 'pending') {
+                            window.currentRideId = change.doc.id;
+                            document.getElementById('pendingRide').classList.remove('hidden');
+                            document.getElementById('pendingLocation').textContent = ride.passengerLocation;
+                            document.getElementById('pendingDestination').textContent = ride.destination;
+                            window.showMessage('¡Nueva solicitud de viaje!', 'warning');
+                        }
+                    }
+                });
+            });
+        }
+
+        window.acceptRide = async function() {
+            try {
+                // Actualizar el estado del viaje a 'accepted'
+                const rideDoc = doc(window.db, 'viajes', window.currentRideId);
+                await updateDoc(rideDoc, {
+                    driverId: window.userId,
+                    driverLocation: 'Ubicación del Conductor (simulada)',
+                    status: 'accepted'
+                });
+                
+                document.getElementById('pendingRide').classList.add('hidden');
+                document.getElementById('acceptedRide').classList.remove('hidden');
+                document.getElementById('acceptedDestination').textContent = document.getElementById('pendingDestination').textContent;
+                window.showMessage('Viaje aceptado. Conductor en camino.', 'success');
+            } catch (e) {
+                console.error("Error al aceptar el viaje: ", e);
+                window.showMessage('Error al aceptar el viaje.', 'error');
+            }
+        }
+
+        window.completeRide = async function() {
+            try {
+                // Actualizar el estado del viaje a 'completed'
+                const rideDoc = doc(window.db, 'viajes', window.currentRideId);
+                await updateDoc(rideDoc, {
+                    status: 'completed'
+                });
+                
+                document.getElementById('acceptedRide').classList.add('hidden');
+                window.showMessage('Viaje finalizado. ¡Gracias por el servicio!', 'success');
+                setTimeout(() => {
+                    window.location.reload(); // Recargar la página para esperar un nuevo viaje
+                }, 5000);
+            } catch (e) {
+                console.error("Error al finalizar el viaje: ", e);
+                window.showMessage('Error al finalizar el viaje.', 'error');
+            }
+        }
+    </script>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
@@ -101,182 +282,7 @@
                     Finalizar Viaje
                 </button>
             </div>
-
         </div>
-
     </div>
-    <script>
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
-            authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
-            projectId: "pelagic-chalice-467818-e1",
-            storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
-            messagingSenderId: "191106268804",
-            appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
-            measurementId: "G-CPWSCLGKP2"
-        };
-
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // Variables globales
-        let userRole = null;
-        let userId = 'user_' + Math.random().toString(36).substr(2, 9);
-        let currentRideId = null;
-        let isAvailable = false;
-
-        // --- Funciones de la Interfaz ---
-
-        function showMessage(text, type = 'success') {
-            const messageBox = document.getElementById('messageBox');
-            messageBox.textContent = text;
-            messageBox.className = 'message-box show';
-            if (type === 'success') {
-                messageBox.style.backgroundColor = '#10B981';
-            } else if (type === 'error') {
-                messageBox.style.backgroundColor = '#EF4444';
-            } else {
-                messageBox.style.backgroundColor = '#F59E0B';
-            }
-            setTimeout(() => {
-                messageBox.className = 'message-box';
-            }, 3000);
-        }
-
-        function setRole(role) {
-            userRole = role;
-            document.getElementById('roleSelection').classList.add('hidden');
-            if (role === 'pasajero') {
-                document.getElementById('passengerApp').classList.remove('hidden');
-            } else if (role === 'conductor') {
-                document.getElementById('driverApp').classList.remove('hidden');
-                // Al iniciar como conductor, escuchar solicitudes de viaje
-                listenForRides();
-            }
-        }
-
-        // --- Lógica del Pasajero ---
-
-        async function requestRide() {
-            const location = document.getElementById('passengerLocation').value;
-            const destination = document.getElementById('destination').value;
-
-            if (!location || !destination) {
-                showMessage('Por favor, ingresa tu ubicación y destino.', 'error');
-                return;
-            }
-
-            try {
-                // Crear un nuevo documento para el viaje en la colección 'viajes'
-                const rideRef = await db.collection('viajes').add({
-                    passengerId: userId,
-                    passengerLocation: location,
-                    destination: destination,
-                    status: 'pending', // Estado inicial del viaje
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                currentRideId = rideRef.id;
-                document.getElementById('rideStatus').classList.remove('hidden');
-                document.getElementById('statusText').textContent = 'Buscando conductor...';
-                showMessage('Solicitud de viaje enviada. Esperando conductor...', 'success');
-
-                // Escuchar en tiempo real los cambios en el estado del viaje
-                db.collection('viajes').doc(currentRideId).onSnapshot((doc) => {
-                    const data = doc.data();
-                    if (data.status === 'accepted') {
-                        document.getElementById('statusText').textContent = 'Conductor en camino!';
-                        document.getElementById('driverLocationText').textContent = data.driverLocation;
-                        showMessage('¡Tu conductor aceptó el viaje!', 'success');
-                    } else if (data.status === 'completed') {
-                        document.getElementById('statusText').textContent = 'Viaje finalizado';
-                        document.getElementById('driverLocationText').textContent = 'N/A';
-                        showMessage('¡El viaje ha finalizado!', 'success');
-                        setTimeout(() => {
-                            window.location.reload(); // Recargar la página para un nuevo viaje
-                        }, 5000);
-                    }
-                });
-
-            } catch (e) {
-                console.error("Error al solicitar el viaje: ", e);
-                showMessage('Error al solicitar el viaje.', 'error');
-            }
-        }
-
-        // --- Lógica del Conductor ---
-
-        function toggleAvailability() {
-            isAvailable = !isAvailable;
-            const button = document.getElementById('availabilityButton');
-            if (isAvailable) {
-                button.textContent = 'Desconectarme';
-                button.classList.remove('bg-red-500', 'hover:bg-red-600');
-                button.classList.add('bg-green-500', 'hover:bg-green-600');
-                showMessage('Ahora estás en línea y disponible.', 'success');
-            } else {
-                button.textContent = 'Conectarme';
-                button.classList.remove('bg-green-500', 'hover:bg-green-600');
-                button.classList.add('bg-red-500', 'hover:bg-red-600');
-                showMessage('Te has desconectado.', 'warning');
-            }
-        }
-
-        function listenForRides() {
-            // Escuchar nuevas solicitudes de viaje pendientes
-            db.collection('viajes').where('status', '==', 'pending').onSnapshot(snapshot => {
-                snapshot.docChanges().forEach(change => {
-                    if (change.type === 'added' && isAvailable) {
-                        const ride = change.doc.data();
-                        currentRideId = change.doc.id;
-                        document.getElementById('pendingRide').classList.remove('hidden');
-                        document.getElementById('pendingLocation').textContent = ride.passengerLocation;
-                        document.getElementById('pendingDestination').textContent = ride.destination;
-                        showMessage('¡Nueva solicitud de viaje!', 'warning');
-                    }
-                });
-            });
-        }
-
-        async function acceptRide() {
-            try {
-                // Actualizar el estado del viaje a 'accepted'
-                await db.collection('viajes').doc(currentRideId).update({
-                    driverId: userId,
-                    driverLocation: 'Ubicación del Conductor (simulada)',
-                    status: 'accepted'
-                });
-                
-                document.getElementById('pendingRide').classList.add('hidden');
-                document.getElementById('acceptedRide').classList.remove('hidden');
-                document.getElementById('acceptedDestination').textContent = document.getElementById('pendingDestination').textContent;
-                showMessage('Viaje aceptado. Conductor en camino.', 'success');
-            } catch (e) {
-                console.error("Error al aceptar el viaje: ", e);
-                showMessage('Error al aceptar el viaje.', 'error');
-            }
-        }
-
-        async function completeRide() {
-            try {
-                // Actualizar el estado del viaje a 'completed'
-                await db.collection('viajes').doc(currentRideId).update({
-                    status: 'completed'
-                });
-                
-                document.getElementById('acceptedRide').classList.add('hidden');
-                showMessage('Viaje finalizado. ¡Gracias por el servicio!', 'success');
-                setTimeout(() => {
-                    window.location.reload(); // Recargar la página para esperar un nuevo viaje
-                }, 5000);
-            } catch (e) {
-                console.error("Error al finalizar el viaje: ", e);
-                showMessage('Error al finalizar el viaje.', 'error');
-            }
-        }
-
-    </script>
 </body>
 </html>

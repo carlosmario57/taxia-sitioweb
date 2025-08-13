@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "ProyectosCIMCO"
+location: "us-south1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "proyectoscimco-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]

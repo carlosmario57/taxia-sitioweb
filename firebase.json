@@ -12,5 +12,8 @@
         "destination": "/passenger-driver.html"
       }
     ]
+  },
+  "functions": {
+    "source": "functions"
   }
 }

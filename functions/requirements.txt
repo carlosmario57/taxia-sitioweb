@@ -1,18 +1,5 @@
-requirements.txt
-Este archivo especifica las dependencias de Python que deben
-ser instaladas en el entorno de Firebase Functions.
-Firebase Admin SDK para interactuar con los servicios de Firebase.
-
 firebase-admin
-Firebase Functions SDK para definir y desplegar funciones.
-
 firebase-functions
-Framework web ligero para manejar las solicitudes HTTP.
-
-flask
-Cliente de la API de Firestore para la base de datos.
-
+Flask
 google-cloud-firestore
-Cliente de la API de Gemini para la integración de IA.
-
 google-generativeai

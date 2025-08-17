@@ -24,8 +24,8 @@ from firebase_functions import https_fn
 # Esto se ejecuta en el arranque del servidor.
 app = Flask(__name__)
 
-# Estas variables son para acceso global, pero el modelo
-# se inicializará más tarde.
+# Estas variables son para acceso global, pero los servicios
+# se inicializarán más tarde.
 gemini_api_key = os.environ.get("GEMINI_API_KEY")
 db = None
 model = None
@@ -34,19 +34,39 @@ model = None
 app_id = os.environ.get('GCLOUD_PROJECT') or 'default-app-id'
 
 # =========================================================
-# PUNTOS DE ENTRADA Y SERVICIOS
+# PUNTO DE ENTRADA Y SERVICIOS
 # =========================================================
 
-# Inicializa el Admin SDK de Firebase.
-# Este método es más seguro y fiable en un entorno de Cloud Functions.
-try:
+def initialize_services():
+    """
+    Inicializa los servicios de Firebase y Gemini de forma perezosa.
+    """
+    global db
+    global model
+
+    # Inicializa Firebase Admin SDK solo si no está inicializado.
+    # Esta es una optimización crucial para evitar timeouts.
     if not firebase_admin._apps:
-        firebase_admin.initialize_app()
-    db = firestore.client()
-    print("Firebase inicializado correctamente.")
-except Exception as e:
-    print(f"Error al inicializar Firebase: {e}. Las operaciones de base de datos no funcionarán.")
-    db = None
+        try:
+            firebase_admin.initialize_app()
+            db = firestore.client()
+            print("Firebase inicializado correctamente.")
+        except Exception as e:
+            print(f"Error al inicializar Firebase: {e}. Las operaciones de base de datos no funcionarán.")
+            db = None
+    else:
+        # Si ya está inicializado, simplemente obtén la instancia.
+        db = firestore.client()
+    
+    # Inicializa el modelo de Gemini solo si no está inicializado.
+    if not model:
+        if not gemini_api_key:
+            print("WARNING: GEMINI_API_KEY no está configurada. La funcionalidad de IA estará deshabilitada.")
+            genai.configure(api_key="placeholder_key")
+        else:
+            genai.configure(api_key=gemini_api_key)
+            model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+            print("Modelo de IA inicializado.")
 
 @app.route("/", methods=['POST'])
 def process_message():
@@ -54,21 +74,11 @@ def process_message():
     Esta función maneja las solicitudes POST entrantes del webhook.
     Extrae la información de un viaje y la guarda en Firestore.
     """
-    global model  # Declara que se usará la variable global 'model'
-    global db    # Declara que se usará la variable global 'db'
-
+    # Llama a la función de inicialización al inicio de cada solicitud.
+    initialize_services()
+    
+    # ... (el resto de tu código de la función process_message es el mismo) ...
     try:
-        # **OPTIMIZACIÓN:** Inicializa el modelo solo si aún no está inicializado.
-        # Esto reduce el tiempo de arranque en frío.
-        if not model:
-            if not gemini_api_key:
-                print("WARNING: GEMINI_API_KEY no está configurada. La funcionalidad de IA estará deshabilitada.")
-                genai.configure(api_key="placeholder_key")
-            else:
-                genai.configure(api_key=gemini_api_key)
-                model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
-                print("Modelo de IA inicializado.")
-
         # Intenta obtener el cuerpo de la solicitud en formato JSON.
         data = request.get_json(silent=True)
 

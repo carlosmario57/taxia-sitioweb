@@ -1,5 +1,1 @@
-firebase-admin
-firebase-functions
-Flask
-google-cloud-firestore
-google-generativeai
+firebase_functions~=0.1.0

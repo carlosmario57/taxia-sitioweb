@@ -1,0 +1,100 @@
+#
+# Archivo: requirements.txt
+# Ubicación: Dentro de la carpeta `functions/`
+#
+# Este archivo lista todas las dependencias de tu proyecto.
+# `firebase-functions` es requerido para el despliegue.
+#
+
+# Core web framework
+flask
+
+# Firebase Admin SDK for database and other services
+firebase-admin
+google-cloud-firestore
+google-cloud-secret-manager
+
+# Google's AI/ML library
+google-generativeai
+
+# Firebase Functions for Python deployment
+firebase-functions
+```python
+#
+# Archivo: main.py
+# Ubicación: Dentro de la carpeta `functions/`
+#
+# Ejemplo de una aplicación Flask que puede ser desplegada como
+# una función de Firebase.
+#
+
+import firebase_admin
+from firebase_admin import credentials, firestore
+from flask import Flask, request, jsonify
+from firebase_functions import https_fn
+
+# Initialize Firebase Admin SDK
+try:
+    firebase_admin.get_app()
+except ValueError:
+    cred = credentials.ApplicationDefault()
+    firebase_admin.initialize_app(cred)
+
+# Initialize Firestore
+db = firestore.client()
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Define a simple route for testing
+@app.route("/", methods=["GET"])
+def hello_world():
+    """
+    Handles a simple GET request to the root URL.
+    """
+    return "¡Hola desde Flask y Firebase Functions!"
+
+# Define a more complex route for a test API
+@app.route("/api/data", methods=["POST"])
+def add_data():
+    """
+    Handles a POST request to add data to Firestore.
+    """
+    try:
+        data = request.json
+        doc_ref = db.collection("test_collection").add(data)
+        return jsonify({"success": True, "doc_id": doc_ref[1].id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Export the Flask app as a Firebase Function
+@https_fn.on_request()
+def my_flask_app(req: https_fn.Request) -> https_fn.Response:
+    """
+    Main entry point for the Firebase Function.
+    This function handles the incoming request and passes it to the Flask app.
+    """
+    with app.request_context(req.environ):
+        return app.full_dispatch_request()
+
+```yaml
+#
+# Archivo: cloudbuild.yaml
+# Ubicación: En la raíz de tu proyecto (fuera de la carpeta `functions/`)
+#
+# Este archivo define los pasos para el despliegue automático en Cloud Build.
+#
+steps:
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  dir: 'functions'  # Navigate into the functions directory
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      echo "Deploying to Firebase..."
+      gcloud functions deploy my_flask_app \
+        --runtime python311 \
+        --trigger-http \
+        --source . \
+        --region us-central1 \
+        --gen2

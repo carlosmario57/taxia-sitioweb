@@ -1,4 +1,4 @@
-# =========================================================
+#
 # Archivo: functions/main.py
 # =========================================================
 
@@ -12,18 +12,11 @@ from functools import lru_cache
 import firebase_admin
 import google.generativeai as genai
 from firebase_admin import credentials, firestore
-from flask import Flask, request, jsonify
-
-# Importa el módulo de Firebase Functions
 from firebase_functions import https_fn
 
 # =========================================================
 # CONFIGURACIÓN GLOBAL Y CACHÉ
 # =========================================================
-
-# Crea una instancia de la aplicación Flask.
-# Esto se ejecuta en el arranque del servidor.
-app = Flask(__name__)
 
 # Estas variables globales se usarán después de la inicialización.
 db = None
@@ -62,7 +55,7 @@ def get_model():
     global model
     if model is None:
         if not gemini_api_key:
-            print("WARNING: GEMINI_API_KEY no está configurada. La funcionalidad de IA estará deshabilitada.")
+            print("ADVERTENCIA: GEMINI_API_KEY no está configurada. La funcionalidad de IA estará deshabilitada.")
             return None
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
@@ -70,30 +63,54 @@ def get_model():
     return model
 
 # =========================================================
-# FUNCIÓN PRINCIPAL DEL WEBHOOK Y LA IA
+# FUNCIONES DE MANEJO DE RUTAS
 # =========================================================
 
-@app.route("/", methods=['POST'])
-def process_message():
+def add_simple_data_from_post(req: https_fn.Request):
     """
-    Esta función maneja las solicitudes POST entrantes del webhook.
+    Maneja una solicitud POST simple para agregar datos a Firestore.
+    Esta función espera datos con claves 'nombre' y 'ciudad'.
+    """
+    db_client = get_db()
+    
+    try:
+        data = req.get_json(silent=True)
+        
+        # Verifica si el objeto de datos es None o si no contiene las claves esperadas.
+        if not data or 'nombre' not in data or 'ciudad' not in data:
+            print("Error: Los datos JSON no son válidos para esta ruta.")
+            return https_fn.Response(json.dumps({"error": "No se proporcionaron los campos 'nombre' o 'ciudad'"}), status=400, mimetype='application/json')
+            
+        doc_ref = db_client.collection("test_collection").add(data)
+        
+        print(f"Documento creado exitosamente con el ID: {doc_ref[1].id}")
+        
+        return https_fn.Response(json.dumps({"success": True, "doc_id": doc_ref[1].id}), status=200, mimetype='application/json')
+    except Exception as e:
+        print(f"Ocurrió un error inesperado al procesar los datos: {e}")
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, mimetype='application/json')
+
+def handle_travel_request(req: https_fn.Request):
+    """
+    Maneja la solicitud de viaje que utiliza el modelo Gemini.
     """
     db_client = get_db()
     gemini_model = get_model()
 
     try:
-        data = request.get_json(silent=True)
+        data = req.get_json(silent=True)
 
         if not data or 'text' not in data:
             print("Error: No se encontró el texto en la solicitud.")
-            return jsonify({'error': 'No text provided in the request'}), 400
+            return https_fn.Response(json.dumps({'error': 'No text provided in the request'}), status=400, mimetype='application/json')
 
         user_message = data['text']
         user_id = data.get('userId', 'anonymous')
 
         if not gemini_model:
-            return jsonify({'error': 'El servicio de IA no está disponible en este momento.'}), 503
+            return https_fn.Response(json.dumps({'error': 'El servicio de IA no está disponible en este momento.'}), status=503, mimetype='application/json')
 
+        # Es importante pasar el esquema como un objeto JSON
         response_schema = {
             "type": "OBJECT",
             "properties": {
@@ -102,7 +119,7 @@ def process_message():
             },
             "required": ["origin", "destination"]
         }
-
+        
         prompt = (
             f"Analiza el siguiente mensaje y extrae la dirección de origen y la de destino para un viaje en taxi. "
             f"Si el mensaje no es una solicitud de viaje, devuelve un JSON vacío. "
@@ -122,11 +139,11 @@ def process_message():
 
         if not origin_address or not destination_address:
             print("El mensaje no es una solicitud de viaje válida.")
-            return jsonify({'message': 'El mensaje no parece ser una solicitud de taxi.'}), 200
+            return https_fn.Response(json.dumps({'message': 'El mensaje no parece ser una solicitud de taxi.'}), status=200, mimetype='application/json')
 
         if not db_client:
             print("Error: No se pudo conectar a Firestore.")
-            return jsonify({'error': 'No se pudo conectar a la base de datos.'}), 500
+            return https_fn.Response(json.dumps({'error': 'No se pudo conectar a la base de datos.'}), status=500, mimetype='application/json')
 
         travel_doc = {
             'originAddress': origin_address,
@@ -141,20 +158,25 @@ def process_message():
 
         print(f"Viaje creado exitosamente con el ID: {doc_ref.id}")
 
-        return jsonify({'message': 'Tu solicitud de taxi ha sido recibida y está siendo procesada.'}), 200
+        return https_fn.Response(json.dumps({'message': 'Tu solicitud de taxi ha sido recibida y está siendo procesada.'}), status=200, mimetype='application/json')
 
     except Exception as e:
         print(f"Ocurrió un error inesperado: {e}")
-        return jsonify({'error': str(e)}), 500
+        return https_fn.Response(json.dumps({'error': str(e)}), status=500, mimetype='application/json')
 
 # =========================================================
-# PUNTO DE ENTRADA PARA FIREBASE FUNCTIONS
+# FUNCIÓN DE ENTRADA PRINCIPAL PARA FIREBASE FUNCTIONS
 # =========================================================
 
 @https_fn.on_request()
 def app_as_function(req: https_fn.Request):
     """
-    Función de entrada que sirve la aplicación Flask.
+    Esta función maneja las solicitudes HTTP entrantes y las enruta
+    a las funciones de manejo adecuadas según la ruta de la solicitud.
     """
-    with app.request_context(req.environ):
-        return app.full_dispatch_request()
+    path = req.path
+    if path == '/api/data':
+        return add_simple_data_from_post(req)
+    else:
+        # Por defecto, maneja las solicitudes de viaje
+        return handle_travel_request(req)

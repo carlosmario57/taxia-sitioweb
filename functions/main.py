@@ -23,10 +23,12 @@ db = None
 model = None
 
 # Obtiene el ID del proyecto de Google Cloud.
+# Ahora la variable se lee directamente del entorno, de forma más robusta.
 app_id = os.environ.get('GCLOUD_PROJECT') or 'default-app-id'
 
-# La clave de la API de Gemini. Se carga como variable de entorno.
-gemini_api_key = os.environ.get("GEMINI_API_KEY")
+# La clave de la API de Gemini. Se lee del Secret Manager de Google Cloud.
+# Esta es la forma más segura y profesional.
+gemini_api_key = os.environ.get('GEMINI_API_KEY')
 
 @lru_cache(maxsize=1)
 def get_db():
@@ -47,20 +49,22 @@ def get_db():
     return db
 
 @lru_cache(maxsize=1)
-def get_model():
+def get_model(model_name: str):
     """
-    Inicializa y devuelve el modelo de Gemini,
-    usando caché para asegurar que solo se inicialice una vez.
+    Inicializa y devuelve un modelo de Gemini, usando caché para asegurar
+    que solo se inicialice una vez por cada nombre de modelo.
     """
-    global model
-    if model is None:
-        if not gemini_api_key:
-            print("ADVERTENCIA: GEMINI_API_KEY no está configurada. La funcionalidad de IA estará deshabilitada.")
-            return None
-        genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
-        print("Modelo de IA inicializado.")
-    return model
+    if not gemini_api_key:
+        print("ADVERTENCIA: GEMINI_API_KEY no está configurada. La funcionalidad de IA estará deshabilitada.")
+        return None
+    genai.configure(api_key=gemini_api_key)
+    try:
+        model = genai.GenerativeModel(model_name)
+        print(f"Modelo de IA '{model_name}' inicializado.")
+        return model
+    except Exception as e:
+        print(f"Error al inicializar el modelo '{model_name}': {e}")
+        return None
 
 # =========================================================
 # FUNCIONES DE MANEJO DE RUTAS
@@ -93,9 +97,19 @@ def add_simple_data_from_post(req: https_fn.Request):
 def handle_travel_request(req: https_fn.Request):
     """
     Maneja la solicitud de viaje que utiliza el modelo Gemini.
+    Ahora incluye un mecanismo de respaldo.
     """
     db_client = get_db()
-    gemini_model = get_model()
+    
+    # Intenta usar el modelo principal
+    model_name = 'gemini-2.5-flash-preview-05-20'
+    gemini_model = get_model(model_name)
+    
+    # Si el modelo principal falla, intenta con el de respaldo
+    if not gemini_model:
+        print(f"El modelo principal '{model_name}' falló. Intentando con el modelo de respaldo...")
+        model_name = 'gemini-1.5-pro'
+        gemini_model = get_model(model_name)
 
     try:
         data = req.get_json(silent=True)

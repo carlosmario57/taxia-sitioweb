@@ -5,44 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TAXIA CIMCO - Conectamos Trayectos, Cuidamos Personas</title>
 
-    <!-- Usamos Tailwind CSS para estilos modernos y responsivos -->
+    <!-- Usamos Tailwind CSS para estilos modernos y responsivos desde el CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Cargamos la fuente Montserrat para una tipografía elegante -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Estilos generales para el cuerpo y la tipografía */
+        /* Estilo para asegurar que la fuente Montserrat se aplique al cuerpo del documento */
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: #f9fafb; /* Color de fondo claro */
             color: #1f2937; /* Color de texto principal */
         }
-        /* Clase para el fondo del hero */
-        .hero-bg {
-            background-image: url('https://placehold.co/1920x1080/4F46E5/FFFFFF?text=TAXIA+CIMCO');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-        /* Estilos para las superposiciones de la galería */
-        .galeria-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0));
-            color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: flex-start;
-            padding: 1.5rem;
+        /* Estilo para las animaciones al hacer scroll */
+        .fade-in-up {
             opacity: 0;
-            transition: opacity 0.3s ease-in-out;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
         }
-        .galeria-item:hover .galeria-overlay {
+        .fade-in-up.is-visible {
             opacity: 1;
+            transform: translateY(0);
         }
     </style>
 
@@ -54,7 +37,12 @@
     <!-- Header y Navegación principal -->
     <header class="bg-white shadow-lg fixed top-0 w-full z-50">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <a href="#inicio"><h1 class="text-3xl font-bold text-blue-600">TAXIA</h1></a>
+            <!-- Logo y nombre de la empresa -->
+            <a href="#inicio" class="flex items-center space-x-2">
+                <i class="fas fa-taxi text-blue-600 text-3xl"></i>
+                <h1 class="text-3xl font-bold text-blue-600">TAXIA</h1>
+            </a>
+            
             <!-- Menú de navegación para escritorio -->
             <nav id="nav-menu" class="hidden md:flex space-x-8 text-gray-600 font-semibold">
                 <a href="#inicio" class="hover:text-blue-600 transition duration-300">Inicio</a>
@@ -62,10 +50,13 @@
                 <a href="#servicios" class="hover:text-blue-600 transition duration-300">Servicios</a>
                 <a href="#afiliacion" class="hover:text-blue-600 transition duration-300">Afiliación</a>
                 <a href="#galeria" class="hover:text-blue-600 transition duration-300">Galería</a>
+                <a href="#testimonios" class="hover:text-blue-600 transition duration-300">Testimonios</a>
+                <a href="#faqs" class="hover:text-blue-600 transition duration-300">FAQ's</a>
                 <a href="#contacto" class="hover:text-blue-600 transition duration-300">Contacto</a>
                 <!-- Enlace al panel de administración -->
                 <a href="../index.html" class="hover:text-blue-600 transition duration-300 font-bold">Administrador</a>
             </nav>
+            
             <!-- Botón del menú hamburguesa para móviles -->
             <div class="md:hidden">
                 <button id="menu-toggle" class="text-gray-600 focus:outline-none">
@@ -73,6 +64,7 @@
                 </button>
             </div>
         </div>
+        
         <!-- Menú desplegable para móviles -->
         <nav id="mobile-menu" class="hidden md:hidden bg-white shadow-inner pb-4">
             <ul class="flex flex-col items-center space-y-4 text-gray-700 font-semibold">
@@ -81,6 +73,8 @@
                 <li><a href="#servicios" class="block w-full text-center hover:text-blue-600 transition duration-300">Servicios</a></li>
                 <li><a href="#afiliacion" class="block w-full text-center hover:text-blue-600 transition duration-300">Afiliación</a></li>
                 <li><a href="#galeria" class="block w-full text-center hover:text-blue-600 transition duration-300">Galería</a></li>
+                <li><a href="#testimonios" class="block w-full text-center hover:text-blue-600 transition duration-300">Testimonios</a></li>
+                <li><a href="#faqs" class="block w-full text-center hover:text-blue-600 transition duration-300">FAQ's</a></li>
                 <li><a href="#contacto" class="block w-full text-center hover:text-blue-600 transition duration-300">Contacto</a></li>
                 <!-- Enlace al panel de administración para móviles -->
                 <li><a href="../index.html" class="block w-full text-center hover:text-blue-600 transition duration-300 font-bold">Administrador</a></li>
@@ -92,8 +86,11 @@
     <main class="py-20">
 
         <!-- Sección de Inicio (Hero) -->
-        <section id="inicio" class="hero-bg text-white text-center py-32 px-4 flex flex-col justify-center items-center rounded-b-3xl shadow-xl mx-auto max-w-[95%]">
-            <div class="bg-black bg-opacity-50 rounded-xl p-8 max-w-2xl">
+        <section id="inicio" class="relative text-white text-center py-32 px-4 flex flex-col justify-center items-center rounded-b-3xl shadow-xl mx-auto max-w-[95%] overflow-hidden" style="background-image: url('https://placehold.co/1920x1080/1F2937/FFFFFF?text=TAXIA+CIMCO'); background-size: cover; background-position: center;">
+            <!-- Superposición de fondo semitransparente -->
+            <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+            <!-- Contenido principal centrado -->
+            <div class="relative z-10 p-8 max-w-2xl fade-in-up">
                 <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4 leading-tight">
                     Conectamos Trayectos, Cuidamos Personas.
                 </h1>
@@ -103,6 +100,7 @@
                 <p class="text-lg sm:text-xl mb-8">
                     Una plataforma cooperativa de mototaxis desde La Jagua de Ibirico para el mundo.
                 </p>
+                <!-- Botón de llamada a la acción -->
                 <a href="#afiliacion" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
                     ¡Afíliate Ahora!
                 </a>
@@ -110,7 +108,7 @@
         </section>
 
         <!-- Sección ¿Quiénes Somos? -->
-        <section id="quienes-somos" class="py-16 px-4">
+        <section id="quienes-somos" class="py-16 px-4 fade-in-up">
             <div class="container mx-auto max-w-4xl text-center">
                 <h2 class="text-4xl font-bold text-blue-600 mb-6">¿Quiénes Somos?</h2>
                 <p class="text-lg text-gray-600">
@@ -120,7 +118,7 @@
         </section>
 
         <!-- Sección de Servicios -->
-        <section id="servicios" class="py-16 px-4 bg-gray-100">
+        <section id="servicios" class="py-16 px-4 bg-gray-100 fade-in-up">
             <div class="container mx-auto max-w-6xl text-center">
                 <h2 class="text-4xl font-bold text-blue-600 mb-12">Nuestros Servicios</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -170,8 +168,43 @@
             </div>
         </section>
 
+        <!-- Sección de Testimonios -->
+        <section id="testimonios" class="py-16 px-4 bg-gray-50 fade-in-up">
+            <div class="container mx-auto max-w-4xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-12">Lo Que Dicen Nuestros Clientes</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Testimonio 1 -->
+                    <div class="bg-white p-8 rounded-3xl shadow-lg transform hover:scale-105 transition duration-300">
+                        <p class="text-gray-600 italic mb-4">
+                            "El servicio de mototaxi de TAXIA es el más seguro y rápido que he usado. Siempre llegan a tiempo y los conductores son muy amables. ¡Totalmente recomendados!"
+                        </p>
+                        <div class="flex items-center justify-center space-x-4">
+                            <img src="https://placehold.co/64x64/E2E8F0/A0AEC0?text=JD" alt="Foto de John Doe" class="w-16 h-16 rounded-full object-cover">
+                            <div>
+                                <h4 class="font-bold text-lg">John Doe</h4>
+                                <p class="text-sm text-gray-500">Cliente de La Jagua</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Testimonio 2 -->
+                    <div class="bg-white p-8 rounded-3xl shadow-lg transform hover:scale-105 transition duration-300">
+                        <p class="text-gray-600 italic mb-4">
+                            "Me afilié como conductor hace unos meses y ha sido la mejor decisión. La plataforma es fácil de usar y las ganancias son justas. Se siente el apoyo de la cooperativa."
+                        </p>
+                        <div class="flex items-center justify-center space-x-4">
+                            <img src="https://placehold.co/64x64/E2E8F0/A0AEC0?text=MJ" alt="Foto de María J." class="w-16 h-16 rounded-full object-cover">
+                            <div>
+                                <h4 class="font-bold text-lg">María J.</h4>
+                                <p class="text-sm text-gray-500">Conductora Afiliada</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Sección de Afiliación (Formulario) -->
-        <section id="afiliacion" class="py-16 px-4">
+        <section id="afiliacion" class="py-16 px-4 bg-gray-100 fade-in-up">
             <div class="container mx-auto max-w-xl text-center">
                 <h2 class="text-4xl font-bold text-blue-600 mb-4">¡Únete a la Cooperativa!</h2>
                 <p class="text-lg text-gray-600 mb-8">
@@ -222,65 +255,66 @@
         </section>
 
         <!-- Sección de Galería -->
-        <section id="galeria" class="py-16 px-4 bg-gray-50">
+        <section id="galeria" class="py-16 px-4 bg-gray-50 fade-in-up">
             <div class="container mx-auto max-w-6xl text-center">
                 <h2 class="text-4xl font-bold text-blue-600 mb-12">📸 Nuestra Flota y Servicios</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                     <!-- Elemento de la Galería 1 -->
-                    <div class="galeria-item relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
                         <a href="https://wa.me/573001234567?text=Quisiera%20solicitar%20un%20servicio%20de%20MotoTaxi%20Urbano." target="_blank" rel="noopener noreferrer">
-                            <img src="https://placehold.co/600x400/6B7280/FFFFFF?text=Mototaxi+Urbano" alt="Mototaxi Urbano en La Jagua de Ibirico" class="w-full h-auto object-cover rounded-3xl">
-                            <div class="galeria-overlay">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Mototaxi+Urbano" alt="Mototaxi Urbano en La Jagua de Ibirico" class="w-full h-auto object-cover rounded-3xl">
+                            <!-- Overlay mejorado con clases de Tailwind -->
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <h3 class="text-xl font-bold mb-1">MotoTaxi Urbano</h3>
                                 <p>Rápido y eficiente en la ciudad.</p>
                             </div>
                         </a>
                     </div>
                     <!-- Elemento de la Galería 2 -->
-                    <div class="galeria-item relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
                         <a href="https://wa.me/573001234567?text=Quisiera%20solicitar%20un%20servicio%20de%20Moto%20Parrillero." target="_blank" rel="noopener noreferrer">
-                            <img src="https://placehold.co/600x400/6B7280/FFFFFF?text=Moto+Parrillero" alt="Moto Parrillero para pasajero adicional" class="w-full h-auto object-cover rounded-3xl">
-                            <div class="galeria-overlay">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Moto+Parrillero" alt="Moto Parrillero para pasajero adicional" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <h3 class="text-xl font-bold mb-1">Moto Parrillero</h3>
                                 <p>Cómodo para un pasajero.</p>
                             </div>
                         </a>
                     </div>
                     <!-- Elemento de la Galería 3 -->
-                    <div class="galeria-item relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
                         <a href="https://wa.me/573001234567?text=Quisiera%20solicitar%20un%20servicio%20de%20MotoCarga." target="_blank" rel="noopener noreferrer">
-                            <img src="https://placehold.co/600x400/6B7280/FFFFFF?text=MotoCarga" alt="Motocarga para transporte de paquetes" class="w-full h-auto object-cover rounded-3xl">
-                            <div class="galeria-overlay">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=MotoCarga" alt="Motocarga para transporte de paquetes" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <h3 class="text-xl font-bold mb-1">MotoCarga</h3>
                                 <p>Transporte ligero de carga liviana.</p>
                             </div>
                         </a>
                     </div>
                     <!-- Elemento de la Galería 4 -->
-                    <div class="galeria-item relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
                         <a href="https://wa.me/573001234567?text=Quisiera%20solicitar%20un%20viaje%20intermunicipal." target="_blank" rel="noopener noreferrer">
-                            <img src="https://placehold.co/600x400/6B7280/FFFFFF?text=Viaje+Intermunicipal" alt="Viaje Intermunicipal" class="w-full h-auto object-cover rounded-3xl">
-                            <div class="galeria-overlay">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Viaje+Intermunicipal" alt="Viaje Intermunicipal" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <h3 class="text-xl font-bold mb-1">Viaje Intermunicipal</h3>
                                 <p>Conexión segura y confiable.</p>
                             </div>
                         </a>
                     </div>
                     <!-- Elemento de la Galería 5 -->
-                    <div class="galeria-item relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
                         <a href="#contacto">
-                            <img src="https://placehold.co/600x400/6B7280/FFFFFF?text=App+Cliente" alt="Plataforma Tecnológica TAXIA, descarga nuestra App" class="w-full h-auto object-cover rounded-3xl">
-                            <div class="galeria-overlay">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=App+Cliente" alt="Plataforma Tecnológica TAXIA, descarga nuestra App" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <h3 class="text-xl font-bold mb-1">Descarga Nuestra App</h3>
                                 <p>Pide tu servicio al instante.</p>
                             </div>
                         </a>
                     </div>
                     <!-- Elemento de la Galería 6 -->
-                    <div class="galeria-item relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
                         <a href="#afiliacion">
-                            <img src="https://placehold.co/600x400/6B7280/FFFFFF?text=Equipo+TAXIA" alt="Conductor Afiliado TAXIA, únete al equipo" class="w-full h-auto object-cover rounded-3xl">
-                            <div class="galeria-overlay">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Equipo+TAXIA" alt="Conductor Afiliado TAXIA, únete al equipo" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <h3 class="text-xl font-bold mb-1">Afiliación Conductores</h3>
                                 <p>¡Únete a nuestro equipo!</p>
                             </div>
@@ -290,13 +324,47 @@
             </div>
         </section>
 
+        <!-- Sección de Preguntas Frecuentes (FAQ's) -->
+        <section id="faqs" class="py-16 px-4 bg-gray-100 fade-in-up">
+            <div class="container mx-auto max-w-4xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-12">Preguntas Frecuentes</h2>
+                <div class="space-y-4 text-left">
+                    <!-- FAQ 1 -->
+                    <details class="bg-white p-6 rounded-xl shadow-md cursor-pointer">
+                        <summary class="flex justify-between items-center font-bold text-lg text-gray-800 hover:text-blue-600 transition duration-300">
+                            ¿Cómo solicito un servicio?
+                            <i class="fas fa-chevron-down text-blue-600"></i>
+                        </summary>
+                        <p class="mt-4 text-gray-600">Puedes solicitar un servicio a través de nuestra aplicación móvil (disponible próximamente) o contactándonos directamente por WhatsApp, Messenger o Telegram.</p>
+                    </details>
+                    <!-- FAQ 2 -->
+                    <details class="bg-white p-6 rounded-xl shadow-md cursor-pointer">
+                        <summary class="flex justify-between items-center font-bold text-lg text-gray-800 hover:text-blue-600 transition duration-300">
+                            ¿Qué beneficios tengo si me afilio como conductor?
+                            <i class="fas fa-chevron-down text-blue-600"></i>
+                        </summary>
+                        <p class="mt-4 text-gray-600">Como conductor afiliado, accedes a una plataforma tecnificada para recibir viajes, rutas seguras, tarifas justas, apoyo de la cooperativa y una comunidad de conductores unidos. Puedes iniciar tu proceso desde nuestra sección de Afiliación.</p>
+                    </details>
+                    <!-- FAQ 3 -->
+                    <details class="bg-white p-6 rounded-xl shadow-md cursor-pointer">
+                        <summary class="flex justify-between items-center font-bold text-lg text-gray-800 hover:text-blue-600 transition duration-300">
+                            ¿Qué zonas cubren sus servicios?
+                            <i class="fas fa-chevron-down text-blue-600"></i>
+                        </summary>
+                        <p class="mt-4 text-gray-600">Nuestros servicios de mototaxi y motocarga operan principalmente en La Jagua de Ibirico. Para viajes intermunicipales, conectamos La Jagua con otras poblaciones de la región.</p>
+                    </details>
+                </div>
+            </div>
+        </section>
+
         <!-- Sección de Contacto -->
-        <section id="contacto" class="py-16 px-4 bg-gray-100">
+        <section id="contacto" class="py-16 px-4 bg-gray-50 fade-in-up">
             <div class="container mx-auto max-w-2xl text-center">
                 <h2 class="text-4xl font-bold text-blue-600 mb-4">Contáctanos y Pide tu Servicio</h2>
                 <p class="text-lg text-gray-600 mb-8">
                     ¿Listo para viajar con TAXIA CIMCO? ¡Contáctanos al instante!
                 </p>
+                <!-- Contenedor de botones de contacto -->
                 <div class="flex flex-wrap justify-center gap-4 mb-8">
                     <a href="https://wa.me/573001234567?text=Hola%2C%20quisiera%20solicitar%20un%20servicio%20de%20Taxi%20Moto." target="_blank" aria-label="Contactar por WhatsApp" class="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
                         <i class="fab fa-whatsapp"></i>
@@ -365,55 +433,86 @@
         document.addEventListener('DOMContentLoaded', () => {
             const menuToggle = document.getElementById('menu-toggle');
             const mobileMenu = document.getElementById('mobile-menu');
+            const navLinks = document.querySelectorAll('#mobile-menu a');
 
-            if (menuToggle) {
+            if (menuToggle && mobileMenu) {
                 menuToggle.addEventListener('click', () => {
                     mobileMenu.classList.toggle('hidden');
+                });
+
+                // Cierra el menú móvil al hacer clic en un enlace
+                navLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        mobileMenu.classList.add('hidden');
+                    });
                 });
             }
 
             // Lógica para el formulario (Formspree)
             const form = document.getElementById('my-form');
             const mensajeValidacion = document.getElementById('mensajeValidacion');
+            
+            if (form && mensajeValidacion) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault(); // Evita el envío por defecto
 
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault(); // Evita el envío por defecto
+                    const formData = new FormData(form);
+                    try {
+                        const response = await fetch(form.action, {
+                            method: form.method,
+                            body: formData,
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
 
-                const formData = new FormData(form);
-                try {
-                    const response = await fetch(form.action, {
-                        method: form.method,
-                        body: formData,
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        mensajeValidacion.textContent = '¡Gracias! Tu solicitud ha sido enviada con éxito.';
-                        mensajeValidacion.classList.remove('hidden', 'text-red-500');
-                        mensajeValidacion.classList.add('text-green-500');
-                        form.reset(); // Limpia el formulario
-                    } else {
-                        const data = await response.json();
-                        if (data.errors) {
-                            mensajeValidacion.textContent = data.errors.map(error => error.message).join(', ');
+                        if (response.ok) {
+                            mensajeValidacion.textContent = '¡Gracias! Tu solicitud ha sido enviada con éxito.';
+                            mensajeValidacion.classList.remove('hidden', 'text-red-500');
+                            mensajeValidacion.classList.add('text-green-500', 'block');
+                            form.reset(); // Limpia el formulario
                         } else {
-                            mensajeValidacion.textContent = 'Hubo un error al enviar tu solicitud. Inténtalo de nuevo.';
+                            const data = await response.json();
+                            if (data.errors) {
+                                mensajeValidacion.textContent = data.errors.map(error => error.message).join(', ');
+                            } else {
+                                mensajeValidacion.textContent = 'Hubo un error al enviar tu solicitud. Inténtalo de nuevo.';
+                            }
+                            mensajeValidacion.classList.remove('hidden', 'text-green-500');
+                            mensajeValidacion.classList.add('text-red-500', 'block');
                         }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        mensajeValidacion.textContent = 'Hubo un error de conexión. Inténtalo de nuevo.';
                         mensajeValidacion.classList.remove('hidden', 'text-green-500');
-                        mensajeValidacion.classList.add('text-red-500');
+                        mensajeValidacion.classList.add('text-red-500', 'block');
                     }
-                } catch (error) {
-                    mensajeValidacion.textContent = 'Hubo un error de conexión. Inténtalo de nuevo.';
-                    mensajeValidacion.classList.remove('hidden', 'text-green-500');
-                    mensajeValidacion.classList.add('text-red-500');
-                }
+                });
+            }
+
+            // Lógica para animaciones al hacer scroll
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.1
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target); // Desobservar una vez que la animación se ha activado
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.fade-in-up').forEach(element => {
+                observer.observe(element);
             });
         });
     </script>
     
-    <!-- Script de Crisp Chat -->
+    <!-- Script de Crisp Chat, mantenido en su posición original -->
     <script type="text/javascript">window.$crisp=[];window.CRISP_WEBSITE_ID="d26d1709-a108-4b9e-ac4e-f634c355ec98";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();</script>
 </body>
 </html>

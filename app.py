@@ -1,103 +1,226 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import firebase_admin
-from firebase_admin import credentials, firestore
-from firebase_admin import exceptions as firebase_exceptions
-import os # Importa el módulo 'os' para trabajar con rutas de archivos
+# =================================================================================================
+# ARCHIVO: app.py
+# FUNCIÓN: Backend de la aplicación con Flask, Firebase y CORS.
+# =================================================================================================
+"""
+Backend de la aplicación con Flask, Firebase Admin SDK y Firestore.
+Este archivo contiene la lógica para la inicialización del servidor,
+manejo de rutas de API para conductores, viajes y autenticación, y la
+interacción con la base de datos Firestore.
+
+Características clave de esta versión profesional:
+- **Variables de Entorno:** Se utiliza `FIREBASE_SERVICE_ACCOUNT_KEY_PATH` para
+  la ruta del archivo de la clave de servicio, una práctica segura.
+- **Manejo de Timestamps:** Se implementa un `CustomJSONEncoder` para convertir
+  automáticamente los objetos `Timestamp` de Firestore a formato ISO 8601,
+  garantizando una correcta serialización de datos.
+- **Rutas Protegidas:** El decorador `auth_required` asegura que solo usuarios
+  autenticados puedan acceder a las rutas sensibles, mejorando la seguridad.
+- **Consultas Optimizadas:** Las consultas a Firestore se realizan de manera eficiente,
+  utilizando el filtrado en la base de datos siempre que es posible.
+- **Validación Robusta:** Las funciones de validación garantizan la integridad de los datos
+  recibidos en las solicitudes.
+"""
+
+# --- Importaciones de bibliotecas ---
+import os
+import re
+from functools import wraps
 from datetime import datetime
-import json # Importa el módulo 'json'
 
-# --- Configuración de Firebase ---
-# Obtener la ruta absoluta del directorio actual del script app.py
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, "serviceAccountKey.json")
+# Importaciones de Flask y extensiones
+from flask import Flask, request, jsonify, g
+from flask_cors import CORS
+from flask.json import JSONEncoder
 
-# Inicializa Firebase Admin SDK solo si no ha sido inicializado antes
+# Importaciones de Firebase Admin SDK
+import firebase_admin
+from firebase_admin import credentials, firestore, auth, exceptions as firebase_exceptions
+from google.cloud.firestore import SERVER_TIMESTAMP, FieldFilter, Query, DELETE_FIELD
+
+# =================================================================================================
+# --- Configuración de Flask ---
+# =================================================================================================
+app = Flask(__name__)
+# Se habilita CORS para todas las rutas. En producción, se recomienda restringir
+# a la URL del frontend por razones de seguridad.
+CORS(app)
+
+# =================================================================================================
+# --- Configuración de Firebase y Firestore ---
+# =================================================================================================
+
+# La ruta a la clave de servicio se obtiene de una variable de entorno,
+# una práctica de seguridad estándar.
+SERVICE_ACCOUNT_KEY_PATH = os.environ.get('FIREBASE_SERVICE_ACCOUNT_KEY_PATH')
+
+# Inicialización de Firebase Admin SDK. Este bloque garantiza que la inicialización
+# se realice solo una vez y maneja posibles errores de manera robusta.
 if not firebase_admin._apps:
     try:
-        # Verifica si el archivo de la clave de servicio existe antes de intentar inicializar
-        if not os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
-            raise FileNotFoundError(f"El archivo de clave de servicio no se encontró en: {SERVICE_ACCOUNT_KEY_PATH}")
-
-        cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
-        firebase_admin.initialize_app(cred)
-        print("Firebase Admin SDK inicializado exitosamente.")
-    except FileNotFoundError as e:
-        print(f"ERROR FATAL: {e}")
-        print(f"POR FAVOR, VERIFICA LA RUTA Y EL NOMBRE EXACTO DEL ARCHIVO: '{SERVICE_ACCOUNT_KEY_PATH}'")
-        print("Asegúrate de que no tenga extensiones dobles como '.json.json' o caracteres invisibles.")
-        # Para producción, la aplicación debería fallar y salir aquí
-        # import sys
-        # sys.exit(1)
+        if not SERVICE_ACCOUNT_KEY_PATH or not os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
+            print("❌ ERROR FATAL: La variable 'FIREBASE_SERVICE_ACCOUNT_KEY_PATH' no está configurada o el archivo no existe.")
+            db = None
+        else:
+            cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase Admin SDK inicializado exitosamente.")
+            db = firestore.client()
+            print("✅ Firestore client inicializado.")
     except Exception as e:
-        print(f"ERROR FATAL al inicializar Firebase Admin SDK: {e}")
-        print("Verifica tu conexión a internet o la configuración de tu proyecto Firebase.")
-        # Para producción, la aplicación debería fallar y salir aquí
-        # import sys
-        # sys.exit(1)
-
-# Obtiene una instancia del cliente de Firestore
-try:
+        print(f"❌ ERROR FATAL al inicializar Firebase Admin SDK o Firestore: {e}")
+        db = None
+else:
     db = firestore.client()
-except NameError: # Si 'firebase_admin' no se inicializó, 'db' no se definiría
-    print("Firestore client no pudo ser inicializado. Las operaciones de base de datos fallarán.")
-    db = None # Asegura que 'db' esté definido, aunque sea como None
+    print("✅ Firestore client ya estaba inicializado.")
 
-app = Flask(__name__)
-CORS(app) # Habilita CORS para todas las rutas y orígenes, esencial para comunicación frontend-backend
+# =================================================================================================
+# --- Constantes y Funciones de Utilidad ---
+# =================================================================================================
 
-# --- Rutas de API para Conductores ---
+ALLOWED_VEHICLE_TYPES = ['Mototaxi', 'Bicitaxi', 'Taxi (particular)', 'Motocarga']
+PHONE_REGEX = r'^\d{7,15}$'
+
+def is_valid_phone(phone_number: str) -> bool:
+    """Valida si un número de teléfono cumple con el formato requerido."""
+    return bool(re.match(PHONE_REGEX, str(phone_number)))
+
+class CustomJSONEncoder(JSONEncoder):
+    """
+    JSONEncoder personalizado para manejar objetos de tipos no serializables por defecto,
+    como los Timestamps de Firestore, convirtiéndolos a cadenas ISO 8601.
+    """
+    def default(self, obj):
+        if isinstance(obj, (datetime, firestore.Timestamp)):
+            return obj.isoformat()
+        return super(CustomJSONEncoder, self).default(obj)
+
+app.json_encoder = CustomJSONEncoder
+
+# --- Decorador para Autenticación de Firebase (Middleware) ---
+def auth_required(f):
+    """
+    Decorador para proteger rutas. Verifica el token de autenticación del usuario
+    y almacena las claims del usuario en el objeto `g` de Flask.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if db is None:
+            return jsonify({"error": "Base de datos no disponible."}), 503
+
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Acceso denegado: Token de autenticación no proporcionado o formato inválido."}), 401
+
+        id_token = auth_header.split('Bearer ')[1]
+        try:
+            claims = auth.verify_id_token(id_token)
+            g.user_claims = claims
+            g.uid = claims['uid']
+        except firebase_exceptions.AuthError as e:
+            print(f"Error de autenticación de Firebase: {e}")
+            return jsonify({"error": f"Acceso denegado: Token inválido o expirado. Código: {e.code}"}), 401
+        except Exception as e:
+            print(f"Error inesperado en la verificación del token: {e}")
+            return jsonify({"error": "Error interno del servidor al verificar la autenticación."}), 500
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+# =================================================================================================
+# --- Rutas de API para Conductores (Drivers) ---
+# =================================================================================================
 
 @app.route('/drivers', methods=['GET'])
+@auth_required
 def get_drivers():
     """
-    Obtiene todos los conductores de la colección 'drivers' en Firestore.
-    Retorna una lista de diccionarios con los datos de los conductores, incluyendo su ID de documento.
+    Obtiene una lista de conductores con la posibilidad de filtrar por estado activo.
+    El filtrado por `nombre` y `telefono` se hace en memoria.
     """
     if db is None:
-        return jsonify({"error": "Base de datos no disponible"}), 503 # Service Unavailable
+        return jsonify({"error": "Base de datos no disponible"}), 503
     try:
-        drivers_ref = db.collection('drivers') # ¡IMPORTANTE! Colección 'drivers'
+        drivers_ref = db.collection('drivers')
+        query = drivers_ref.limit(100)
+
+        activo_filter = request.args.get('activo')
+        if activo_filter is not None:
+            expected_active = activo_filter.lower() == 'true'
+            query = query.where(filter=FieldFilter('activo', '==', expected_active))
+
+        nombre_filter = request.args.get('nombre', '').lower()
+        telefono_filter = request.args.get('telefono', '').lower()
+        tipo_vehiculo_filter = request.args.get('tipoVehiculo', '').lower()
+
         all_drivers = []
-        for doc in drivers_ref.stream():
+        for doc in query.stream():
             driver_data = doc.to_dict()
-            driver_data['id'] = doc.id # Añadir el ID del documento al diccionario para el frontend
-            all_drivers.append(driver_data)
+            driver_data['id'] = doc.id
+            
+            # Filtrado en memoria para campos de texto, ya que Firestore no
+            # soporta búsquedas de subcadenas directamente.
+            match = True
+            if nombre_filter and nombre_filter not in driver_data.get('nombre', '').lower():
+                match = False
+            if telefono_filter and telefono_filter not in driver_data.get('telefono', '').lower():
+                match = False
+            if tipo_vehiculo_filter and tipo_vehiculo_filter not in driver_data.get('tipoVehiculo', '').lower():
+                match = False
+
+            if match:
+                all_drivers.append(driver_data)
+
         return jsonify(all_drivers), 200
     except Exception as e:
         print(f"Error al obtener conductores: {e}")
         return jsonify({"error": "Error interno del servidor al obtener conductores"}), 500
 
 @app.route('/drivers', methods=['POST'])
-def add_driver():
-    """
-    Añade un nuevo conductor a la colección 'drivers' en Firestore.
-    Requiere 'nombre', 'telefono', 'tipoVehiculo' en el cuerpo de la petición JSON.
-    Retorna el ID del nuevo conductor creado.
-    """
+@auth_required
+def create_driver():
+    """Crea un nuevo conductor en la base de datos con validaciones."""
     if db is None:
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
         data = request.json
         if not data:
             return jsonify({"error": "No se proporcionaron datos"}), 400
+
         required_fields = ['nombre', 'telefono', 'tipoVehiculo']
         for field in required_fields:
-            if field not in data or not data[field]:
-                return jsonify({"error": f"Falta el campo obligatorio: '{field}' o está vacío"}), 400
+            if not data.get(field):
+                return jsonify({"error": f"Falta el campo obligatorio: '{field}'."}), 400
 
-        doc_ref = db.collection('drivers').add(data) # ¡IMPORTANTE! Colección 'drivers'
-        return jsonify({"id": doc_ref[1].id, "message": "Conductor añadido exitosamente"}), 201
+        if not is_valid_phone(data['telefono']):
+            return jsonify({"error": "El teléfono debe contener solo números (7-15 dígitos)."}), 400
+
+        if data['tipoVehiculo'] not in ALLOWED_VEHICLE_TYPES:
+            return jsonify({"error": f"Tipo de vehículo no válido. Opciones permitidas: {', '.join(ALLOWED_VEHICLE_TYPES)}"}), 400
+
+        driver_to_add = {
+            'nombre': data['nombre'],
+            'telefono': data['telefono'],
+            'tipoVehiculo': data['tipoVehiculo'],
+            'activo': data.get('activo', True),
+            'fecha_creacion': SERVER_TIMESTAMP,
+            'fecha_actualizacion': SERVER_TIMESTAMP
+        }
+
+        doc_ref = db.collection('drivers').document()
+        doc_ref.set(driver_to_add)
+
+        driver_to_add['id'] = doc_ref.id
+
+        return jsonify({"id": doc_ref.id, "message": "Conductor añadido exitosamente", "data": driver_to_add}), 201
     except Exception as e:
         print(f"Error al añadir conductor: {e}")
         return jsonify({"error": "Error interno del servidor al añadir conductor"}), 500
 
 @app.route('/drivers/<string:driver_id>', methods=['PUT'])
+@auth_required
 def update_driver(driver_id):
-    """
-    Actualiza la información de un conductor específico en Firestore.
-    Requiere el ID del conductor en la URL y los datos a actualizar en el cuerpo de la petición JSON.
-    """
+    """Actualiza los datos de un conductor existente por su ID."""
     if db is None:
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
@@ -105,125 +228,169 @@ def update_driver(driver_id):
         if not data:
             return jsonify({"error": "No se proporcionaron datos para actualizar"}), 400
 
-        driver_ref = db.collection('drivers').document(driver_id) # ¡IMPORTANTE! Colección 'drivers'
-        # Verificar si el conductor existe antes de intentar actualizar
+        driver_ref = db.collection('drivers').document(driver_id)
         if not driver_ref.get().exists:
             return jsonify({"error": f"Conductor con ID '{driver_id}' no encontrado"}), 404
 
-        driver_ref.update(data)
-        return jsonify({"message": f"Conductor '{driver_id}' actualizado exitosamente"}), 200
+        update_data = {}
+        if 'nombre' in data: update_data['nombre'] = data['nombre']
+        if 'telefono' in data:
+            if data['telefono'] and not is_valid_phone(data['telefono']):
+                return jsonify({"error": "El teléfono debe contener solo números (7-15 dígitos)."}), 400
+            update_data['telefono'] = data['telefono']
+        if 'tipoVehiculo' in data:
+            if data['tipoVehiculo'] and data['tipoVehiculo'] not in ALLOWED_VEHICLE_TYPES:
+                return jsonify({"error": f"Tipo de vehículo no válido. Opciones permitidas: {', '.join(ALLOWED_VEHICLE_TYPES)}"}), 400
+            update_data['tipoVehiculo'] = data['tipoVehiculo']
+        if 'activo' in data and isinstance(data['activo'], bool):
+            update_data['activo'] = data['activo']
+
+        if not update_data:
+            return jsonify({"message": "No hay datos válidos para actualizar."}), 200
+
+        update_data['fecha_actualizacion'] = SERVER_TIMESTAMP
+        driver_ref.update(update_data)
+
+        updated_driver_doc = driver_ref.get().to_dict()
+        updated_driver_doc['id'] = driver_id
+
+        return jsonify({"message": f"Conductor '{driver_id}' actualizado exitosamente", "data": updated_driver_doc}), 200
     except Exception as e:
         print(f"Error al actualizar conductor '{driver_id}': {e}")
         return jsonify({"error": "Error interno del servidor al actualizar conductor"}), 500
 
 @app.route('/drivers/<string:driver_id>', methods=['DELETE'])
+@auth_required
 def delete_driver(driver_id):
-    """
-    Elimina un conductor específico de Firestore.
-    Requiere el ID del conductor en la URL.
-    """
+    """Elimina un conductor por su ID."""
     if db is None:
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
-        db.collection('drivers').document(driver_id).delete() # ¡IMPORTANTE! Colección 'drivers'
-        return jsonify({"message": f"Conductor '{driver_id}' eliminado exitosamente"}), 200
+        driver_ref = db.collection('drivers').document(driver_id)
+        if not driver_ref.get().exists:
+            return jsonify({"error": f"Conductor con ID '{driver_id}' no encontrado"}), 404
+
+        driver_ref.delete()
+        return jsonify({"message": f"Conductor '{driver_id}' eliminado exitosamente."}), 200
     except Exception as e:
         print(f"Error al eliminar conductor '{driver_id}': {e}")
         return jsonify({"error": "Error interno del servidor al eliminar conductor"}), 500
 
+# =================================================================================================
 # --- Rutas de API para Viajes (Travels) ---
+# =================================================================================================
 
 @app.route('/viajes', methods=['GET'])
+@auth_required
 def get_viajes():
     """
-    Obtiene todos los viajes de la colección 'viajes' en Firestore.
-    Retorna una lista de diccionarios con los datos de los viajes, incluyendo su ID de documento.
-    Maneja la conversión de Timestamps de Firestore a formato legible.
+    Obtiene una lista de viajes con filtros. Los filtros de estado se realizan
+    directamente en Firestore para mayor eficiencia.
     """
     if db is None:
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
         viajes_ref = db.collection('viajes')
-        all_viajes = []
-        for doc in viajes_ref.stream():
-            viaje_data = doc.to_dict()
-            viaje_data['id'] = doc.id # Añadir el ID del documento al diccionario
+        query = viajes_ref.limit(100)
 
-            # Convertir Timestamps de Firestore a cadenas de texto ISO para JSON
-            # Los Timestamps de Firestore son objetos especiales, el frontend necesita un formato estándar
-            if 'fecha_solicitud' in viaje_data and hasattr(viaje_data['fecha_solicitud'], 'isoformat'):
-                viaje_data['fecha_solicitud'] = viaje_data['fecha_solicitud'].isoformat()
-            if 'fecha_asignacion' in viaje_data and hasattr(viaje_data['fecha_asignacion'], 'isoformat'):
-                viaje_data['fecha_asignacion'] = viaje_data['fecha_asignacion'].isoformat()
+        estado_filter = request.args.get('estado', '').lower()
+        if estado_filter:
+            query = query.where(filter=FieldFilter('estado', '==', estado_filter))
+
+        pasajero_nombre_filter = request.args.get('pasajero_nombre', '').lower()
+        conductor_nombre_filter = request.args.get('conductor_nombre', '').lower()
+
+        all_viajes = []
+        for doc in query.stream():
+            viaje_data = doc.to_dict()
+            viaje_data['id'] = doc.id
             
-            all_viajes.append(viaje_data)
+            match = True
+            if pasajero_nombre_filter and pasajero_nombre_filter not in viaje_data.get('pasajero_nombre', '').lower():
+                match = False
+            if conductor_nombre_filter and conductor_nombre_filter not in viaje_data.get('conductor_nombre', '').lower():
+                match = False
+
+            if match:
+                all_viajes.append(viaje_data)
+
         return jsonify(all_viajes), 200
     except Exception as e:
         print(f"Error al obtener viajes: {e}")
         return jsonify({"error": "Error interno del servidor al obtener viajes"}), 500
 
 @app.route('/viajes', methods=['POST'])
-def add_viaje():
-    """
-    Añade un nuevo viaje a la colección 'viajes' en Firestore.
-    Requiere 'pasajero_nombre' y al menos una forma de ubicación de origen
-    (ubicacion_origen_texto o ubicacion_origen_lat/lon).
-    Retorna el ID del nuevo viaje creado.
-    """
+@auth_required
+def create_viaje():
+    """Crea un nuevo viaje con validaciones de datos."""
     if db is None:
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
         data = request.json
-        
         if not data:
             return jsonify({"error": "No se proporcionaron datos"}), 400
 
-        # Validar campos requeridos para un viaje
         if not data.get('pasajero_nombre'):
-            return jsonify({"error": "Falta el nombre del pasajero"}), 400
-        
-        # Asegurarse de que al menos una forma de ubicación esté presente
-        if not (data.get('ubicacion_origen_texto') or 
-                (data.get('ubicacion_origen_lat') is not None and data.get('ubicacion_origen_lon') is not None)):
-            return jsonify({"error": "Debe proporcionar una ubicación de origen (texto o coordenadas GPS)"}), 400
+            return jsonify({"error": "Falta el nombre del pasajero."}), 400
 
-        # Establecer campos por defecto si no se proporcionan, asegurando que existan
-        # Esto evita errores si el frontend no envía todos los campos
-        data['pasajero_telefono'] = data.get('pasajero_telefono', '')
-        data['ubicacion_origen_texto'] = data.get('ubicacion_origen_texto', '')
-        # Convertir lat/lon a float si vienen como string, o mantener None
-        # Se usa .get() para evitar KeyError si la clave no existe en 'data'
-        data['ubicacion_origen_lat'] = float(data.get('ubicacion_origen_lat')) if data.get('ubicacion_origen_lat') is not None else None
-        data['ubicacion_origen_lon'] = float(data.get('ubicacion_origen_lon')) if data.get('ubicacion_origen_lon') is not None else None
-        
-        data['ubicacion_destino_texto'] = data.get('ubicacion_destino_texto', '')
-        data['ubicacion_destino_lat'] = float(data.get('ubicacion_destino_lat')) if data.get('ubicacion_destino_lat') is not None else None
-        data['ubicacion_destino_lon'] = float(data.get('ubicacion_destino_lon')) if data.get('ubicacion_destino_lon') is not None else None
-        
-        data['estado'] = data.get('estado', 'pendiente').lower() # Estado inicial por defecto, en minúsculas
-        data['conductor_id'] = data.get('conductor_id', None)
-        data['conductor_nombre'] = data.get('conductor_nombre', None)
-        data['fecha_solicitud'] = firestore.SERVER_TIMESTAMP
-        data['fecha_asignacion'] = data.get('fecha_asignacion', None)
-        data['notas'] = data.get('notas', '')
+        if not (data.get('ubicacion_origen_texto') or (data.get('ubicacion_origen_lat') is not None and data.get('ubicacion_origen_lon') is not None)):
+            return jsonify({"error": "Debe proporcionar una ubicación de origen (texto o coordenadas)."}), 400
 
-        doc_ref = db.collection('viajes').add(data)
-        return jsonify({"id": doc_ref[1].id, "message": "Viaje añadido exitosamente"}), 201
-    except ValueError as e:
-        # Captura errores de conversión a float si los datos de lat/lon no son válidos
-        print(f"Error de validación de datos al añadir viaje: {e}")
-        return jsonify({"error": f"Datos de latitud/longitud inválidos: {e}"}), 400
+        if 'pasajero_telefono' in data and data['pasajero_telefono'] and not is_valid_phone(data['pasajero_telefono']):
+            return jsonify({"error": "El teléfono del pasajero debe contener solo números (7-15 dígitos)."}), 400
+
+        try:
+            for key in ['ubicacion_origen_lat', 'ubicacion_origen_lon', 'ubicacion_destino_lat', 'ubicacion_destino_lon']:
+                data[key] = float(data.get(key)) if data.get(key) is not None else None
+        except (ValueError, TypeError):
+            return jsonify({"error": "Las coordenadas deben ser números válidos."}), 400
+
+        data['estado'] = data.get('estado', 'pendiente').lower()
+
+        conductor_id = data.get('conductor_id')
+        conductor_nombre = data.get('conductor_nombre', None)
+
+        if data['estado'] != 'pendiente' and not conductor_id:
+            return jsonify({"error": 'Si el estado no es "pendiente", debes asignar un conductor.'}), 400
+
+        if conductor_id:
+            conductor_doc = db.collection('drivers').document(str(conductor_id)).get()
+            if not conductor_doc.exists:
+                return jsonify({"error": f"El conductor con ID '{conductor_id}' no existe."}), 400
+            conductor_nombre = conductor_doc.to_dict().get('nombre')
+
+        travel_to_add = {
+            'pasajero_nombre': data['pasajero_nombre'],
+            'pasajero_telefono': data.get('pasajero_telefono'),
+            'ubicacion_origen_texto': data.get('ubicacion_origen_texto'),
+            'ubicacion_origen_lat': data['ubicacion_origen_lat'],
+            'ubicacion_origen_lon': data['ubicacion_origen_lon'],
+            'ubicacion_destino_texto': data.get('ubicacion_destino_texto'),
+            'ubicacion_destino_lat': data['ubicacion_destino_lat'],
+            'ubicacion_destino_lon': data['ubicacion_destino_lon'],
+            'estado': data['estado'],
+            'conductor_id': conductor_id,
+            'conductor_nombre': conductor_nombre,
+            'notas': data.get('notas', ''),
+            'fecha_solicitud': SERVER_TIMESTAMP,
+            'fecha_asignacion': SERVER_TIMESTAMP if conductor_id else None,
+            'fecha_actualizacion': SERVER_TIMESTAMP,
+            'fecha_finalizacion': SERVER_TIMESTAMP if data['estado'] == 'completado' else None
+        }
+
+        doc_ref = db.collection('viajes').document()
+        doc_ref.set(travel_to_add)
+        travel_to_add['id'] = doc_ref.id
+
+        return jsonify({"message": "Viaje añadido exitosamente", "data": travel_to_add}), 201
     except Exception as e:
         print(f"Error al añadir viaje: {e}")
-        return jsonify({"error": "Error interno del servidor al añadir viaje"}), 500
+        return jsonify({"error": f"Error interno del servidor al añadir viaje: {e}"}), 500
 
 @app.route('/viajes/<string:viaje_id>', methods=['PUT'])
+@auth_required
 def update_viaje(viaje_id):
-    """
-    Actualiza la información de un viaje específico en Firestore.
-    Requiere el ID del viaje en la URL y los datos a actualizar en el cuerpo de la petición JSON.
-    Permite actualizar campos como estado, conductor, ubicaciones, etc.
-    """
+    """Actualiza un viaje existente por su ID."""
     if db is None:
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
@@ -232,37 +399,77 @@ def update_viaje(viaje_id):
             return jsonify({"error": "No se proporcionaron datos para actualizar"}), 400
 
         viaje_ref = db.collection('viajes').document(viaje_id)
-        if not viaje_ref.get().exists:
+        current_viaje_doc = viaje_ref.get()
+        if not current_viaje_doc.exists:
             return jsonify({"error": f"Viaje con ID '{viaje_id}' no encontrado"}), 404
 
-        if 'ubicacion_origen_lat' in data and data['ubicacion_origen_lat'] is not None:
-            data['ubicacion_origen_lat'] = float(data['ubicacion_origen_lat'])
-        if 'ubicacion_origen_lon' in data and data['ubicacion_origen_lon'] is not None:
-            data['ubicacion_origen_lon'] = float(data['ubicacion_origen_lon'])
-        if 'ubicacion_destino_lat' in data and data['ubicacion_destino_lat'] is not None:
-            data['ubicacion_destino_lat'] = float(data['ubicacion_destino_lat'])
-        if 'ubicacion_destino_lon' in data and data['ubicacion_destino_lon'] is not None:
-            data['ubicacion_destino_lon'] = float(data['ubicacion_destino_lon'])
-        
-        if 'conductor_id' in data and data['conductor_id'] is not None:
-            current_viaje = viaje_ref.get().to_dict()
-            if not current_viaje.get('fecha_asignacion'):
-                data['fecha_asignacion'] = firestore.SERVER_TIMESTAMP
-            
-        if 'estado' in data:
-            data['estado'] = data['estado'].lower()
+        current_viaje_data = current_viaje_doc.to_dict()
+        update_data = {}
 
-        viaje_ref.update(data)
-        return jsonify({"message": f"Viaje '{viaje_id}' actualizado exitosamente"}), 200
-    except ValueError as e:
-        print(f"Error de validación de datos al actualizar viaje: {e}")
-        return jsonify({"error": f"Datos de latitud/longitud inválidos en la actualización: {e}"}), 400
+        # Mapea los campos que se pueden actualizar.
+        for field in ['pasajero_nombre', 'pasajero_telefono', 'ubicacion_origen_texto',
+                      'ubicacion_destino_texto', 'notas', 'estado', 'conductor_id',
+                      'ubicacion_origen_lat', 'ubicacion_origen_lon',
+                      'ubicacion_destino_lat', 'ubicacion_destino_lon']:
+            if field in data:
+                update_data[field] = data[field]
+
+        if 'pasajero_telefono' in update_data and update_data['pasajero_telefono'] and not is_valid_phone(update_data['pasajero_telefono']):
+            return jsonify({"error": "El teléfono del pasajero debe contener solo números (7-15 dígitos)."}), 400
+
+        for key in ['ubicacion_origen_lat', 'ubicacion_origen_lon', 'ubicacion_destino_lat', 'ubicacion_destino_lon']:
+            if key in update_data:
+                try:
+                    update_data[key] = float(update_data[key]) if update_data[key] is not None else None
+                except (ValueError, TypeError):
+                    return jsonify({"error": f"Las coordenadas para '{key}' deben ser números válidos."}), 400
+
+        if 'estado' in update_data:
+            update_data['estado'] = update_data['estado'].lower()
+
+        old_conductor_id = current_viaje_data.get('conductor_id')
+        new_conductor_id = update_data.get('conductor_id', old_conductor_id)
+
+        if new_conductor_id != old_conductor_id:
+            if new_conductor_id:
+                conductor_doc = db.collection('drivers').document(str(new_conductor_id)).get()
+                if not conductor_doc.exists:
+                    return jsonify({"error": f"El conductor con ID '{new_conductor_id}' no existe."}), 400
+                update_data['conductor_nombre'] = conductor_doc.to_dict().get('nombre')
+                update_data['fecha_asignacion'] = SERVER_TIMESTAMP
+            else:
+                update_data['conductor_nombre'] = None
+                update_data['fecha_asignacion'] = None
+
+        current_estado = current_viaje_data.get('estado')
+        new_estado = update_data.get('estado', current_estado)
+
+        if new_estado != 'pendiente' and not new_conductor_id:
+            return jsonify({"error": 'Si el estado no es "pendiente", debes asignar un conductor.'}), 400
+
+        if new_estado == 'completado' and current_estado != 'completado':
+            update_data['fecha_finalizacion'] = SERVER_TIMESTAMP
+        elif new_estado != 'completado' and current_estado == 'completado':
+            update_data['fecha_finalizacion'] = DELETE_FIELD
+
+        if not update_data:
+            return jsonify({"message": "No hay datos válidos para actualizar."}), 200
+
+        update_data['fecha_actualizacion'] = SERVER_TIMESTAMP
+        viaje_ref.update(update_data)
+
+        updated_travel = viaje_ref.get().to_dict()
+        updated_travel['id'] = viaje_id
+
+        return jsonify({"message": f"Viaje '{viaje_id}' actualizado exitosamente", "data": updated_travel}), 200
     except Exception as e:
         print(f"Error al actualizar viaje '{viaje_id}': {e}")
-        return jsonify({"error": "Error interno del servidor al actualizar viaje"}), 500
+        return jsonify({"error": f"Error interno del servidor al actualizar viaje: {e}"}), 500
 
 @app.route('/viajes/<string:viaje_id>', methods=['DELETE'])
+@auth_required
 def delete_viaje(viaje_id):
+    """Elimina un viaje por su ID."""
     if db is None:
         return jsonify({"error": "Base de datos no disponible"}), 503
     try:
@@ -271,10 +478,74 @@ def delete_viaje(viaje_id):
             return jsonify({"error": f"Viaje con ID '{viaje_id}' no encontrado"}), 404
 
         viaje_ref.delete()
-        return jsonify({"message": f"Viaje '{viaje_id}' eliminado exitosamente"}), 200
+        return jsonify({"message": f"Viaje '{viaje_id}' eliminado exitosamente."}), 200
     except Exception as e:
         print(f"Error al eliminar viaje '{viaje_id}': {e}")
         return jsonify({"error": "Error interno del servidor al eliminar viaje"}), 500
 
+# =================================================================================================
+# --- Rutas de API para Autenticación y Roles ---
+# =================================================================================================
+
+@app.route('/users/set_role', methods=['POST'])
+@auth_required
+def set_user_role():
+    """Asigna un rol personalizado a un usuario de Firebase. Requiere rol de 'admin'."""
+    if db is None:
+        return jsonify({"error": "Base de datos no disponible"}), 503
+    if not g.user_claims.get('role') == 'admin':
+        return jsonify({"error": "Acceso denegado: Solo los administradores pueden asignar roles."}), 403
+    try:
+        data = request.json
+        uid = data.get('uid')
+        role = data.get('role')
+
+        if not uid or not role:
+            return jsonify({"error": "Se requieren 'uid' y 'role'."}), 400
+
+        allowed_roles = ['admin', 'operator', 'driver', 'ceo', 'passenger']
+        if role not in allowed_roles:
+            return jsonify({"error": f"Rol '{role}' no permitido. Roles válidos: {', '.join(allowed_roles)}."}), 400
+
+        user = auth.get_user(uid)
+        auth.set_custom_user_claims(uid, {'role': role})
+        print(f"Rol '{role}' asignado a usuario {uid} ({user.email}).")
+
+        return jsonify({"message": f"Rol '{role}' asignado a usuario '{uid}' exitosamente."}), 200
+    except auth.UserNotFoundError:
+        print(f"Usuario con UID {uid} no encontrado.")
+        return jsonify({"error": f"Usuario con ID '{uid}' no encontrado."}), 404
+    except Exception as e:
+        print(f"Error al asignar rol a usuario {uid}: {e}")
+        return jsonify({"error": "Error interno del servidor al asignar rol."}), 500
+
+@app.route('/login', methods=['POST'])
+def login():
+    """Verifica un ID Token de Firebase y devuelve las claims del usuario."""
+    try:
+        data = request.json
+        id_token = data.get('idToken')
+
+        if not id_token:
+            return jsonify({"error": "Token de ID no proporcionado."}), 400
+
+        claims = auth.verify_id_token(id_token)
+        uid = claims['uid']
+
+        return jsonify({
+            "message": "Autenticación exitosa",
+            "uid": uid,
+            "email": claims.get('email'),
+            "role": claims.get('role', 'none'),
+        }), 200
+    except firebase_exceptions.AuthError as e:
+        print(f"Error de autenticación: {e.code}")
+        return jsonify({"error": f"Error de autenticación: {e.code}. Por favor, inicie sesión de nuevo."}), 401
+    except Exception as e:
+        print(f"Error durante el proceso de login: {e}")
+        return jsonify({"error": "Error interno del servidor durante el login."}), 500
+
+# --- Punto de entrada principal ---
 if __name__ == '__main__':
+    # Se recomienda usar un servidor de producción como Gunicorn o Waitress en entornos de producción.
     app.run(debug=True, host='0.0.0.0', port=5000)

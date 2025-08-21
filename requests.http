@@ -1,13 +1,24 @@
-###
-# 1. GET: Obtener todos los conductores
-# Esta solicitud obtendrá todos los conductores de tu base de datos Firestore.
-GET http://127.0.0.1:5000/drivers
+# Este archivo contiene todas las solicitudes REST para probar los endpoints de los conductores.
+# Para ejecutar una solicitud, haz clic en "Send Request" justo encima de la línea del método.
+
+### VARIABLES GLOBALES
+# Usar variables hace que tus solicitudes sean reutilizables y fáciles de actualizar.
+@baseUrl = http://127.0.0.1:5000
+# Después de crear un conductor, copia su ID de la respuesta y pégalo aquí.
+@driverId = r0Py05YhXYxnQ0sGhOB2
+
+
+### 1. GET: Obtener todos los conductores
+# Esta solicitud obtendrá la lista completa de todos los conductores disponibles en la base de datos.
+GET {{baseUrl}}/drivers
 
 ###
 # 2. POST: Crear un nuevo conductor
-# Esta solicitud creará un nuevo conductor en Firestore.
-# Asegúrate de que el Content-Type sea application/json.
-POST http://127.0.0.1:5000/drivers
+# Esta solicitud enviará los datos de un nuevo conductor a la base de datos.
+# El Content-Type debe ser 'application/json' para que el servidor entienda el cuerpo de la solicitud.
+# NOTA: Después de enviar esta solicitud, copia el ID del nuevo conductor de la respuesta
+# y úsalo para las siguientes solicitudes (GET por ID, PUT, DELETE).
+POST {{baseUrl}}/drivers
 Content-Type: application/json
 
 {
@@ -18,15 +29,15 @@ Content-Type: application/json
 
 ###
 # 3. GET: Obtener un conductor específico por ID
-# Para probar esta, primero ejecuta la solicitud POST (arriba) y copia el ID
-# que te devuelve en la respuesta. Luego, reemplaza <ID_DEL_CONDUCTOR> con ese ID.
-GET http://127.0.0.1:5000/drivers/r0Py05YhXYxnQ0sGhOB2
+# Usa esta solicitud para obtener los detalles de un solo conductor.
+# Asegúrate de haber pegado el ID correcto en la variable @driverId arriba.
+GET {{baseUrl}}/drivers/{{driverId}}
 
 ###
 # 4. PUT: Actualizar un conductor existente
-# Para probar esta, usa el ID de un conductor existente (puedes obtenerlo del GET ALL o del POST).
-# Reemplaza <ID_DEL_CONDUCTOR> y modifica los campos que quieras actualizar.
-PUT http://127.0.0.1:5000/drivers/r0Py05YhXYxnQ0sGhOB2
+# Utiliza esta solicitud para modificar los datos de un conductor existente.
+# Reemplaza los campos en el cuerpo JSON con los datos que deseas actualizar.
+PUT {{baseUrl}}/drivers/{{driverId}}
 Content-Type: application/json
 
 {
@@ -37,6 +48,6 @@ Content-Type: application/json
 
 ###
 # 5. DELETE: Eliminar un conductor
-# Para probar esta, usa el ID de un conductor que quieras eliminar.
-# ¡Ten cuidado al eliminar, ya que es permanente!
-DELETE http://127.0.0.1:5000/drivers/r8Y05hYxnXxnQ8GnOB2
+# Esta solicitud eliminará permanentemente al conductor asociado con el ID.
+# ¡Ten cuidado al usar esta solicitud, ya que la acción es irreversible!
+DELETE {{baseUrl}}/drivers/{{driverId}}

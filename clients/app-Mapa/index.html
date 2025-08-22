@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplicación de Despacho Profesional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="p-6 md:p-10 flex flex-col items-center">
+
+    <div class="container mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Gestión de Despachos</h1>
+        
+        <div id="success-alert" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-8" role="alert">
+            <strong class="font-bold">¡Todo listo!</strong>
+            <span class="block sm:inline">Tu configuración de Google Cloud ha sido completada. El mapa debería funcionar correctamente.</span>
+        </div>
+
+        <div id="error-alert" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8 hidden" role="alert">
+            <strong class="font-bold">¡Error!</strong>
+            <span class="block sm:inline" id="error-message">Se produjo un error al cargar el mapa. Verifica tu clave de API y la consola.</span>
+        </div>
+
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
+            <div id="map"></div>
+        </div>
+
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Controles y Estado</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-gray-50 p-5 rounded-lg shadow-inner">
+                    <h3 class="text-lg font-medium text-gray-600 mb-2">Conductor (arrastrable)</h3>
+                    <p id="driver-location-text" class="text-gray-500 text-sm mb-3">Ubicación: Cargando...</p>
+                    <button id="update-driver-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Simular GPS Conductor
+                    </button>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg shadow-inner">
+                    <h3 class="text-lg font-medium text-gray-600 mb-2">Cliente (arrastrable)</h3>
+                    <p id="client-location-text" class="text-gray-500 text-sm mb-3">Ubicación: Cargando...</p>
+                    <button id="update-client-btn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Simular GPS Cliente
+                    </button>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-lg shadow-inner col-span-1 md:col-span-2 lg:col-span-1">
+                    <h3 class="text-lg font-medium text-gray-600 mb-2">Notas de Ubicación</h3>
+                    <div id="notes-container" class="space-y-3">
+                        <div class="bg-white p-3 rounded-md border border-gray-200">
+                            <p class="text-sm font-semibold text-gray-700">Ubicación del Conductor:</p>
+                            <p id="driver-note" class="text-gray-500 text-sm">Arrastra el marcador para actualizar.</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-md border border-gray-200">
+                            <p class="text-sm font-semibold text-gray-700">Ubicación del Cliente:</p>
+                            <p id="client-note" class="text-gray-500 text-sm">Arrastra el marcador para actualizar.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg text-center">
+            <button id="show-route-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-xl shadow-md">
+                Mostrar Ruta
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let driverMarker, clientMarker;
+        let directionsService;
+        let directionsRenderer;
+        let geocoder;
+        let geocodeId = 0;
+
+        function initMap() {
+            const initialLocation = { lat: 4.7110, lng: -74.0721 };
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 12,
+                center: initialLocation,
+                mapId: "d69a23d242767073" 
+            });
+
+            geocoder = new google.maps.Geocoder();
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer();
+            directionsRenderer.setMap(map);
+
+            driverMarker = new google.maps.Marker({
+                position: { lat: 4.72, lng: -74.08 },
+                map: map,
+                draggable: true,
+                title: "Conductor",
+                icon: {
+                    url: "http://maps.google.com/mapfiles/ms/icons/car.png",
+                    scaledSize: new google.maps.Size(40, 40)
+                }
+            });
+
+            clientMarker = new google.maps.Marker({
+                position: { lat: 4.7, lng: -74.05 },
+                map: map,
+                draggable: true,
+                title: "Cliente",
+                icon: {
+                    url: "http://maps.google.com/mapfiles/ms/icons/home.png",
+                    scaledSize: new google.maps.Size(40, 40)
+                }
+            });
+
+            setupDragListeners();
+            geocodePosition(driverMarker.getPosition(), 'driver');
+            geocodePosition(clientMarker.getPosition(), 'client');
+        }
+
+        function setupDragListeners() {
+            driverMarker.addListener("dragend", () => {
+                geocodePosition(driverMarker.getPosition(), 'driver');
+            });
+            clientMarker.addListener("dragend", () => {
+                geocodePosition(clientMarker.getPosition(), 'client');
+            });
+        }
+
+        function geocodePosition(latLng, type) {
+            const currentGeocodeId = ++geocodeId;
+            geocoder.geocode({ location: latLng })
+                .then((response) => {
+                    if (currentGeocodeId !== geocodeId) {
+                        return;
+                    }
+                    if (response.results[0]) {
+                        const address = response.results[0].formatted_address;
+                        const noteElement = document.getElementById(type === 'driver' ? 'driver-note' : 'client-note');
+                        const locationTextElement = document.getElementById(type === 'driver' ? 'driver-location-text' : 'client-location-text');
+                        
+                        noteElement.textContent = address;
+                        locationTextElement.textContent = `Ubicación: ${address}`;
+                    } else {
+                        const noteElement = document.getElementById(type === 'driver' ? 'driver-note' : 'client-note');
+                        noteElement.textContent = "No se encontró dirección para esta ubicación.";
+                    }
+                })
+                .catch((e) => {
+                    console.error("Geocoding failed due to: " + e);
+                    const noteElement = document.getElementById(type === 'driver' ? 'driver-note' : 'client-note');
+                    noteElement.textContent = "Error al obtener la dirección.";
+                });
+        }
+
+        document.getElementById('show-route-btn').addEventListener('click', () => {
+            const origin = driverMarker.getPosition();
+            const destination = clientMarker.getPosition();
+
+            directionsService.route({
+                origin: origin,
+                destination: destination,
+                travelMode: google.maps.TravelMode.DRIVING,
+                optimizeWaypoints: true,
+            })
+            .then((response) => {
+                directionsRenderer.setDirections(response);
+            })
+            .catch((e) => {
+                console.error("Directions request failed: " + e);
+            });
+        });
+
+        document.getElementById('update-driver-btn').addEventListener('click', () => {
+            const newLat = driverMarker.getPosition().lat() + (Math.random() - 0.5) * 0.05;
+            const newLng = driverMarker.getPosition().lng() + (Math.random() - 0.5) * 0.05;
+            const newPosition = { lat: newLat, lng: newLng };
+            driverMarker.setPosition(newPosition);
+            geocodePosition(newPosition, 'driver');
+        });
+
+        document.getElementById('update-client-btn').addEventListener('click', () => {
+            const newLat = clientMarker.getPosition().lat() + (Math.random() - 0.5) * 0.05;
+            const newLng = clientMarker.getPosition().lng() + (Math.random() - 0.5) * 0.05;
+            const newPosition = { lat: newLat, lng: newLng };
+            clientMarker.setPosition(newPosition);
+            geocodePosition(newPosition, 'client');
+        });
+
+        function handleApiError() {
+            const errorAlert = document.getElementById('error-alert');
+            const successAlert = document.getElementById('success-alert');
+            const errorMessage = document.getElementById('error-message');
+            
+            const error_url = document.querySelector('script[src*="maps.googleapis.com"]').src;
+            const url_params = new URLSearchParams(error_url.split('?')[1]);
+            const error_code = url_params.get('error');
+
+            if (error_code) {
+                errorAlert.classList.remove('hidden');
+                successAlert.classList.add('hidden');
+                if (error_code === 'ApiNotActivatedMapError') {
+                    errorMessage.textContent = "El mapa no se cargó: la Maps JavaScript API no está habilitada. Por favor, habilítala en la consola de Google Cloud.";
+                } else if (error_code === 'BillingNotEnabledMapError') {
+                    errorMessage.textContent = "El mapa no se cargó: la facturación no está habilitada en tu proyecto de Google Cloud. Por favor, habilítala.";
+                } else if (error_code === 'ApiTargetBlockedMapError') {
+                    errorMessage.textContent = "La clave de API tiene restricciones que impiden que funcione. Por favor, revisa las restricciones en la consola de Google Cloud.";
+                } else {
+                    errorMessage.textContent = "Ocurrió un error desconocido. Revisa la consola de desarrollador para más detalles.";
+                }
+            }
+        }
+
+        window.gm_authFailure = handleApiError;
+    </script>
+
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADIXxztNuwb1MflnKA7AdOBlOHez8VKIM&callback=initMap&libraries=places,geometry,marker&map_ids=d69a23d242767073"></script>
+</body>
+</html>

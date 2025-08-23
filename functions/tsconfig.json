@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    /* Opciones de Tipado */
+    "strict": true,                         /* Habilita todas las opciones de tipado estricto. */
+    "noImplicitReturns": true,              /* Avisa si una función no tiene un retorno explícito en todas sus rutas de código. */
+    "noUnusedLocals": true,                 /* Avisa si hay variables locales no utilizadas. */
+    "noFallthroughCasesInSwitch": true,     /* Avisa si una instrucción 'case' no tiene 'break'. */
+    "forceConsistentCasingInFileNames": true, /* Garantiza que los nombres de los archivos se escriban con mayúsculas y minúsculas de manera consistente. */
+
+    /* Opciones del Módulo */
+    "module": "NodeNext",                   /* Especifica el sistema de módulos para el código generado. */
+    "moduleResolution": "NodeNext",         /* Estrategia de resolución de módulos para Node.js (necesario para "NodeNext"). */
+    "esModuleInterop": true,                /* Habilita la interoperabilidad con módulos CommonJS. */
+    "resolveJsonModule": true,              /* Permite importar archivos JSON como módulos. */
+
+    /* Opciones de Salida */
+    "outDir": "lib",                        /* Directorio de salida para los archivos JavaScript compilados. */
+    "sourceMap": true,                      /* Genera archivos de mapa de origen para la depuración. */
+    "target": "es2022",                     /* Define la versión de JavaScript a la que se compilará el código. */
+    "lib": ["es2022"],                      /* Incluye librerías de tipos integradas de JavaScript. */
+
+    /* Opciones Adicionales */
+    "skipLibCheck": true                    /* Omite la comprobación de tipos de archivos de declaración. */
+  },
+  "compileOnSave": true,                    /* Compila automáticamente los archivos al guardarlos en el editor. */
+  "include": [
+    "src/**/*"                              /* Incluye todos los archivos TypeScript de la carpeta 'src'. */
+  ],
+  "exclude": [
+    "node_modules",                         /* Excluye el directorio 'node_modules' de la compilación. */
+    "lib"                                   /* Excluye el directorio de salida para evitar un bucle de compilación. */
+  ]
+}

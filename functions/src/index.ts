@@ -11,7 +11,7 @@ import {setGlobalOptions} from "firebase-functions/v2";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {initializeApp} from "firebase-admin/app";
-import {getFirestore} from "firebase-admin/firestore";
+import {getFirestore, FieldValue} from "firebase-admin/firestore";
 
 // Para el control de costos, se establece un límite global de 10 instancias.
 // Esto ayuda a mitigar picos de tráfico inesperados.
@@ -31,61 +31,64 @@ const db = getFirestore();
  * Es segura porque Firebase se encarga de la autenticación y la validación
  * del formato de los datos por ti.
  *
- * @param data Contiene los datos enviados por el cliente.
- * @param context Contiene el contexto de la llamada, como el UID del usuario.
+ * @param data Contiene los datos enviados por el cliente,
+ * con `origin` y `destination`.
  * @returns Un objeto con un mensaje de éxito o un error.
  */
 export const requestRide = onCall(async (request) => {
-  // Verifica si el usuario está autenticado. Si no, lanza un error.
+  // 1. Verificación de autenticación:
+  //    Es el primer y más importante paso de seguridad.
   if (!request.auth) {
+    logger.warn("Petición no autenticada.");
     throw new HttpsError("unauthenticated",
       "La función debe ser llamada por un usuario autenticado.");
   }
 
-  // Desestructura los datos recibidos en la solicitud.
+  // 2. Extracción y validación de datos:
+  //    Se utiliza desestructuración para un código más limpio.
+  //    Se valida que los datos existan para evitar errores de tipo.
   const {origin, destination} = request.data;
-
-  // Realiza una validación básica de los datos.
-  // Es crucial validar los datos en el backend para evitar errores y
-  // asegurar la integridad de la base de datos.
   if (!origin || !destination) {
+    logger.error("Argumentos inválidos. Faltan `origin` o `destination`.");
     throw new HttpsError("invalid-argument",
       "Se requieren los campos \"origin\" y \"destination\".");
   }
 
   try {
-    // Referencia a la colección "rides" en Firestore.
-    const ridesCollection = db.collection("rides");
-
-    // Crea un objeto con los datos del viaje.
+    // 3. Referencia a la colección "rides" en Firestore.
+    //    Usar `FieldValue.serverTimestamp()` es una mejor práctica para
+    //    registrar la hora, ya que se sincroniza con el reloj del servidor de Firestore.
     const rideData = {
-      userId: request.auth.uid, // ID del usuario que solicita el viaje
+      userId: request.auth.uid,
       origin: origin,
       destination: destination,
-      status: "pending", // Estado inicial del viaje (pendiente de asignación)
-      createdAt: new Date(), // Fecha y hora de la solicitud
+      status: "pending",
+      createdAt: FieldValue.serverTimestamp(),
     };
 
-    // Agrega un nuevo documento a la colección "rides" con los datos.
-    // Firestore asigna automáticamente un ID único al documento.
-    const docRef = await ridesCollection.add(rideData);
+    // 4. Agregar un nuevo documento a Firestore:
+    //    El método `add()` es ideal para crear nuevos documentos con un ID automático.
+    const docRef = await db.collection("rides").add(rideData);
 
-    // Registra la acción en los logs de Firebase para depuración.
-    logger.info(`Nueva solicitud de viaje creada con ID: ${docRef.id}`,
-      {structuredData: true});
+    // 5. Registro de la operación:
+    //    Se registra información detallada para facilitar la depuración.
+    logger.info(`Nueva solicitud de viaje creada con ID: ${docRef.id}`, {
+      userId: request.auth.uid,
+      rideId: docRef.id,
+    });
 
-    // Devuelve una respuesta de éxito al cliente.
+    // 6. Devolución de la respuesta al cliente:
+    //    Se envía una respuesta clara y concisa.
     return {
       status: "success",
       message: "Solicitud de viaje enviada con éxito.",
       rideId: docRef.id,
     };
   } catch (error) {
-    // Captura cualquier error que ocurra durante el proceso.
+    // 7. Manejo de errores:
+    //    Se capturan y registran errores internos para un mejor seguimiento.
     logger.error("Error al procesar la solicitud de viaje:", error);
-
-    // Lanza un error de HTTPS que el cliente puede entender.
     throw new HttpsError("internal",
-      "Error al procesar la solicitud de viaje.");
+      "Ocurrió un error inesperado al procesar la solicitud de viaje.");
   }
 });

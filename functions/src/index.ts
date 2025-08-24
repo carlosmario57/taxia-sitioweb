@@ -16,49 +16,39 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // =================================================================================================
-// Función que se activa al crear o actualizar un documento en la colección "rides".
+// Función que se activa al crear un nuevo documento en la colección "rides".
 // Esta es la parte "autónoma" de la central.
 // =================================================================================================
 export const onRideUpdate = functions.firestore
   .document("rides/{rideId}")
-  .onWrite(async (change, context) => {
+  .onCreate(async (snapshot, context) => { // Cambiado de onWrite a onCreate
     const rideId = context.params.rideId;
-    const beforeData = change.before.data(); // Datos del documento antes del cambio.
-    const afterData = change.after.data(); // Datos del documento después del cambio.
+    const afterData = snapshot.data(); // Los datos del documento creado
 
-    // Verifica si el documento fue creado o actualizado.
-    if (afterData) {
-      console.log(`Documento de viaje con ID ${rideId} ha sido creado o actualizado.`);
-      console.log("Datos nuevos:", afterData);
+    // La función se ejecuta solo al crear, por lo que no necesitamos 'beforeData'.
+    console.log(`Nuevo documento de viaje con ID ${rideId} ha sido creado.`);
+    console.log("Datos del nuevo viaje:", afterData);
 
-      // Ejemplo de lógica autónoma:
-      // Si el estado del viaje ha cambiado a 'pending', puedes iniciar un proceso.
-      if (beforeData?.status !== afterData.status && afterData.status === 'pending') {
-        console.log(`Se ha detectado una nueva solicitud de viaje en estado 'pending'.`);
-        
-        // Aquí puedes usar la variable `db` para interactuar con otras colecciones,
-        // por ejemplo, para notificar a un conductor.
-        const notificationData = {
-          message: `¡Nueva solicitud de viaje para ti!`,
-          rideId: rideId,
-          timestamp: admin.firestore.FieldValue.serverTimestamp()
-        };
+    // Verificamos si el estado del viaje es 'pending'.
+    if (afterData && afterData.status === 'pending') {
+      console.log(`Se ha detectado una nueva solicitud de viaje en estado 'pending'.`);
+      
+      const notificationData = {
+        message: `¡Nueva solicitud de viaje para ti!`,
+        rideId: rideId,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      };
 
-        try {
-          // Usamos la variable `db` aquí. Esto solucionará el error 'db is not read'.
-          await db.collection('driver_notifications').add(notificationData);
-          console.log(`Notificación enviada para el viaje ${rideId}.`);
-        } catch (error) {
-          console.error("Error al enviar notificación:", error);
-        }
+      try {
+        await db.collection('driver_notifications').add(notificationData);
+        console.log(`Notificación enviada para el viaje ${rideId}.`);
+      } catch (error) {
+        console.error("Error al enviar notificación:", error);
       }
-
     } else {
-      // Si afterData es null, significa que el documento fue eliminado.
-      console.log(`Documento de viaje con ID ${rideId} ha sido eliminado.`);
+      console.log(`El nuevo viaje con ID ${rideId} no está en estado 'pending'.`);
     }
 
-    // Las funciones 'onWrite' que no retornan un valor deben retornar 'null' o una promesa.
     return null;
   });
 

@@ -1,33 +1,34 @@
+/**
+ * Configuración de TypeScript para Cloud Functions de Firebase.
+ * Esta configuración garantiza una compilación segura y eficiente.
+ *
+ * @see https://www.typescriptlang.org/docs/handbook/tsconfig-json.html
+ */
 {
   "compilerOptions": {
     /* Opciones de Tipado */
-    "strict": true,                         /* Habilita todas las opciones de tipado estricto. */
-    "noImplicitReturns": true,              /* Avisa si una función no tiene un retorno explícito en todas sus rutas de código. */
-    "noUnusedLocals": true,                 /* Avisa si hay variables locales no utilizadas. */
-    "noFallthroughCasesInSwitch": true,     /* Avisa si una instrucción 'case' no tiene 'break'. */
-    "forceConsistentCasingInFileNames": true, /* Garantiza que los nombres de los archivos se escriban con mayúsculas y minúsculas de manera consistente. */
+    "strict": true,                                /* Habilita todas las opciones de tipado estricto para un código más robusto. */
+    "noImplicitReturns": true,                     /* Asegura que todas las funciones devuelvan un valor. */
+    "noUnusedLocals": true,                        /* Detecta variables no utilizadas para un código más limpio. */
+    "noFallthroughCasesInSwitch": true,            /* Evita 'caídas' en las estructuras de control 'switch'. */
+    "forceConsistentCasingInFileNames": true,      /* Impone la consistencia en el uso de mayúsculas/minúsculas en los nombres de archivos. */
 
     /* Opciones del Módulo */
-    "module": "NodeNext",                   /* Especifica el sistema de módulos para el código generado. */
-    "moduleResolution": "NodeNext",         /* Estrategia de resolución de módulos para Node.js (necesario para "NodeNext"). */
-    "esModuleInterop": true,                /* Habilita la interoperabilidad con módulos CommonJS. */
-    "resolveJsonModule": true,              /* Permite importar archivos JSON como módulos. */
+    "module": "commonjs",                          /* Utiliza el sistema de módulos CommonJS, que es el más compatible con Firebase Functions. */
+    "target": "es2020",                            /* Compila a una versión moderna de JavaScript compatible con Node.js 18 y 20. */
+    "lib": ["es2020"],                             /* Incluye librerías de tipos para ES2020. */
+    "esModuleInterop": true,                       /* Habilita la interoperabilidad con módulos CommonJS para importaciones como `import * as express from 'express'`. */
 
     /* Opciones de Salida */
-    "outDir": "lib",                        /* Directorio de salida para los archivos JavaScript compilados. */
-    "sourceMap": true,                      /* Genera archivos de mapa de origen para la depuración. */
-    "target": "es2022",                     /* Define la versión de JavaScript a la que se compilará el código. */
-    "lib": ["es2022"],                      /* Incluye librerías de tipos integradas de JavaScript. */
-
-    /* Opciones Adicionales */
-    "skipLibCheck": true                    /* Omite la comprobación de tipos de archivos de declaración. */
+    "outDir": "lib",                               /* Directorio de salida para los archivos JavaScript compilados. */
+    "sourceMap": true                              /* Genera archivos de mapa de origen para una fácil depuración. */
   },
-  "compileOnSave": true,                    /* Compila automáticamente los archivos al guardarlos en el editor. */
+  "compileOnSave": true,                           /* Compila automáticamente los archivos al guardarlos. */
   "include": [
-    "src/**/*"                              /* Incluye todos los archivos TypeScript de la carpeta 'src'. */
+    "src/**/*"                                     /* Incluye todos los archivos TypeScript de la carpeta 'src'. */
   ],
   "exclude": [
-    "node_modules",                         /* Excluye el directorio 'node_modules' de la compilación. */
-    "lib"                                   /* Excluye el directorio de salida para evitar un bucle de compilación. */
+    "node_modules",                                /* Excluye el directorio 'node_modules' de la compilación. */
+    "lib"                                          /* Excluye el directorio de salida para evitar errores de compilación. */
   ]
 }

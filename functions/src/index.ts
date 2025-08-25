@@ -10,6 +10,10 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
+// Importa los módulos necesarios para la sintaxis v2
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onCall } from "firebase-functions/v2/https";
+
 // Inicializa la app de Firebase.
 // Esta línea es necesaria para que las funciones puedan interactuar con la base de datos.
 admin.initializeApp();
@@ -19,11 +23,11 @@ const db = admin.firestore();
 // Función que se activa al crear un nuevo documento en la colección "rides".
 // Esta es la parte "autónoma" de la central.
 // =================================================================================================
-export const onRideUpdate = functions.firestore
-  .document("rides/{rideId}")
-  .onCreate(async (snapshot, context) => { // Cambiado de onWrite a onCreate
-    const rideId = context.params.rideId;
-    const afterData = snapshot.data(); // Los datos del documento creado
+export const onRideUpdate = onDocumentCreated({
+  document: "rides/{rideId}"
+}, async (event) => {
+    const rideId = event.params.rideId;
+    const afterData = event.data?.data(); // Los datos del documento creado
 
     // La función se ejecuta solo al crear, por lo que no necesitamos 'beforeData'.
     console.log(`Nuevo documento de viaje con ID ${rideId} ha sido creado.`);
@@ -63,17 +67,17 @@ export const onRideUpdate = functions.firestore
  * @param data Los datos de la solicitud (ubicacionOrigen, ubicacionDestino).
  * @param context El contexto de la llamada, que incluye la información de autenticación del usuario.
  */
-export const solicitarServicio = functions.https.onCall(async (data, context) => {
+export const solicitarServicio = onCall(async (request) => {
+  const { ubicacionOrigen, ubicacionDestino } = request.data;
+  const context = request.auth;
+
   // Aseguramos que solo los usuarios autenticados puedan llamar a esta función.
-  if (!context.auth) {
+  if (!context) {
     throw new functions.https.HttpsError(
       'unauthenticated',
       'La solicitud debe ser realizada por un usuario autenticado.'
     );
   }
-
-  // Extraemos los datos del frontend.
-  const { ubicacionOrigen, ubicacionDestino } = data;
 
   // Validamos que los datos requeridos estén presentes.
   if (!ubicacionOrigen || !ubicacionDestino) {
@@ -85,7 +89,7 @@ export const solicitarServicio = functions.https.onCall(async (data, context) =>
 
   // Definimos la información del servicio a guardar en Firestore.
   const servicioData = {
-    usuarioId: context.auth.uid, // ID del usuario que solicitó el servicio.
+    usuarioId: context.uid, // ID del usuario que solicitó el servicio.
     ubicacionOrigen: ubicacionOrigen,
     ubicacionDestino: ubicacionDestino,
     estado: 'pendiente', // Estado inicial del servicio.

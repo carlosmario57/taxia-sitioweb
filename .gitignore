@@ -1,44 +1,33 @@
-# Ignorar logs de depuración y errores
-logs/
+# Archivos de entorno y configuración
+# Ignora las variables de entorno para proteger claves sensibles
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencias del proyecto
+# Ignora las carpetas de dependencias
+/node_modules
+/venv
+__pycache__/
+
+# Archivos de depuración y logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-firebase-debug.log*
-firebase-debug.*.log*
 
-# Ignorar directorios y archivos de dependencias
-node_modules/
-venv/
-bower_components/
-*.tgz
-.yarn-integrity
-
-# Ignorar archivos compilados y de caché
-__pycache__/
-*.pyc
-lib-cov/
-coverage/
-.nyc_output/
-build/Release/
-.npm/
-.eslintcache/
-.node_repl_history
-
-# Ignorar archivos de configuración y credenciales
-.env
-.grunt/
-.firebaserc
-.firebase/
-serviceAccountKey.json # ¡CRÍTICO! Nunca subas tu clave privada
-.dataconnect/
-
-# Ignorar archivos de tiempo de ejecución
-pids/
-*.pid
-*.seed
-*.pid.lock
-
-# Ignorar archivos de Visual Studio Code y macOS
+# Archivos específicos del IDE (como VS Code)
 .vscode/
-.DS_Store
+
+# Archivos generados por el build
+/build
+/dist
+/public/build
+/functions/node_modules
+/functions/lib
+
+# Archivos de Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+serviceAccountKey.json

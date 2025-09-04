@@ -1,0 +1,26 @@
+/* =================================================================================================
+ * ARCHIVO: src/styles/fonts.css (Ejemplo de uso)
+ * FUNCIÓN: Define la fuente Inter para su uso en toda la aplicación.
+ * ================================================================================================= */
+
+/*
+ * La regla @font-face carga la fuente desde la carpeta de assets.
+ * Asegúrate de que la ruta 'inter-font.ttf' sea correcta.
+ * `font-family` define el nombre que usaremos para referirnos a esta fuente.
+ * `font-weight` y `font-style` se pueden definir para diferentes variaciones de la fuente (bold, italic, etc.).
+ */
+@font-face {
+  font-family: 'Inter';
+  src: url('/assets/inter-font.ttf') format('truetype');
+  font-weight: 400; /* Regular */
+  font-style: normal;
+}
+
+/*
+ * Aplica la fuente Inter a todo el cuerpo del documento por defecto.
+ * Si no se puede cargar Inter, se usará 'sans-serif' como alternativa.
+ */
+body {
+  font-family: 'Inter', sans-serif;
+}
+

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAXI A CIMCO</title>
+    <!-- Incluir Tailwind CSS para un diseño moderno y responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluir Font Awesome para los iconos de redes sociales y otros -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Estilos personalizados para la interfaz */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            scroll-behavior: smooth; /* Desplazamiento suave para las anclas */
+        }
+        .container {
+            max-width: 90%;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            color: white;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        /* Estilos para ocultar y mostrar secciones con JavaScript */
+        .page-section {
+            display: none;
+        }
+        .page-section.active {
+            display: block;
+        }
+    </style>
+    <!-- Firebase SDKs - Versión 11 Modular -->
+    <script type="module">
+        // Importar funciones específicas de la versión 11
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
+            authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
+            projectId: "pelagic-chalice-467818-e1",
+            storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
+            messagingSenderId: "191106268804",
+            appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
+            measurementId: "G-CPWSCLGKP2"
+        };
+        
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+
+        // Variables globales
+        window.userRole = null;
+        window.userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        window.currentRideId = null;
+        window.isAvailable = false;
+
+        // --- Funciones para la navegación de la Interfaz ---
+        window.showSection = function(sectionId) {
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+        }
+
+        window.showRoleSelection = function() {
+            // Ocultar todas las secciones de la página
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            // Mostrar solo la sección del contenedor de la App
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('roleSelection').classList.remove('hidden');
+            document.getElementById('passengerApp').classList.add('hidden');
+            document.getElementById('driverApp').classList.add('hidden');
+        }
+
+        window.showMessage = function(text, type = 'success') {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = text;
+            messageBox.className = 'message-box show';
+            if (type === 'success') {
+                messageBox.style.backgroundColor = '#10B981';
+            } else if (type === 'error') {
+                messageBox.style.backgroundColor = '#EF4444';
+            } else {
+                messageBox.style.backgroundColor = '#F59E0B';
+            }
+            setTimeout(() => {
+                messageBox.className = 'message-box';
+            }, 3000);
+        }
+
+        window.setRole = function(role) {
+            window.userRole = role;
+            document.getElementById('roleSelection').classList.add('hidden');
+            if (role === 'pasajero') {
+                document.getElementById('passengerApp').classList.remove('hidden');
+            } else if (role === 'conductor') {
+                document.getElementById('driverApp').classList.remove('hidden');
+                // Al iniciar como conductor, escuchar solicitudes de viaje
+                window.listenForRides();
+            }
+        }
+
+        // --- Lógica del Pasajero ---
+
+        window.requestRide = async function() {
+            const location = document.getElementById('passengerLocation').value;
+            const destination = document.getElementById('destination').value;
+
+            if (!location || !destination) {
+                window.showMessage('Por favor, ingresa tu ubicación y destino.', 'error');
+                return;
+            }
+
+            try {
+                // Crear un nuevo documento para el viaje en la colección 'viajes'
+                const ridesCollection = collection(window.db, 'viajes');
+                const rideRef = await addDoc(ridesCollection, {
+                    passengerId: window.userId,
+                    passengerLocation: location,
+                    destination: destination,
+                    status: 'pending', // Estado inicial del viaje
+                    createdAt: new Date() // Se puede usar new Date() en v11
+                });
+                
+                window.currentRideId = rideRef.id;
+                document.getElementById('rideStatus').classList.remove('hidden');
+                document.getElementById('statusText').textContent = 'Buscando conductor...';
+                window.showMessage('Solicitud de viaje enviada. Esperando conductor...', 'success');
+
+                // Escuchar en tiempo real los cambios en el estado del viaje
+                const rideDoc = doc(window.db, 'viajes', window.currentRideId);
+                onSnapshot(rideDoc, (doc) => {
+                    const data = doc.data();
+                    if (data.status === 'accepted') {
+                        document.getElementById('statusText').textContent = 'Conductor en camino!';
+                        document.getElementById('driverLocationText').textContent = data.driverLocation;
+                        window.showMessage('¡Tu conductor aceptó el viaje!', 'success');
+                    } else if (data.status === 'completed') {
+                        document.getElementById('statusText').textContent = 'Viaje finalizado';
+                        document.getElementById('driverLocationText').textContent = 'N/A';
+                        window.showMessage('¡El viaje ha finalizado!', 'success');
+                        setTimeout(() => {
+                            window.location.reload(); // Recargar la página para un nuevo viaje
+                        }, 5000);
+                    }
+                });
+
+            } catch (e) {
+                console.error("Error al solicitar el viaje: ", e);
+                window.showMessage('Error al solicitar el viaje.', 'error');
+            }
+        }
+
+        // --- Lógica del Conductor ---
+
+        window.toggleAvailability = function() {
+            window.isAvailable = !window.isAvailable;
+            const button = document.getElementById('availabilityButton');
+            if (window.isAvailable) {
+                button.textContent = 'Desconectarme';
+                button.classList.remove('bg-red-500', 'hover:bg-red-600');
+                button.classList.add('bg-green-500', 'hover:bg-green-600');
+                window.showMessage('Ahora estás en línea y disponible.', 'success');
+            } else {
+                button.textContent = 'Conectarme';
+                button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                button.classList.add('bg-red-500', 'hover:bg-red-600');
+                window.showMessage('Te has desconectado.', 'warning');
+            }
+        }
+
+        window.listenForRides = function() {
+            // Escuchar nuevas solicitudes de viaje pendientes
+            const ridesCollection = collection(window.db, 'viajes');
+            onSnapshot(ridesCollection, (snapshot) => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added' && window.isAvailable) {
+                        const ride = change.doc.data();
+                        if (ride.status === 'pending') {
+                            window.currentRideId = change.doc.id;
+                            document.getElementById('pendingRide').classList.remove('hidden');
+                            document.getElementById('pendingLocation').textContent = ride.passengerLocation;
+                            document.getElementById('pendingDestination').textContent = ride.destination;
+                            window.showMessage('¡Nueva solicitud de viaje!', 'warning');
+                        }
+                    }
+                });
+            });
+        }
+
+        window.acceptRide = async function() {
+            try {
+                // Actualizar el estado del viaje a 'accepted'
+                const rideDoc = doc(window.db, 'viajes', window.currentRideId);
+                await updateDoc(rideDoc, {
+                    driverId: window.userId,
+                    driverLocation: 'Ubicación del Conductor (simulada)',
+                    status: 'accepted'
+                });
+                
+                document.getElementById('pendingRide').classList.add('hidden');
+                document.getElementById('acceptedRide').classList.remove('hidden');
+                document.getElementById('acceptedDestination').textContent = document.getElementById('pendingDestination').textContent;
+                window.showMessage('Viaje aceptado. Conductor en camino.', 'success');
+            } catch (e) {
+                console.error("Error al aceptar el viaje: ", e);
+                window.showMessage('Error al aceptar el viaje.', 'error');
+            }
+        }
+
+        window.completeRide = async function() {
+            try {
+                // Actualizar el estado del viaje a 'completed'
+                const rideDoc = doc(window.db, 'viajes', window.currentRideId);
+                await updateDoc(rideDoc, {
+                    status: 'completed'
+                });
+                
+                document.getElementById('acceptedRide').classList.add('hidden');
+                window.showMessage('Viaje finalizado. ¡Gracias por el servicio!', 'success');
+                setTimeout(() => {
+                    window.location.reload(); // Recargar la página para esperar un nuevo viaje
+                }, 5000);
+            } catch (e) {
+                console.error("Error al finalizar el viaje: ", e);
+                window.showMessage('Error al finalizar el viaje.', 'error');
+            }
+        }
+
+        // Al cargar la página, mostrar la sección de "Contacto" por defecto y ocultar la App
+        window.onload = function() {
+            showSection('contactanos');
+            document.getElementById('app-container').classList.add('hidden');
+        };
+
+    </script>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <!-- Barra de navegación fija y responsiva -->
+    <header class="bg-white shadow-md fixed top-0 left-0 w-full z-50">
+        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <!-- Logo -->
+            <a href="#inicio" class="text-2xl font-bold text-blue-600">TAXI A CIMCO</a>
+            <!-- Menú de Navegación -->
+            <div class="flex space-x-6">
+                <a href="#contactanos" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Pide tu Servicio</a>
+                <a href="#servicios" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Servicios</a>
+                <a href="#inicio" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Inicio</a>
+                <a href="#quienes-somos" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Quiénes Somos?</a>
+                <a href="#afiliacion" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Afiliación</a>
+                <a href="#galeria" class="text-gray-700 hover:text-blue-600 font-semibold transition-colors duration-300">Galería</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Contenido principal de la página, con padding para no solaparse con el header -->
+    <main class="mt-20">
+
+        <!-- Mensaje de estado -->
+        <div id="messageBox" class="message-box text-white font-semibold"></div>
+
+        <!-- Secciones de contenido para la navegación (con texto de ejemplo) -->
+        <!-- La sección de Contacto está de primera para garantizar su visibilidad inicial -->
+        <section id="contactanos" class="page-section active bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8 space-y-6 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">Contáctanos y Pide tu Servicio</h1>
+            <p class="text-gray-600">¿Listo para viajar con TAXIA CIMCO? ¡Contáctanos al instante!</p>
+            <div class="flex flex-wrap justify-center gap-4 mt-6">
+                <!-- Botones de redes sociales, con estilos de la captura de pantalla -->
+                <a href="#" class="bg-green-500 text-white p-4 rounded-lg shadow-lg hover:bg-green-600 transition duration-300 flex items-center space-x-2">
+                    <i class="fab fa-whatsapp text-2xl"></i>
+                    <span class="font-bold">WhatsApp</span>
+                </a>
+                <a href="#" class="bg-blue-500 text-white p-4 rounded-lg shadow-lg hover:bg-blue-600 transition duration-300 flex items-center space-x-2">
+                    <i class="fab fa-facebook-f text-2xl"></i>
+                    <span class="font-bold">Facebook</span>
+                </a>
+                <a href="#" class="bg-blue-400 text-white p-4 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 flex items-center space-x-2">
+                    <i class="fab fa-telegram-plane text-2xl"></i>
+                    <span class="font-bold">Telegram</span>
+                </a>
+                <a href="#" class="bg-pink-500 text-white p-4 rounded-lg shadow-lg hover:bg-pink-600 transition duration-300 flex items-center space-x-2">
+                    <i class="fab fa-instagram text-2xl"></i>
+                    <span class="font-bold">Instagram</span>
+                </a>
+                <a href="#" class="bg-blue-500 text-white p-4 rounded-lg shadow-lg hover:bg-blue-600 transition duration-300 flex items-center space-x-2">
+                    <i class="fab fa-facebook-messenger text-2xl"></i>
+                    <span class="font-bold">Messenger</span>
+                </a>
+            </div>
+            <div class="mt-8 space-y-2">
+                <p class="text-gray-700 font-semibold">O si prefieres, escríbenos a:</p>
+                <a href="mailto:taxiacimco@gmail.com" class="text-blue-600 hover:underline">taxiacimco@gmail.com</a>
+                <p class="text-gray-500">La Jagua de Ibirico, Cesar, Colombia</p>
+            </div>
+            <button onclick="showRoleSelection()" class="mt-8 w-full bg-blue-600 text-white font-bold py-4 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                ¡Continuar a la App!
+            </button>
+        </section>
+
+        <!-- Sección de servicios -->
+        <section id="servicios" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Nuestra Flota y Servicios</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <!-- Botones de servicios -->
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">Mototaxi Urbano</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">Moto Parrillero</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">MotoCarga</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">Viaje Intermunicipal</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300" onclick="showRoleSelection()">App Cliente</button>
+                <button class="bg-gray-200 text-gray-800 font-bold py-8 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">Equipo TAXIA</button>
+            </div>
+        </section>
+
+        <section id="inicio" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Inicio</h2>
+            <p class="text-gray-600 mt-4">¡Bienvenido a la página principal de TAXIA CIMCO! Explora nuestros servicios y conócenos mejor.</p>
+        </section>
+
+        <section id="quienes-somos" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Quiénes Somos?</h2>
+            <p class="text-gray-600 mt-4">Somos una empresa comprometida con el transporte seguro y eficiente en La Jagua de Ibirico.</p>
+        </section>
+
+        <section id="afiliacion" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Afiliación</h2>
+            <p class="text-gray-600 mt-4">¿Eres conductor y quieres unirte a nuestra red? Conoce los requisitos y beneficios de afiliarte con nosotros.</p>
+        </section>
+
+        <section id="galeria" class="page-section bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-800">Galería</h2>
+            <p class="text-gray-600 mt-4">Mira algunas fotos de nuestros vehículos y eventos especiales.</p>
+        </section>
+    </main>
+
+    <!-- Contenedor de la app de Pasajero/Conductor (oculta por defecto) -->
+    <div id="app-container" class="hidden flex items-center justify-center min-h-screen fixed inset-0 z-50 bg-gray-900 bg-opacity-75 p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg space-y-6 text-center">
+            <!-- Selección de rol -->
+            <div id="roleSelection" class="text-center space-y-4">
+                <h1 class="text-3xl font-bold text-gray-800">Selecciona tu rol</h1>
+                <div class="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 justify-center">
+                    <button onclick="setRole('pasajero')" class="w-full md:w-auto bg-green-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
+                        Soy Pasajero
+                    </button>
+                    <button onclick="setRole('conductor')" class="w-full md:w-auto bg-blue-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                        Soy Conductor
+                    </button>
+                </div>
+            </div>
+
+            <!-- Interfaz del Pasajero -->
+            <div id="passengerApp" class="hidden text-center space-y-6">
+                <h2 class="text-3xl font-bold text-gray-800">App del Pasajero</h2>
+                <p class="text-gray-600">Pide un viaje y sigue a tu conductor en tiempo real.</p>
+                <div class="space-y-4">
+                    <input type="text" id="passengerLocation" placeholder="Tu ubicación" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <input type="text" id="destination" placeholder="Destino" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <button onclick="requestRide()" class="w-full bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-green-600 transition duration-300">
+                        Solicitar Viaje
+                    </button>
+                </div>
+                <div id="rideStatus" class="mt-6 p-4 bg-gray-50 rounded-lg text-left hidden">
+                    <p class="text-gray-700 font-semibold">Estado del Viaje: <span id="statusText" class="font-normal text-green-600">Buscando conductor...</span></p>
+                    <p class="text-gray-700 font-semibold mt-2">Ubicación del Conductor: <span id="driverLocationText" class="font-normal">N/A</span></p>
+                </div>
+            </div>
+
+            <!-- Interfaz del Conductor -->
+            <div id="driverApp" class="hidden text-center space-y-6">
+                <h2 class="text-3xl font-bold text-gray-800">App del Conductor</h2>
+                <p class="text-gray-600">Espera nuevas solicitudes de viaje.</p>
+                <button onclick="toggleAvailability()" id="availabilityButton" class="w-full bg-red-500 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-red-600 transition duration-300">
+                    Conectarme
+                </button>
+                <div id="pendingRide" class="mt-6 p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200 text-left hidden">
+                    <p class="text-gray-800 font-bold text-lg">Nueva Solicitud de Viaje</p>
+                    <p class="text-gray-700 mt-2">Ubicación del Pasajero: <span id="pendingLocation" class="font-normal"></span></p>
+                    <p class="text-gray-700">Destino: <span id="pendingDestination" class="font-normal"></span></p>
+                    <button onclick="acceptRide()" class="mt-4 w-full bg-blue-500 text-white font-bold py-2 rounded-lg shadow hover:bg-blue-600 transition duration-300">
+                        Aceptar Viaje
+                    </button>
+                </div>
+                <div id="acceptedRide" class="mt-6 p-4 bg-green-50 rounded-lg border-2 border-green-200 text-left hidden">
+                    <p class="text-gray-800 font-bold text-lg">Viaje en Curso</p>
+                    <p class="text-gray-700 mt-2">Destino: <span id="acceptedDestination" class="font-normal"></span></p>
+                    <button onclick="completeRide()" class="mt-4 w-full bg-green-500 text-white font-bold py-2 rounded-lg shadow hover:bg-green-600 transition duration-300">
+                        Finalizar Viaje
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

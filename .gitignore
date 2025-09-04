@@ -1,13 +1,12 @@
 # Archivos de entorno y configuración
-# Ignora las variables de entorno para proteger claves sensibles
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.yaml
 
 # Dependencias del proyecto
-# Ignora las carpetas de dependencias
 /node_modules
 /venv
 __pycache__/
@@ -15,6 +14,8 @@ __pycache__/
 # Archivos de depuración y logs
 *.log
 npm-debug.log*
+firebase-debug.log
+firestore-debug.log
 
 # Archivos específicos del IDE (como VS Code)
 .vscode/
@@ -25,9 +26,9 @@ npm-debug.log*
 /public/build
 /functions/node_modules
 /functions/lib
+/firebase/lib
+/firebase/functions/lib
 
 # Archivos de Firebase
 .firebase/
-firebase-debug.log
-firestore-debug.log
 serviceAccountKey.json

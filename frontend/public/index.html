@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TAXIA CIMCO - Conectamos Trayectos, Cuidamos Personas</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Estilo para asegurar que la fuente Montserrat se aplique al cuerpo del documento */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f9fafb; /* Color de fondo claro */
+            color: #1f2937; /* Color de texto principal */
+        }
+        /* Estilo para las animaciones al hacer scroll */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .fade-in-up.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* Asegura un scroll suave para los enlaces de anclaje */
+        html {
+            scroll-behavior: smooth;
+        }
+        /* Estilo para el modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s linear;
+        }
+        .modal.open {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(-50px);
+            transition: transform 0.3s ease-out;
+        }
+        .modal.open .modal-content {
+            transform: translateY(0);
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            font-size: 24px;
+            color: #aaa;
+            cursor: pointer;
+        }
+
+        /* Estilos específicos para el chatbot */
+        .chatbot-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+        }
+
+        .chatbot-button {
+            background-color: #3B82F6; /* Azul de Tailwind */
+            color: white;
+            padding: 1rem;
+            border-radius: 9999px; /* Botón redondo */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .chatbot-button:hover {
+            transform: scale(1.1);
+        }
+        
+        .social-menu {
+            position: absolute;
+            bottom: calc(100% + 1rem); /* Posiciona el menú encima del botón */
+            right: 0;
+            background-color: #fff;
+            border-radius: 1.5rem; /* rounded-3xl */
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 250px;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .social-menu.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+rA9jIq2T3m4F5+sQ7qN8aDq7F3/N12jN5I4g512Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <header class="bg-white shadow-lg fixed top-0 w-full z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="#inicio" class="flex items-center space-x-2">
+                <i class="fas fa-taxi text-blue-600 text-3xl"></i>
+                <h1 class="text-3xl font-bold text-blue-600">TAXIA</h1>
+            </a>
+            
+            <nav id="nav-menu" class="hidden md:flex space-x-8 text-gray-600 font-semibold">
+                <a href="#inicio" class="hover:text-blue-600 transition duration-300">Inicio</a>
+                <a href="#quienes-somos" class="hover:text-blue-600 transition duration-300">¿Quiénes Somos?</a>
+                <a href="#servicios" class="hover:text-blue-600 transition duration-300">Servicios</a>
+                <a href="#afiliacion" class="hover:text-blue-600 transition duration-300">Afiliación</a>
+                <a href="#galeria" class="hover:text-blue-600 transition duration-300">Galería</a>
+                <a href="#testimonios" class="hover:text-blue-600 transition duration-300">Testimonios</a>
+                <a href="#faqs" class="hover:text-blue-600 transition duration-300">FAQ's</a>
+                <a href="#contacto" class="hover:text-blue-600 transition duration-300">Contacto</a>
+                <a href="../index.html" class="hover:text-blue-600 transition duration-300 font-bold">Administrador</a>
+            </nav>
+            
+            <div class="md:hidden">
+                <button id="menu-toggle" class="text-gray-600 focus:outline-none">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        
+        <nav id="mobile-menu" class="hidden md:hidden bg-white shadow-inner pb-4">
+            <ul class="flex flex-col items-center space-y-4 text-gray-700 font-semibold">
+                <li><a href="#inicio" class="block w-full text-center hover:text-blue-600 transition duration-300">Inicio</a></li>
+                <li><a href="#quienes-somos" class="block w-full text-center hover:text-blue-600 transition duration-300">¿Quiénes Somos?</a></li>
+                <li><a href="#servicios" class="block w-full text-center hover:text-blue-600 transition duration-300">Servicios</a></li>
+                <li><a href="#afiliacion" class="block w-full text-center hover:text-blue-600 transition duration-300">Afiliación</a></li>
+                <li><a href="#galeria" class="block w-full text-center hover:text-blue-600 transition duration-300">Galería</a></li>
+                <li><a href="#testimonios" class="block w-full text-center hover:text-blue-600 transition duration-300">Testimonios</a></li>
+                <li><a href="#faqs" class="block w-full text-center hover:text-blue-600 transition duration-300">FAQ's</a></li>
+                <li><a href="#contacto" class="block w-full text-center hover:text-blue-600 transition duration-300">Contacto</a></li>
+                <li><a href="../index.html" class="block w-full text-center hover:text-blue-600 transition duration-300 font-bold">Administrador</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="py-20">
+        
+        <section id="inicio" class="relative text-white text-center py-32 px-4 flex flex-col justify-center items-center rounded-b-3xl shadow-xl mx-auto max-w-[95%] overflow-hidden" style="background-image: url('https://placehold.co/1920x1080/3B82F6/FFFFFF?text=TAXIA+CIMCO'); background-size: cover; background-position: center;">
+            <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+            <div class="relative z-10 p-8 max-w-2xl fade-in-up">
+                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4 leading-tight">
+                    Conectamos Trayectos, Cuidamos Personas.
+                </h1>
+                <h2 class="text-xl sm:text-2xl font-semibold mb-6">
+                    Centro Inteligente de Movilidad Colombia - CIMCO
+                </h2>
+                <p class="text-lg sm:text-xl mb-8">
+                    Una plataforma cooperativa de mototaxis desde La Jagua de Ibirico para el mundo.
+                </p>
+                <a href="#afiliacion" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                    ¡Afíliate Ahora!
+                </a>
+            </div>
+        </section>
+
+        <section id="quienes-somos" class="py-16 px-4 fade-in-up">
+            <div class="container mx-auto max-w-4xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-6">¿Quiénes Somos?</h2>
+                <p class="text-lg text-gray-600">
+                    TAXIA CIMCO es una iniciativa cooperativa nacida en La Jagua de Ibirico que busca organizar, dignificar y tecnificar el servicio de mototaxis. Nos comprometemos a ofrecer un servicio de transporte seguro, eficiente y de calidad, beneficiando tanto a nuestros usuarios como a nuestros conductores afiliados.
+                </p>
+            </div>
+        </section>
+
+        <section id="servicios" class="py-16 px-4 bg-gray-100 fade-in-up">
+            <div class="container mx-auto max-w-6xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-12">Nuestros Servicios</h2>
+                <!-- Se actualizan los enlaces y se agrega un modal para los servicios de aplicación -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-blue-500 transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-mobile-alt text-6xl text-blue-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">App para Pasajeros</h3>
+                        <p class="text-gray-600">Solicita tu mototaxi desde tu celular de forma rápida y segura.</p>
+                        <!-- Botón para mostrar el modal de descarga de la app -->
+                        <button onclick="showAppModal()" class="mt-4 inline-block bg-blue-500 text-white py-2 px-6 rounded-full hover:bg-blue-600 transition duration-300">
+                            Descargar App
+                        </button>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-blue-500 transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-handshake text-6xl text-blue-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Afiliación a Conductores</h3>
+                        <p class="text-gray-600">Únete a nuestra cooperativa y accede a beneficios exclusivos y reales.</p>
+                        <a href="#afiliacion" class="mt-4 inline-block bg-blue-500 text-white py-2 px-6 rounded-full hover:bg-blue-600 transition duration-300">
+                            Afíliate Ahora
+                        </a>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-blue-500 transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-shield-alt text-6xl text-blue-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Rutas Seguras</h3>
+                        <p class="text-gray-600">Conductor siempre identificado y seguimiento GPS para tu tranquilidad.</p>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-blue-500 transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-motorcycle text-6xl text-blue-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">MotoTaxi</h3>
+                        <p class="text-gray-600">Tu transporte rápido y eficiente dentro de La Jagua de Ibirico.</p>
+                        <!-- Botón para mostrar el modal de descarga de la app -->
+                        <button onclick="showAppModal()" class="mt-4 inline-block bg-blue-500 text-white py-2 px-6 rounded-full hover:bg-blue-600 transition duration-300">
+                            Solicitar Servicio
+                        </button>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-blue-500 transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-user-friends text-6xl text-blue-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Moto Parrillero</h3>
+                        <p class="text-gray-600">Viajes cómodos y seguros para un pasajero adicional.</p>
+                        <!-- Botón para mostrar el modal de descarga de la app -->
+                        <button onclick="showAppModal()" class="mt-4 inline-block bg-blue-500 text-white py-2 px-6 rounded-full hover:bg-blue-600 transition duration-300">
+                            Solicitar Servicio
+                        </button>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-blue-500 transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-truck-pickup text-6xl text-blue-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">MotoCarga</h3>
+                        <p class="text-gray-600">Transporte ligero de carga liviana con agilidad.</p>
+                        <!-- Botón para mostrar el modal de descarga de la app -->
+                        <button onclick="showAppModal()" class="mt-4 inline-block bg-blue-500 text-white py-2 px-6 rounded-full hover:bg-blue-600 transition duration-300">
+                            Solicitar Servicio
+                        </button>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-blue-500 transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-road text-6xl text-blue-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Viajes Intermunicipal</h3>
+                        <p class="text-gray-600">Conexión segura y confiable.</p>
+                        <!-- Botón directo a WhatsApp para hablar con el despachador -->
+                        <a href="https://wa.me/573001234567?text=Hola%2C%20quisiera%20solicitar%20un%20servicio%20de%20Viaje%20Intermunicipal." target="_blank" rel="noopener noreferrer" class="mt-4 inline-block bg-blue-500 text-white py-2 px-6 rounded-full hover:bg-blue-600 transition duration-300">
+                            Contactar Despachador
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="testimonios" class="py-16 px-4 bg-gray-50 fade-in-up">
+            <div class="container mx-auto max-w-4xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-12">Lo Que Dicen Nuestros Clientes</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-8 rounded-3xl shadow-lg transform hover:scale-105 transition duration-300">
+                        <p class="text-gray-600 italic mb-4">
+                            "El servicio de mototaxi de TAXIA es el más seguro y rápido que he usado. Siempre llegan a tiempo y los conductores son muy amables. ¡Totalmente recomendados!"
+                        </p>
+                        <div class="flex items-center justify-center space-x-4">
+                            <img src="https://placehold.co/64x64/E2E8F0/A0AEC0?text=JD" alt="Foto de John Doe" class="w-16 h-16 rounded-full object-cover">
+                            <div>
+                                <h4 class="font-bold text-lg">John Doe</h4>
+                                <p class="text-sm text-gray-500">Cliente de La Jagua</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl shadow-lg transform hover:scale-105 transition duration-300">
+                        <p class="text-gray-600 italic mb-4">
+                            "Me afilié como conductor hace unos meses y ha sido la mejor decisión. La plataforma es fácil de usar y las ganancias son justas. Se siente el apoyo de la cooperativa."
+                        </p>
+                        <div class="flex items-center justify-center space-x-4">
+                            <img src="https://placehold.co/64x64/E2E8F0/A0AEC0?text=MJ" alt="Foto de María J." class="w-16 h-16 rounded-full object-cover">
+                            <div>
+                                <h4 class="font-bold text-lg">María J.</h4>
+                                <p class="text-sm text-gray-500">Conductora Afiliada</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="afiliacion" class="py-16 px-4 bg-gray-100 fade-in-up">
+            <div class="container mx-auto max-w-xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-4">¡Únete a la Cooperativa!</h2>
+                <p class="text-lg text-gray-600 mb-8">
+                    Completa este formulario para iniciar tu proceso de afiliación y disfrutar de los beneficios de ser parte de TAXIA CIMCO.
+                </p>
+                <form id="my-form" action="https://formspree.io/f/mrbknvza" method="POST" enctype="multipart/form-data" class="bg-white p-8 rounded-3xl shadow-lg space-y-6 text-left">
+                    <input type="hidden" name="_subject" value="Nueva Solicitud de Afiliación - TAXIA CIMCO" />
+
+                    <div>
+                        <label for="nombre" class="block text-gray-700 font-semibold mb-2">Nombre completo:</label>
+                        <input type="text" id="nombre" name="nombre_completo" placeholder="Tu nombre completo" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" />
+                    </div>
+
+                    <div>
+                        <label for="telefono" class="block text-gray-700 font-semibold mb-2">Teléfono:</label>
+                        <input type="tel" id="telefono" name="telefono" placeholder="Ej: 3001234567" pattern="[0-9]{10}" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" />
+                    </div>
+
+                    <div>
+                        <label for="correo" class="block text-gray-700 font-semibold mb-2">Correo electrónico:</label>
+                        <input type="email" id="correo" name="email" placeholder="tu_correo@ejemplo.com" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" />
+                    </div>
+                    
+                    <div>
+                        <label for="documento" class="block text-gray-700 font-semibold mb-2">Cédula o Licencia de Conducir (obligatorio):</label>
+                        <input type="file" id="documento" name="documento_identidad" required accept="image/*,.pdf" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    </div>
+
+                    <div>
+                        <label for="servicio" class="block text-gray-700 font-semibold mb-2">Servicio de interés:</label>
+                        <select id="servicio" name="servicio_interes" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300">
+                            <option value="" disabled selected>Selecciona uno</option>
+                            <option value="mototaxi">MotoTaxi</option>
+                            <option value="motoparrillero">Moto Parrillero</option>
+                            <option value="motocarga">MotoCarga</option>
+                            <option value="viaje-intermunicipal">Viaje Intermunicipal</option>
+                            <option value="afiliacion-conductor">Afiliación de Conductor</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="mensaje" class="block text-gray-700 font-semibold mb-2">Mensaje (opcional):</label>
+                        <textarea id="mensaje" name="message" placeholder="Déjanos tus comentarios o preguntas aquí..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        Enviar Solicitud
+                    </button>
+                    
+                    <div id="mensajeValidacion" class="mt-4 text-center text-sm font-semibold hidden"></div>
+                </form>
+            </div>
+        </section>
+
+        <section id="galeria" class="py-16 px-4 bg-gray-50 fade-in-up">
+            <div class="container mx-auto max-w-6xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-12">📸 Nuestra Flota y Servicios</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                        <a href="javascript:void(0)" onclick="showAppModal()">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Mototaxi+Urbano" alt="Mototaxi Urbano en La Jagua de Ibirico" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <h3 class="text-xl font-bold mb-1">MotoTaxi Urbano</h3>
+                                <p>Rápido y eficiente en la ciudad.</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                        <a href="javascript:void(0)" onclick="showAppModal()">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Moto+Parrillero" alt="Moto Parrillero para pasajero adicional" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <h3 class="text-xl font-bold mb-1">Moto Parrillero</h3>
+                                <p>Cómodo para un pasajero.</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                        <a href="javascript:void(0)" onclick="showAppModal()">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=MotoCarga" alt="Motocarga para transporte de paquetes" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <h3 class="text-xl font-bold mb-1">MotoCarga</h3>
+                                <p>Transporte ligero de carga liviana.</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                        <a href="https://wa.me/573001234567?text=Hola%2C%20quisiera%20solicitar%20un%20servicio%20de%20Viaje%20Intermunicipal." target="_blank" rel="noopener noreferrer">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Viaje+Intermunicipal" alt="Viaje Intermunicipal" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <h3 class="text-xl font-bold mb-1">Viaje Intermunicipal</h3>
+                                <p>Conexión segura y confiable.</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                        <a href="javascript:void(0)" onclick="showAppModal()">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=App+Cliente" alt="Plataforma Tecnológica TAXIA, descarga nuestra App" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <h3 class="text-xl font-bold mb-1">Descarga Nuestra App</h3>
+                                <p>Pide tu servicio al instante.</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform hover:scale-105 transition duration-300">
+                        <a href="#afiliacion">
+                            <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Equipo+TAXIA" alt="Conductor Afiliado TAXIA, únete al equipo" class="w-full h-auto object-cover rounded-3xl">
+                            <div class="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-gray-900 via-transparent to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <h3 class="text-xl font-bold mb-1">Afiliación Conductores</h3>
+                                <p>¡Únete a nuestro equipo!</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faqs" class="py-16 px-4 bg-gray-100 fade-in-up">
+            <div class="container mx-auto max-w-4xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-12">Preguntas Frecuentes</h2>
+                <div class="space-y-4 text-left">
+                    <details class="bg-white p-6 rounded-xl shadow-md cursor-pointer">
+                        <summary class="flex justify-between items-center font-bold text-lg text-gray-800 hover:text-blue-600 transition duration-300">
+                            ¿Cómo solicito un servicio?
+                            <i class="fas fa-chevron-down text-blue-600"></i>
+                        </summary>
+                        <p class="mt-4 text-gray-600">Puedes solicitar un servicio a través de nuestra aplicación móvil (disponible próximamente) o contactándonos directamente por WhatsApp, Messenger o Telegram.</p>
+                    </details>
+                    <details class="bg-white p-6 rounded-xl shadow-md cursor-pointer">
+                        <summary class="flex justify-between items-center font-bold text-lg text-gray-800 hover:text-blue-600 transition duration-300">
+                            ¿Qué beneficios tengo si me afilio como conductor?
+                            <i class="fas fa-chevron-down text-blue-600"></i>
+                        </summary>
+                        <p class="mt-4 text-gray-600">Como conductor afiliado, accedes a una plataforma tecnificada para recibir viajes, rutas seguras, tarifas justas, apoyo de la cooperativa y una comunidad de conductores unidos. Puedes iniciar tu proceso desde nuestra sección de Afiliación.</p>
+                    </details>
+                    <details class="bg-white p-6 rounded-xl shadow-md cursor-pointer">
+                        <summary class="flex justify-between items-center font-bold text-lg text-gray-800 hover:text-blue-600 transition duration-300">
+                            ¿Qué zonas cubren sus servicios?
+                            <i class="fas fa-chevron-down text-blue-600"></i>
+                        </summary>
+                        <p class="mt-4 text-gray-600">Nuestros servicios de mototaxi y motocarga operan principalmente en La Jagua de Ibirico. Para viajes intermunicipales, conectamos La Jagua con otras poblaciones de la región.</p>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section id="contacto" class="py-16 px-4 bg-gray-50 fade-in-up">
+            <div class="container mx-auto max-w-2xl text-center">
+                <h2 class="text-4xl font-bold text-blue-600 mb-4">Contáctanos y Pide tu Servicio</h2>
+                <p class="text-lg text-gray-600 mb-8">
+                    ¿Listo para viajar con TAXIA CIMCO? ¡Contáctanos al instante!
+                </p>
+                <div class="flex flex-wrap justify-center gap-4 mb-8">
+                    <a href="https://wa.me/573001234567?text=Hola%2C%20quisiera%20solicitar%20un%20servicio%20de%20Taxi%20Moto." target="_blank" aria-label="Contactar por WhatsApp" class="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                    <a href="https://m.me/taxia_cimco" target="_blank" aria-label="Enviar mensaje por Messenger" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fab fa-facebook-messenger"></i>
+                        <span>Messenger</span>
+                    </a>
+                    <a href="https://t.me/taxia_cimco" target="_blank" aria-label="Unirse al canal de Telegram" class="flex items-center space-x-2 bg-blue-400 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fab fa-telegram-plane"></i>
+                        <span>Telegram</span>
+                    </a>
+                    <a href="https://www.facebook.com/share/16Wmp4yaaa/" target="_blank" aria-label="Ver perfil de Facebook" class="flex items-center space-x-2 bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fab fa-facebook-f"></i>
+                        <span>Facebook</span>
+                    </a>
+                    <a href="https://www.instagram.com/taxia_cimco?igsh=eXgxY2Eydw4Z3M2" target="_blank" aria-label="Ver perfil de Instagram" class="flex items-center space-x-2 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fab fa-instagram"></i>
+                        <span>Instagram</span>
+                    </a>
+                </div>
+
+                <p class="text-gray-600 mb-2">O si prefieres, escríbenos a:</p>
+                <p class="text-lg font-semibold text-gray-800">
+                    <a href="mailto:info@taxiacimco.com" class="text-blue-600 hover:underline">info@taxiacimco.com</a>
+                </p>
+            </div>
+        </section>
+
+        <!-- Chatbot flotante - Agregado -->
+        <div class="chatbot-container">
+            <!-- Botón para abrir/cerrar el chatbot -->
+            <div id="chatbot-toggle" class="chatbot-button">
+                <i class="fas fa-comment-dots text-3xl"></i>
+            </div>
+            <!-- Menú de redes sociales flotante -->
+            <div id="social-menu" class="social-menu">
+                <h3 class="text-center font-bold text-gray-800 mb-4">¡Pide tu servicio!</h3>
+                <div class="space-y-4 flex flex-col items-center">
+                    <a href="https://wa.me/573001234567?text=Hola%2C%20quisiera%20solicitar%20un%20servicio%20de%20Taxi%20Moto." target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp" class="w-full flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                    <a href="https://m.me/taxia_cimco" target="_blank" rel="noopener noreferrer" aria-label="Enviar mensaje por Messenger" class="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fab fa-facebook-messenger"></i>
+                        <span>Messenger</span>
+                    </a>
+                    <a href="https://t.me/taxia_cimco" target="_blank" rel="noopener noreferrer" aria-label="Unirse al canal de Telegram" class="w-full flex items-center justify-center space-x-2 bg-blue-400 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fab fa-telegram-plane"></i>
+                        <span>Telegram</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal de la app - Agregado -->
+    <div id="appModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAppModal()">&times;</span>
+            <h3 class="text-2xl font-bold mb-4">Descarga Nuestra App</h3>
+            <p class="text-gray-600 mb-6">Nuestra aplicación móvil estará disponible pronto en las tiendas de aplicaciones. ¡Mantente atento para solicitar tu servicio de forma más rápida y segura!</p>
+            <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="https://play.google.com/store" target="_blank" class="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full transition duration-300">
+                    <i class="fab fa-google-play"></i>
+                    <span>Google Play</span>
+                </a>
+                <a href="https://www.apple.com/app-store/" target="_blank" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-full transition duration-300">
+                    <i class="fab fa-apple"></i>
+                    <span>App Store</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script para la funcionalidad del chatbot y otros elementos -->
+    <script>
+        // Funcionalidad del menú móvil
+        const menuToggle = document.getElementById('menu-toggle');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        menuToggle.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Funcionalidad de las animaciones al hacer scroll
+        const faders = document.querySelectorAll('.fade-in-up');
+        const appearOptions = {
+            threshold: 0.5
+        };
+
+        const appearOnScroll = new IntersectionObserver(function(entries, appearOnScroll) {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) {
+                    return;
+                } else {
+                    entry.target.classList.add('is-visible');
+                    appearOnScroll.unobserve(entry.target);
+                }
+            });
+        }, appearOptions);
+
+        faders.forEach(fader => {
+            appearOnScroll.observe(fader);
+        });
+
+        // Funcionalidad del modal de la app
+        function showAppModal() {
+            const modal = document.getElementById('appModal');
+            modal.classList.add('open');
+        }
+
+        function closeAppModal() {
+            const modal = document.getElementById('appModal');
+            modal.classList.remove('open');
+        }
+
+        // Cierra el modal si se hace clic fuera de él
+        window.onclick = function(event) {
+            const modal = document.getElementById('appModal');
+            if (event.target == modal) {
+                modal.classList.remove('open');
+            }
+        }
+        
+        // Funcionalidad del chatbot flotante
+        const chatbotToggle = document.getElementById('chatbot-toggle');
+        const socialMenu = document.getElementById('social-menu');
+        
+        chatbotToggle.addEventListener('click', () => {
+            socialMenu.classList.toggle('open');
+            chatbotToggle.querySelector('i').classList.toggle('fa-comment-dots');
+            chatbotToggle.querySelector('i').classList.toggle('fa-times'); // Cambia el icono a una "X"
+        });
+
+        // Cierra el chatbot si se hace clic fuera del menú o del botón
+        document.addEventListener('click', (event) => {
+            if (!chatbotToggle.contains(event.target) && !socialMenu.contains(event.target)) {
+                socialMenu.classList.remove('open');
+                chatbotToggle.querySelector('i').classList.add('fa-comment-dots');
+                chatbotToggle.querySelector('i').classList.remove('fa-times');
+            }
+        });
+    </script>
+
+</body>
+</html>

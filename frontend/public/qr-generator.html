@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Códigos QR - TAXI A CIMCO</title>
+    
+    <!-- Meta etiquetas para hacer la página instalable como una PWA -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TAXI A CIMCO">
+    
+    <!-- Enlaces a los íconos de la aplicación (placeholders) -->
+    <!-- Para iOS -->
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/0A53A0/FFFFFF?text=TC">
+    <!-- Para Android -->
+    <link rel="icon" sizes="192x192" href="https://placehold.co/192x192/0A53A0/FFFFFF?text=TC">
+    <link rel="icon" sizes="512x512" href="https://placehold.co/512x512/0A53A0/FFFFFF?text=TC">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluir Font Awesome para los iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Biblioteca de Generación de QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .qr-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+        .qr-code-container {
+            border: 2px solid #e5e7eb;
+            padding: 8px;
+            display: inline-block;
+            border-radius: 8px;
+            background-color: #f9fafb;
+        }
+        .download-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #ffffff;
+            background-color: #1f2937;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        .download-button:hover {
+            background-color: #374151;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Contenedor Principal -->
+    <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-6xl space-y-8 text-center">
+        <h1 class="text-4xl font-extrabold text-gray-800">Códigos QR para tus Apps</h1>
+        <p class="text-gray-600 text-lg">Escanea el código correspondiente a tu rol para acceder a la aplicación.</p>
+
+        <!-- Contenedor de los Códigos QR -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 justify-center">
+
+            <!-- QR para el Pasajero -->
+            <div class="qr-card flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Pasajero</h2>
+                <div id="qr-pasajero" class="qr-code-container"></div>
+                <p class="text-sm text-gray-500 mt-4">Pide un servicio y viaja con nosotros.</p>
+                <button class="download-button" data-qr-id="qr-pasajero">
+                    <i class="fas fa-download mr-2"></i> Descargar
+                </button>
+            </div>
+
+            <!-- QR para el Mototaxi -->
+            <div class="qr-card flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Mototaxi</h2>
+                <div id="qr-mototaxi" class="qr-code-container"></div>
+                <p class="text-sm text-gray-500 mt-4">Conéctate con tu despachador.</p>
+                <button class="download-button" data-qr-id="qr-mototaxi">
+                    <i class="fas fa-download mr-2"></i> Descargar
+                </button>
+            </div>
+            
+            <!-- QR para el Despachador -->
+            <div class="qr-card flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Despachador</h2>
+                <div id="qr-despachador" class="qr-code-container"></div>
+                <p class="text-sm text-gray-500 mt-4">Administra servicios.</p>
+                <button class="download-button" data-qr-id="qr-despachador">
+                    <i class="fas fa-download mr-2"></i> Descargar
+                </button>
+            </div>
+            
+            <!-- QR para el Conductor -->
+            <div class="qr-card flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Conductor</h2>
+                <div id="qr-conductor" class="qr-code-container"></div>
+                <p class="text-sm text-gray-500 mt-4">Monitorea y acepta servicios.</p>
+                <button class="download-button" data-qr-id="qr-conductor">
+                    <i class="fas fa-download mr-2"></i> Descargar
+                </button>
+            </div>
+
+            <!-- QR para el Motoparrillero -->
+            <div class="qr-card flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Motoparrillero</h2>
+                <div id="qr-motoparrillero" class="qr-code-container"></div>
+                <p class="text-sm text-gray-500 mt-4">Recibe solicitudes de pasajeros.</p>
+                <button class="download-button" data-qr-id="qr-motoparrillero">
+                    <i class="fas fa-download mr-2"></i> Descargar
+                </button>
+            </div>
+
+            <!-- QR para el Motocarga -->
+            <div class="qr-card flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Motocarga</h2>
+                <div id="qr-motocarga" class="qr-code-container"></div>
+                <p class="text-sm text-gray-500 mt-4">Gestiona servicios de carga.</p>
+                <button class="download-button" data-qr-id="qr-motocarga">
+                    <i class="fas fa-download mr-2"></i> Descargar
+                </button>
+            </div>
+            
+            <!-- QR para el CEO Panel -->
+            <div class="qr-card flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Panel CEO</h2>
+                <div id="qr-ceopanel" class="qr-code-container"></div>
+                <p class="text-sm text-gray-500 mt-4">Accede a tu panel de control central.</p>
+                <button class="download-button" data-qr-id="qr-ceopanel">
+                    <i class="fas fa-download mr-2"></i> Descargar
+                </button>
+            </div>
+
+            <!-- Nuevo QR para el Mapa CEO -->
+            <div class="qr-card flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Mapa CEO</h2>
+                <div id="qr-ceomap" class="qr-code-container"></div>
+                <p class="text-sm text-gray-500 mt-4">Monitorea a tus conductores en tiempo real.</p>
+                <button class="download-button" data-qr-id="qr-ceomap">
+                    <i class="fas fa-download mr-2"></i> Descargar
+                </button>
+            </div>
+
+        </div>
+
+        <p class="text-sm text-gray-500 mt-8">
+            Nota: Estos códigos QR dirigen a la misma página principal, pero con un parámetro único que identifica tu rol.
+        </p>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // Se define la URL base.
+            const baseUrl = window.location.href.split('?')[0].split('/').slice(0, -1).join('/');
+
+            // URLs para cada aplicación con el parámetro de rol
+            const urls = {
+                'pasajero': `${baseUrl}/pasajero.html`,
+                'mototaxi': `${baseUrl}/mototaxi.html`,
+                'motoparrillero': `${baseUrl}/motoparrillero.html`,
+                'motocarga': `${baseUrl}/motocarga.html`,
+                'despachador': `${baseUrl}/despachador.html`,
+                'conductor': `${baseUrl}/conductorinter.html`,
+                'ceopanel': `${baseUrl}/ceo-panel.html`, 
+                'ceomap': `${baseUrl}/ceo-mapa.html`
+            };
+
+            // Función para generar un código QR
+            const generateQrCode = (id, text) => {
+                new QRCode(document.getElementById(id), {
+                    text: text,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#1f2937",
+                    colorLight : "#f9fafb"
+                });
+            };
+
+            // Función para descargar un código QR
+            const downloadQrCode = (qrId) => {
+                const qrContainer = document.getElementById(qrId);
+                const canvas = qrContainer.querySelector('canvas');
+                if (canvas) {
+                    const image = canvas.toDataURL("image/png");
+                    const link = document.createElement('a');
+                    link.download = `${qrId}.png`;
+                    link.href = image;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            };
+
+            // Generar los códigos QR para cada rol
+            generateQrCode('qr-pasajero', urls.pasajero);
+            generateQrCode('qr-mototaxi', urls.mototaxi);
+            generateQrCode('qr-motoparrillero', urls.motoparrillero);
+            generateQrCode('qr-motocarga', urls.motocarga);
+            generateQrCode('qr-despachador', urls.despachador);
+            generateQrCode('qr-conductor', urls.conductor);
+            generateQrCode('qr-ceopanel', urls.ceopanel);
+            generateQrCode('qr-ceomap', urls.ceomap);
+            
+            // Adjuntar los eventos de descarga a los botones
+            document.querySelectorAll('.download-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const qrId = event.currentTarget.getAttribute('data-qr-id');
+                    downloadQrCode(qrId);
+                });
+            });
+        };
+    </script>
+</body>
+</html>

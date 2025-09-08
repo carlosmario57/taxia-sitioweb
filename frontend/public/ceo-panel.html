@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control CEO - TAXI A CIMCO</title>
+    <!-- Incluir Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluir Font Awesome para los iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e2e8f0;
+        }
+        .container {
+            max-width: 95%;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .page-section {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        let userId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (initialAuthToken) {
+                try {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } catch (error) {
+                    console.error("Error signing in with custom token:", error);
+                    await signInAnonymously(auth);
+                }
+            } else {
+                await signInAnonymously(auth);
+            }
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    userId = user.uid;
+                    console.log("User ID:", userId);
+                    startMonitoring();
+                } else {
+                    console.log("No user is signed in.");
+                }
+            });
+        });
+
+        // Funcionalidad
+        let totalDrivers = 0;
+        let onlineDrivers = 0;
+        let onServiceDrivers = 0;
+        let estimatedRevenue = 0;
+
+        function startMonitoring() {
+            // Escuchar cambios en la colección de conductores
+            const driversRef = collection(db, `artifacts/${appId}/public/data/drivers`);
+            onSnapshot(driversRef, async (snapshot) => {
+                totalDrivers = snapshot.docs.length;
+                onlineDrivers = 0;
+                onServiceDrivers = 0;
+                estimatedRevenue = 0;
+
+                const driversWithVehicleData = [];
+                for (const driverDoc of snapshot.docs) {
+                    const driverData = driverDoc.data();
+                    if (driverData.status === 'Online') {
+                        onlineDrivers++;
+                    }
+                    if (driverData.status === 'En Servicio') {
+                        onServiceDrivers++;
+                    }
+
+                    // Calcular ingresos estimados
+                    const driverEarnings = driverData.totalEarnings || 0;
+                    estimatedRevenue += driverEarnings;
+                    
+                    // Obtener tipo de vehículo
+                    const vehicleDocRef = doc(db, `artifacts/${appId}/public/data/vehicles`, driverData.vehicleId);
+                    const vehicleSnap = await getDoc(vehicleDocRef);
+                    const vehicleData = vehicleSnap.exists() ? vehicleSnap.data() : null;
+
+                    driversWithVehicleData.push({
+                        ...driverData,
+                        vehicleType: vehicleData?.type || 'Desconocido',
+                    });
+                }
+                updatePanel(driversWithVehicleData);
+            });
+
+            // Escuchar cambios en la colección de servicios para actualizar ingresos
+            const servicesRef = collection(db, `artifacts/${appId}/public/data/services`);
+            onSnapshot(servicesRef, (snapshot) => {
+                estimatedRevenue = 0;
+                snapshot.forEach(doc => {
+                    const service = doc.data();
+                    if (service.status === 'Completado') {
+                        estimatedRevenue += service.fare || 0;
+                    }
+                });
+                document.getElementById('estimated-revenue-value').textContent = `$${estimatedRevenue.toLocaleString()}`;
+            });
+        }
+
+        function updatePanel(drivers) {
+            document.getElementById('total-drivers-value').textContent = totalDrivers;
+            document.getElementById('online-drivers-value').textContent = onlineDrivers;
+            document.getElementById('on-service-drivers-value').textContent = onServiceDrivers;
+            document.getElementById('estimated-revenue-value').textContent = `$${estimatedRevenue.toLocaleString()}`;
+
+            const driversList = document.getElementById('drivers-list');
+            driversList.innerHTML = ''; // Limpiar la lista antes de volver a renderizar
+
+            drivers.forEach(driver => {
+                const driverElement = document.createElement('div');
+                driverElement.className = 'bg-gray-100 p-4 rounded-lg shadow-sm flex items-center justify-between';
+                driverElement.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+                            <i class="fas fa-user-circle text-gray-500 text-3xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800">${driver.name}</p>
+                            <p class="text-sm text-gray-600">${driver.vehicleType}</p>
+                            <p class="text-sm font-bold ${getStatusColor(driver.status)}">${driver.status}</p>
+                        </div>
+                    </div>
+                    <button onclick="showDriverDetails('${driver.userId}')" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition duration-300">
+                        Detalles
+                    </button>
+                `;
+                driversList.appendChild(driverElement);
+            });
+        }
+
+        function getStatusColor(status) {
+            switch (status) {
+                case 'Online':
+                    return 'text-green-600';
+                case 'En Servicio':
+                    return 'text-amber-500';
+                case 'Desconectado':
+                    return 'text-gray-500';
+                default:
+                    return 'text-gray-500';
+            }
+        }
+
+        function showDriverDetails(driverId) {
+            const driversRef = collection(db, `artifacts/${appId}/public/data/drivers`);
+            onSnapshot(driversRef, async (snapshot) => {
+                const driverDoc = snapshot.docs.find(doc => doc.id === driverId);
+                if (driverDoc) {
+                    const driverData = driverDoc.data();
+                    const vehicleSnap = await getDoc(doc(db, `artifacts/${appId}/public/data/vehicles`, driverData.vehicleId));
+                    const vehicleData = vehicleSnap.data();
+
+                    document.getElementById('driverName').textContent = driverData.name;
+                    document.getElementById('driverType').textContent = vehicleData?.type || 'N/A';
+                    document.getElementById('driverStatus').textContent = driverData.status;
+                    document.getElementById('driverPhone').textContent = driverData.phone;
+                    document.getElementById('driverPlate').textContent = vehicleData?.plate || 'N/A';
+                    document.getElementById('driverRating').innerHTML = `
+                        <div class="flex items-center">
+                            <span class="mr-2">${driverData.rating || 0}</span>
+                            <i class="fas fa-star text-yellow-400"></i>
+                        </div>
+                    `;
+
+                    // Mostrar foto de perfil si existe
+                    const profileImage = document.getElementById('driverProfileImage');
+                    try {
+                        const profileImageRef = ref(storage, `users/${driverId}/profile.jpg`);
+                        const imageUrl = await getDownloadURL(profileImageRef);
+                        profileImage.src = imageUrl;
+                        profileImage.classList.remove('hidden');
+                        document.getElementById('profilePlaceholder').classList.add('hidden');
+                    } catch (e) {
+                        profileImage.classList.add('hidden');
+                        document.getElementById('profilePlaceholder').classList.remove('hidden');
+                        console.error("No profile image found:", e);
+                    }
+
+                    document.getElementById('driverDetailsModal').style.display = 'flex';
+                }
+            });
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        window.navigateToMap = function() {
+            window.location.href = 'ceo-mapa.html';
+        };
+
+        window.showDriverDetails = showDriverDetails;
+        window.closeModal = closeModal;
+    </script>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-4">
+        <!-- Navegación -->
+        <div class="flex justify-between items-center bg-white rounded-xl shadow-lg p-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Panel de Control</h1>
+            <button onclick="navigateToMap()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">
+                <i class="fas fa-map mr-2"></i> Ver en el Mapa
+            </button>
+        </div>
+
+        <!-- Resumen de Métricas -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Tarjeta de Conductores Totales -->
+            <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col justify-between items-center text-center">
+                <i class="fas fa-users text-blue-600 text-4xl mb-3"></i>
+                <h2 class="text-xl font-semibold text-gray-700">Total Conductores</h2>
+                <span id="total-drivers-value" class="text-5xl font-bold text-gray-900 mt-2">0</span>
+            </div>
+            
+            <!-- Tarjeta de Conductores Online -->
+            <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col justify-between items-center text-center">
+                <i class="fas fa-circle text-green-600 text-4xl mb-3"></i>
+                <h2 class="text-xl font-semibold text-gray-700">Conductores Online</h2>
+                <span id="online-drivers-value" class="text-5xl font-bold text-gray-900 mt-2">0</span>
+            </div>
+            
+            <!-- Tarjeta de Conductores en Servicio -->
+            <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col justify-between items-center text-center">
+                <i class="fas fa-car text-amber-500 text-4xl mb-3"></i>
+                <h2 class="text-xl font-semibold text-gray-700">En Servicio</h2>
+                <span id="on-service-drivers-value" class="text-5xl font-bold text-gray-900 mt-2">0</span>
+            </div>
+            
+            <!-- Tarjeta de Ingresos Estimados -->
+            <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col justify-between items-center text-center">
+                <i class="fas fa-dollar-sign text-green-600 text-4xl mb-3"></i>
+                <h2 class="text-xl font-semibold text-gray-700">Ingresos Estimados</h2>
+                <span id="estimated-revenue-value" class="text-5xl font-bold text-gray-900 mt-2">$0</span>
+            </div>
+        </div>
+
+        <!-- Lista de Conductores -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mt-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Lista de Conductores</h2>
+            <div id="drivers-list" class="space-y-4">
+                <!-- Los conductores se renderizarán aquí -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Detalles del Conductor -->
+    <div id="driverDetailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('driverDetailsModal')">&times;</span>
+            <div class="flex flex-col items-center text-center">
+                <div class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden mb-4">
+                    <img id="driverProfileImage" src="" alt="Foto de perfil" class="w-full h-full object-cover hidden">
+                    <i id="profilePlaceholder" class="fas fa-user-circle text-gray-500 text-6xl"></i>
+                </div>
+                <h2 id="driverName" class="text-2xl font-bold text-gray-800 mb-2"></h2>
+                <p id="driverType" class="text-lg text-gray-600"></p>
+                <div class="flex items-center space-x-2 my-2">
+                    <p id="driverStatus" class="font-bold"></p>
+                    <p id="driverRating" class="flex items-center text-yellow-500"></p>
+                </div>
+                <div class="mt-4 text-left w-full space-y-2">
+                    <p class="text-gray-700"><i class="fas fa-phone mr-2"></i><span id="driverPhone"></span></p>
+                    <p class="text-gray-700"><i class="fas fa-id-card mr-2"></i>Placa: <span id="driverPlate"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

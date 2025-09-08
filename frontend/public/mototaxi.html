@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAXI A CIMCO - Conductor</title>
+    <!-- Incluir Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluir Font Awesome para los iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Estilos personalizados */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .container {
+            max-width: 95%;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        .page-section {
+            display: none;
+        }
+        .page-section.active {
+            display: block;
+        }
+    </style>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, updateDoc, deleteDoc, addDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        // Global variables for Firebase and App ID
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { /* Tu configuración por defecto */ };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Global state
+        let userId = null;
+        let userEmail = null;
+        let unsubscribeRequests = null;
+        let currentTripId = null;
+        let lastPassengerId = null;
+        let lastTripId = null;
+
+        // --- Utility Functions ---
+        window.showMessage = function(text, type = 'success') {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = text;
+            messageBox.className = 'message-box show';
+            if (type === 'success') {
+                messageBox.style.backgroundColor = '#10B981';
+            } else if (type === 'error') {
+                messageBox.style.backgroundColor = '#EF4444';
+            } else {
+                messageBox.style.backgroundColor = '#F59E0B';
+            }
+            setTimeout(() => {
+                messageBox.className = 'message-box';
+            }, 3000);
+        };
+
+        window.showSection = function(sectionId) {
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+        };
+
+        // --- Authentication Logic ---
+        window.handleAuth = async function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            if (!email || !password) {
+                showMessage('Por favor, ingresa tu correo y contraseña.', 'error');
+                return;
+            }
+
+            const isLogin = document.getElementById('loginForm').classList.contains('active');
+            try {
+                if (isLogin) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    showMessage('Inicio de sesión exitoso.', 'success');
+                } else {
+                    const name = document.getElementById('name').value;
+                    const cedula = document.getElementById('cedula').value;
+                    const phone = document.getElementById('phone').value;
+                    const fileInput = document.getElementById('document');
+
+                    if (!name || !cedula || !phone || !fileInput.files[0]) {
+                        showMessage('Por favor, completa todos los campos y sube tu documento.', 'error');
+                        return;
+                    }
+
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+                    const file = fileInput.files[0];
+
+                    // Subir el archivo a Firebase Storage
+                    const storageRef = ref(storage, `artifacts/${appId}/driver_documents/${user.uid}/${file.name}`);
+                    const uploadTask = await uploadBytes(storageRef, file);
+                    const fileURL = await getDownloadURL(uploadTask.ref);
+
+                    // Guardar los datos del conductor en Firestore
+                    await setDoc(doc(db, `artifacts/${appId}/public/data/drivers`, user.uid), {
+                        name: name,
+                        cedula: cedula,
+                        phone: phone,
+                        email: email,
+                        documentURL: fileURL,
+                        status: 'pending',
+                        credit: 10000 // Credito inicial de 10,000
+                    });
+
+                    showMessage('Registro exitoso. Espera la aprobación.', 'success');
+                    showSection('pendingApprovalSection');
+                }
+            } catch (error) {
+                console.error("Authentication Error:", error);
+                if (error.code === 'auth/email-already-in-use') {
+                    showMessage('El correo ya está en uso. Por favor, inicia sesión.', 'error');
+                    window.toggleAuthForm();
+                } else if (error.code === 'auth/invalid-credential') {
+                    showMessage('Credenciales inválidas. Por favor, inténtalo de nuevo.', 'error');
+                } else {
+                    showMessage('Error de autenticación: ' + error.message, 'error');
+                }
+            }
+        };
+
+        window.toggleAuthForm = function() {
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            if (loginForm.classList.contains('active')) {
+                loginForm.classList.remove('active');
+                loginForm.classList.add('hidden');
+                signupForm.classList.remove('hidden');
+                signupForm.classList.add('active');
+            } else {
+                signupForm.classList.remove('active');
+                signupForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+                loginForm.classList.add('active');
+            }
+        };
+
+        window.signOut = async function() {
+            try {
+                await auth.signOut();
+                showMessage('Sesión cerrada correctamente.', 'success');
+                showSection('authSection');
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                showMessage('Error al cerrar sesión.', 'error');
+            }
+        };
+
+        // --- Trip Logic ---
+        window.goOnline = async function() {
+            try {
+                await updateDoc(doc(db, `artifacts/${appId}/public/data/drivers`, userId), {
+                    online: true
+                });
+                showMessage('Estás en línea y listo para recibir viajes.', 'success');
+                document.getElementById('onlineStatus').classList.remove('bg-red-500');
+                document.getElementById('onlineStatus').classList.add('bg-green-500');
+                document.getElementById('onlineText').textContent = 'En línea';
+
+                // Start listening for trip requests
+                startListeningForRequests();
+            } catch (error) {
+                console.error("Error al ponerse en línea:", error);
+                showMessage('Error al conectarse. Inténtalo de nuevo.', 'error');
+            }
+        };
+
+        window.goOffline = async function() {
+            try {
+                await updateDoc(doc(db, `artifacts/${appId}/public/data/drivers`, userId), {
+                    online: false
+                });
+                showMessage('Te has desconectado.', 'info');
+                document.getElementById('onlineStatus').classList.remove('bg-green-500');
+                document.getElementById('onlineStatus').classList.add('bg-red-500');
+                document.getElementById('onlineText').textContent = 'Desconectado';
+
+                // Stop listening for trip requests
+                if (unsubscribeRequests) {
+                    unsubscribeRequests();
+                }
+            } catch (error) {
+                console.error("Error al desconectarse:", error);
+                showMessage('Error al desconectarse. Inténtalo de nuevo.', 'error');
+            }
+        };
+
+        function startListeningForRequests() {
+            // Listen for new trip requests that are pending
+            const requestsRef = collection(db, `artifacts/${appId}/public/data/trip_requests`);
+            const q = query(requestsRef, where("status", "==", "pending"));
+
+            unsubscribeRequests = onSnapshot(q, (snapshot) => {
+                const tripRequests = [];
+                snapshot.forEach(doc => {
+                    tripRequests.push({ id: doc.id, ...doc.data() });
+                });
+                renderTripRequests(tripRequests);
+            }, (error) => {
+                console.error("Error listening for trip requests:", error);
+                showMessage('Error al cargar las solicitudes de viaje.', 'error');
+            });
+        }
+
+        async function renderTripRequests(requests) {
+            const container = document.getElementById('tripRequestsContainer');
+            container.innerHTML = '';
+            if (requests.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500">No hay solicitudes de viaje disponibles en este momento.</p>`;
+                return;
+            }
+
+            for (const request of requests) {
+                const passengerDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/passengers`, request.passengerId));
+                const passengerData = passengerDoc.data();
+                const passengerName = passengerData?.name || 'Pasajero anónimo';
+
+                const card = document.createElement('div');
+                card.className = 'bg-gray-100 rounded-lg p-4 shadow-md flex flex-col space-y-2';
+                card.innerHTML = `
+                    <p><span class="font-semibold">Pasajero:</span> ${passengerName}</p>
+                    <p><span class="font-semibold">Cantidad de pasajeros:</span> ${request.numPassengers || 1}</p>
+                    <p><span class="font-semibold">Origen:</span> ${request.pickupLocation}</p>
+                    <p><span class="font-semibold">Destino:</span> ${request.destination}</p>
+                    <p><span class="font-semibold">Precio:</span> $${request.price}</p>
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button onclick="handleAcceptRequest('${request.id}')" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300">Aceptar</button>
+                        <button onclick="handleDeclineRequest('${request.id}')" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">Rechazar</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        window.handleAcceptRequest = async function(tripId) {
+            try {
+                // Get trip details and driver credit
+                const tripDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/trip_requests`, tripId));
+                const tripData = tripDoc.data();
+                const driverDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/drivers`, userId));
+                const driverData = driverDoc.data();
+
+                if (!tripData || !driverData) {
+                    showMessage('Error al obtener datos del viaje o del conductor.', 'error');
+                    return;
+                }
+                
+                const commission = tripData.price * 0.08;
+                const newCredit = driverData.credit - commission;
+
+                if (newCredit < 0) {
+                    showMessage('Crédito insuficiente. Por favor, recarga tu saldo.', 'error');
+                    return;
+                }
+
+                // Update trip status and assign driver
+                await updateDoc(doc(db, `artifacts/${appId}/public/data/trip_requests`, tripId), {
+                    status: 'accepted',
+                    driverId: userId,
+                    driverName: driverData.name,
+                });
+
+                // Update driver credit
+                await updateDoc(doc(db, `artifacts/${appId}/public/data/drivers`, userId), {
+                    credit: newCredit
+                });
+                
+                currentTripId = tripId;
+                lastPassengerId = tripData.passengerId;
+                lastTripId = tripId;
+                showMessage('Viaje aceptado. Dirígete al punto de partida.', 'success');
+                showActiveTrip(tripId, tripData.destination, tripData.passengerName);
+            } catch (error) {
+                console.error("Error al aceptar el viaje:", error);
+                showMessage('Error al aceptar el viaje. Inténtalo de nuevo.', 'error');
+            }
+        };
+
+        window.handleDeclineRequest = async function(tripId) {
+            try {
+                // For this example, we'll just update the request status to declined.
+                await updateDoc(doc(db, `artifacts/${appId}/public/data/trip_requests`, tripId), {
+                    status: 'declined',
+                    driverId: userId
+                });
+                showMessage('Viaje rechazado.', 'info');
+            } catch (error) {
+                console.error("Error al rechazar el viaje:", error);
+                showMessage('Error al rechazar el viaje. Inténtalo de nuevo.', 'error');
+            }
+        };
+
+        window.handleTripCompleted = async function() {
+            if (!currentTripId) {
+                showMessage('No hay un viaje activo.', 'error');
+                return;
+            }
+            try {
+                await updateDoc(doc(db, `artifacts/${appId}/public/data/trip_requests`, currentTripId), {
+                    status: 'completed',
+                });
+                showMessage('Viaje completado. ¡Buen trabajo!', 'success');
+                showSection('ratePassengerSection');
+            } catch (error) {
+                console.error("Error al completar el viaje:", error);
+                showMessage('Error al completar el viaje.', 'error');
+            }
+        };
+        
+        window.ratePassenger = async function() {
+            const rating = document.querySelector('input[name="rating"]:checked');
+            if (!rating) {
+                showMessage('Por favor, selecciona una calificación.', 'error');
+                return;
+            }
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/public/data/ratings`), {
+                    tripId: currentTripId,
+                    driverId: userId,
+                    passengerId: lastPassengerId,
+                    rating: parseInt(rating.value),
+                    ratedBy: 'driver'
+                });
+                showMessage('Calificación enviada. ¡Gracias!', 'success');
+                currentTripId = null;
+                showSection('mainSection');
+            } catch (error) {
+                console.error("Error al calificar al pasajero:", error);
+                showMessage('Error al enviar la calificación.', 'error');
+            }
+        };
+
+        // Función para mostrar la sección de recarga
+        window.showNequiRecharge = function() {
+            showSection('nequiRechargeSection');
+        }
+
+        // Función para simular la recarga con Nequi
+        window.rechargeWithNequi = async function() {
+            const amountInput = document.getElementById('nequiAmount');
+            const amount = parseFloat(amountInput.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                showMessage('Por favor, ingresa una cantidad válida.', 'error');
+                return;
+            }
+
+            showMessage('Simulando pago con Nequi... por favor espera.', 'info');
+            amountInput.disabled = true;
+
+            try {
+                // Simular un retraso para el procesamiento del pago
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                const driverDocRef = doc(db, `artifacts/${appId}/public/data/drivers`, userId);
+                const driverDoc = await getDoc(driverDocRef);
+                const driverData = driverDoc.data();
+                const currentCredit = driverData.credit || 0;
+                const newCredit = currentCredit + amount;
+
+                // Actualizar el saldo del conductor en Firestore
+                await updateDoc(driverDocRef, {
+                    credit: newCredit
+                });
+                
+                showMessage(`¡Recarga exitosa! Se han agregado $${amount} a tu saldo.`, 'success');
+                amountInput.value = '';
+            } catch (error) {
+                console.error("Error al recargar saldo:", error);
+                showMessage('Error al procesar la recarga. Inténtalo de nuevo.', 'error');
+            } finally {
+                amountInput.disabled = false;
+                setTimeout(() => {
+                    showSection('mainSection');
+                }, 2000);
+            }
+        };
+
+        async function showActiveTrip(tripId, destination, passengerName) {
+            showSection('activeTripSection');
+            document.getElementById('tripPassengerName').textContent = `Pasajero: ${passengerName}`;
+            document.getElementById('activeTripDestination').textContent = `Destino: ${destination}`;
+            
+            // Show GPS link
+            document.getElementById('activeTripGPS').innerHTML = `<a href="https://maps.google.com/maps?q=${destination}" target="_blank" class="text-blue-500 hover:underline">Ver en el mapa</a>`;
+            
+            // Start listening to passenger-driver chat
+            const chatRef = collection(db, `artifacts/${appId}/public/data/trip_requests/${tripId}/chat`);
+            onSnapshot(chatRef, (snapshot) => {
+                const messages = [];
+                snapshot.forEach(doc => messages.push(doc.data()));
+                renderChat(messages, 'passengerChatContainer');
+            }, (error) => {
+                console.error("Error listening to passenger chat:", error);
+                showMessage('Error al cargar las solicitudes de viaje.', 'error');
+            });
+        }
+        
+        window.sendPassengerMessage = async function() {
+            const message = document.getElementById('passengerMessageInput').value;
+            if (!message.trim()) return;
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/public/data/trip_requests/${currentTripId}/chat`), {
+                    senderId: userId,
+                    senderName: userEmail,
+                    message: message,
+                    timestamp: new Date()
+                });
+                document.getElementById('passengerMessageInput').value = '';
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showMessage('Error al enviar mensaje.', 'error');
+            }
+        };
+        
+        window.showCommunityChat = function() {
+            showSection('communityChatSection');
+            const chatRef = collection(db, `artifacts/${appId}/public/data/community_chat`);
+            onSnapshot(chatRef, (snapshot) => {
+                const messages = [];
+                snapshot.forEach(doc => messages.push(doc.data()));
+                renderChat(messages, 'communityChatContainer');
+            }, (error) => {
+                console.error("Error listening to community chat:", error);
+                showMessage('Error al cargar las solicitudes de viaje.', 'error');
+            });
+        };
+        
+        window.sendCommunityMessage = async function() {
+            const message = document.getElementById('communityMessageInput').value;
+            if (!message.trim()) return;
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/public/data/community_chat`), {
+                    senderId: userId,
+                    senderName: userEmail,
+                    message: message,
+                    timestamp: new Date()
+                });
+                document.getElementById('communityMessageInput').value = '';
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showMessage('Error al enviar mensaje.', 'error');
+            }
+        };
+
+        function renderChat(messages, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            messages.sort((a, b) => a.timestamp.toDate() - b.timestamp.toDate());
+            messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                const isMyMessage = msg.senderId === userId;
+                messageDiv.className = `p-2 rounded-lg max-w-xs ${isMyMessage ? 'bg-blue-200 self-end ml-auto' : 'bg-gray-200 self-start mr-auto'}`;
+                messageDiv.innerHTML = `<span class="font-semibold text-sm block">${isMyMessage ? 'Tú' : msg.senderName}:</span> ${msg.message}`;
+                container.appendChild(messageDiv);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Auth state listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userEmail = user.email;
+                console.log("Usuario autenticado:", userId, userEmail);
+
+                // Check driver status in Firestore
+                const driverDoc = doc(db, `artifacts/${appId}/public/data/drivers`, userId);
+                onSnapshot(driverDoc, (docSnap) => {
+                    const data = docSnap.data();
+                    if (data) {
+                        document.getElementById('driverCredit').textContent = `$${data.credit.toFixed(2)}`;
+                        if (data.status === 'approved') {
+                            showSection('mainSection');
+                        } else if (data.status === 'pending') {
+                            showSection('pendingApprovalSection');
+                        } else if (data.status === 'rejected') {
+                            showSection('rejectedSection');
+                        }
+                    } else {
+                        showSection('authSection');
+                    }
+                });
+            } else {
+                console.log("No hay usuario autenticado.");
+                showSection('authSection');
+            }
+        });
+
+        window.onload = function() {
+            if (initialAuthToken) {
+                signInWithCustomToken(auth, initialAuthToken).then(() => {
+                    console.log("Signed in with custom token.");
+                }).catch(error => {
+                    console.error("Error signing in with custom token:", error);
+                });
+            }
+        };
+
+    </script>
+</head>
+<body class="bg-gray-100 p-4 min-h-screen flex items-center justify-center">
+
+    <!-- Mensaje de estado -->
+    <div id="messageBox" class="message-box text-white font-semibold"></div>
+
+    <!-- Contenedor principal de la aplicación -->
+    <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg mx-auto space-y-6">
+
+        <!-- Sección de Autenticación -->
+        <div id="authSection" class="page-section active">
+            <h1 class="text-3xl font-bold text-gray-800 text-center">Bienvenido Conductor</h1>
+            <p class="text-gray-600 mt-2 text-center">Inicia sesión o regístrate para continuar.</p>
+
+            <!-- Formulario de Inicio de Sesión -->
+            <div id="loginForm" class="mt-8 space-y-4 active">
+                <input type="email" id="email" placeholder="Correo Electrónico" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" id="password" placeholder="Contraseña" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="handleAuth()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
+                    Iniciar Sesión
+                </button>
+                <button onclick="toggleAuthForm()" class="w-full text-blue-600 font-semibold mt-4">
+                    ¿No tienes una cuenta? Regístrate
+                </button>
+            </div>
+
+            <!-- Formulario de Registro (oculto por defecto) -->
+            <div id="signupForm" class="mt-8 space-y-4 hidden">
+                <input type="text" id="name" placeholder="Nombre completo" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="text" id="cedula" placeholder="Número de Cédula" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="tel" id="phone" placeholder="Número de teléfono" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="email" id="email" placeholder="Correo Electrónico" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="password" id="password" placeholder="Contraseña" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">Cédula o Licencia de Conducción</label>
+                    <input type="file" id="document" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                </div>
+                <button onclick="handleAuth()" class="w-full bg-green-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-green-700 transition duration-300">
+                    Registrarse
+                </button>
+                <button onclick="toggleAuthForm()" class="w-full text-green-600 font-semibold mt-4">
+                    ¿Ya tienes una cuenta? Inicia sesión
+                </button>
+            </div>
+        </div>
+
+        <!-- Sección Principal (aprobada) -->
+        <div id="mainSection" class="page-section p-4">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-4">¡Bienvenido, Conductor!</h2>
+            <div class="flex items-center justify-between mb-4 bg-gray-200 p-4 rounded-lg">
+                <span class="font-semibold text-gray-700">Crédito disponible:</span>
+                <span id="driverCredit" class="text-green-600 font-bold text-xl">$10,000</span>
+            </div>
+            
+            <div class="flex flex-col items-center space-y-4 mb-6">
+                <div class="flex items-center space-x-2">
+                    <div id="onlineStatus" class="w-4 h-4 rounded-full bg-red-500"></div>
+                    <span id="onlineText" class="text-gray-700 font-semibold">Desconectado</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="goOnline()" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-700 transition duration-300">
+                        Conectarse
+                    </button>
+                    <button onclick="goOffline()" class="bg-gray-400 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-500 transition duration-300">
+                        Desconectarse
+                    </button>
+                </div>
+            </div>
+            
+            <hr class="my-4 border-gray-300">
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Solicitudes de Viaje Pendientes</h3>
+            <div id="tripRequestsContainer" class="space-y-4">
+                <p class="text-center text-gray-500">Conéctate para ver las solicitudes de viaje.</p>
+            </div>
+            
+            <div class="mt-8 flex flex-col space-y-4">
+                <button onclick="showNequiRecharge()" class="w-full bg-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-purple-700 transition duration-300">
+                    Recargar Saldo con Nequi
+                </button>
+                <button onclick="showCommunityChat()" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
+                    Chat de Gremio
+                </button>
+                <button onclick="showLastTripInfo()" class="w-full bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-yellow-600 transition duration-300">
+                    Objetos Olvidados
+                </button>
+            </div>
+
+            <button onclick="signOut()" class="w-full text-red-500 font-semibold mt-8">Cerrar Sesión</button>
+        </div>
+
+        <!-- Sección de Viaje Activo -->
+        <div id="activeTripSection" class="page-section p-4 text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Viaje en Curso</h2>
+            <div class="bg-green-100 text-green-800 p-6 rounded-xl shadow-lg space-y-4 mb-4">
+                <p id="tripPassengerName" class="text-lg font-semibold"><i class="fas fa-user-circle text-xl mr-2"></i></p>
+                <p id="activeTripOrigin" class="text-lg"><i class="fas fa-map-marker-alt text-xl text-green-600 mr-2"></i>Origen: Ubicación del Pasajero</p>
+                <p id="activeTripDestination" class="text-lg"><i class="fas fa-flag-checkered text-xl text-green-600 mr-2"></i></p>
+                <p id="activeTripPrice" class="text-lg font-semibold text-green-700"><i class="fas fa-dollar-sign text-xl mr-2"></i></p>
+                <div id="activeTripGPS"></div>
+            </div>
+            
+            <!-- Chat con el pasajero -->
+            <div class="bg-gray-100 p-4 rounded-lg shadow-inner flex-grow flex flex-col h-64 overflow-y-scroll mb-4 space-y-2" id="passengerChatContainer"></div>
+            <div class="flex">
+                <input type="text" id="passengerMessageInput" placeholder="Escribe un mensaje al pasajero..." class="flex-grow p-3 rounded-l-lg border border-gray-300 focus:outline-none">
+                <button onclick="sendPassengerMessage()" class="bg-blue-500 text-white p-3 rounded-r-lg hover:bg-blue-600 transition duration-300"><i class="fas fa-paper-plane"></i></button>
+            </div>
+            
+            <button onclick="handleTripCompleted()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 mt-8">
+                Marcar Viaje como Completado
+            </button>
+            <button onclick="signOut()" class="w-full text-red-500 font-semibold mt-8">Cerrar Sesión</button>
+        </div>
+
+        <!-- Sección de Chat de Gremio -->
+        <div id="communityChatSection" class="page-section p-4">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4 text-center">Chat de Gremio</h2>
+            <div class="bg-gray-100 p-4 rounded-lg shadow-inner flex-grow flex flex-col h-96 overflow-y-scroll mb-4 space-y-2" id="communityChatContainer"></div>
+            <div class="flex">
+                <input type="text" id="communityMessageInput" placeholder="Escribe un mensaje para los compañeros..." class="flex-grow p-3 rounded-l-lg border border-gray-300 focus:outline-none">
+                <button onclick="sendCommunityMessage()" class="bg-blue-500 text-white p-3 rounded-r-lg hover:bg-blue-600 transition duration-300"><i class="fas fa-paper-plane"></i></button>
+            </div>
+            <button onclick="showSection('mainSection')" class="w-full bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-600 transition duration-300 mt-4">
+                Volver
+            </button>
+        </div>
+
+        <!-- Sección de Recarga con Nequi -->
+        <div id="nequiRechargeSection" class="page-section p-4 text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Recargar Saldo con Nequi</h2>
+            <p class="text-gray-600 mb-6">Ingresa la cantidad que deseas recargar en tu cuenta.</p>
+            <div class="bg-purple-100 p-6 rounded-xl shadow-lg space-y-4 mb-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-mobile-alt text-4xl text-purple-600"></i>
+                    <p class="text-xl font-semibold text-purple-800">Método de pago: Nequi</p>
+                </div>
+                <input type="number" id="nequiAmount" placeholder="Monto a recargar (COP)" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <button onclick="rechargeWithNequi()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-purple-700 transition duration-300">
+                    Pagar con Nequi
+                </button>
+            </div>
+            <button onclick="showSection('mainSection')" class="w-full bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-600 transition duration-300 mt-4">
+                Volver
+            </button>
+        </div>
+
+        <!-- Sección de Calificación del Pasajero -->
+        <div id="ratePassengerSection" class="page-section p-4 text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Calificar al Pasajero</h2>
+            <p class="text-gray-600 mb-6">¿Cómo fue tu experiencia con el pasajero?</p>
+            <div class="flex justify-center space-x-4 mb-6">
+                <label class="cursor-pointer">
+                    <input type="radio" name="rating" value="1" class="hidden peer">
+                    <div class="flex flex-col items-center p-4 bg-gray-100 rounded-lg peer-checked:bg-red-200 transition duration-300">
+                        <i class="fas fa-star text-3xl text-red-500"></i>
+                        <span class="mt-1 text-sm text-gray-600">Mala</span>
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="rating" value="3" class="hidden peer">
+                    <div class="flex flex-col items-center p-4 bg-gray-100 rounded-lg peer-checked:bg-yellow-200 transition duration-300">
+                        <i class="fas fa-star-half-alt text-3xl text-yellow-500"></i>
+                        <span class="mt-1 text-sm text-gray-600">Regular</span>
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="rating" value="5" class="hidden peer">
+                    <div class="flex flex-col items-center p-4 bg-gray-100 rounded-lg peer-checked:bg-green-200 transition duration-300">
+                        <i class="fas fa-star text-3xl text-green-500"></i>
+                        <span class="mt-1 text-sm text-gray-600">Excelente</span>
+                    </div>
+                </label>
+            </div>
+            <button onclick="ratePassenger()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
+                Enviar Calificación
+            </button>
+            <button onclick="showSection('mainSection')" class="w-full text-gray-500 font-semibold mt-4">Omitir</button>
+        </div>
+    </div>
+</body>
+</html>

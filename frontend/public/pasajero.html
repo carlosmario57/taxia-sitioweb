@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAXI A CIMCO - Pasajero</title>
+    <!-- Incluir Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluir Font Awesome para los iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Estilos personalizados */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+            text-align: center;
+        }
+        .message-success { background-color: #d1fae5; color: #065f46; }
+        .message-error { background-color: #fee2e2; color: #991b1b; }
+        .chat-container {
+            height: 350px;
+            overflow-y: auto;
+        }
+        .chat-message.sender {
+            align-self: flex-end;
+            background-color: #60a5fa;
+            color: white;
+            border-bottom-right-radius: 0.5rem;
+        }
+        .chat-message.receiver {
+            align-self: flex-start;
+            background-color: #e5e7eb;
+            color: #1f2937;
+            border-bottom-left-radius: 0.5rem;
+        }
+    </style>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, onSnapshot, collection, query, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+          apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
+          authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
+          projectId: "pelagic-chalice-467818-e1",
+          storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
+          messagingSenderId: "191106268804",
+          appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
+          measurementId: "G-CPWSCLGKP2"
+        };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let userId;
+        let userRole;
+        
+        // --- Mock Data y Lógica de Flujo ---
+        // En una aplicación real, estos datos se obtendrían de una solicitud de viaje aceptada.
+        // Aquí los simulamos para el ejemplo de chat.
+        const mockTripId = "trip_pasajero_12345"; 
+        const mockDriverName = "Juan Pérez";
+        const mockDriverCar = "Kia Picanto Negro";
+        const mockDriverPlate = "XYZ-789";
+
+        // Lógica de autenticación
+        async function authenticate() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser.uid;
+                userRole = "pasajero";
+                console.log("Usuario autenticado. UID:", userId);
+                
+                // Mostrar la sección de viaje
+                document.getElementById('trip-details-section').classList.remove('hidden');
+                document.getElementById('driver-name').textContent = mockDriverName;
+                document.getElementById('driver-car').textContent = `${mockDriverCar} - Placa: ${mockDriverPlate}`;
+                
+                // Iniciar la escucha del chat
+                listenForChatMessages();
+
+            } catch (error) {
+                console.error("Error al autenticar:", error);
+            }
+        }
+
+        // --- Lógica del Chat ---
+        const chatMessagesContainer = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+
+        // Función para renderizar un mensaje en la UI
+        function renderMessage(messageData) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('p-3', 'rounded-xl', 'max-w-xs', 'my-2', 'break-words', 'shadow-sm');
+            
+            const isSender = messageData.senderId === userId;
+            messageElement.classList.add(isSender ? 'chat-message', 'sender' : 'chat-message', 'receiver');
+
+            const senderNameElement = document.createElement('span');
+            senderNameElement.classList.add('block', 'text-xs', 'font-semibold', 'mb-1', isSender ? 'text-white' : 'text-gray-600');
+            senderNameElement.textContent = isSender ? 'Tú' : messageData.senderName;
+            
+            const messageTextElement = document.createElement('p');
+            messageTextElement.classList.add('text-sm');
+            messageTextElement.textContent = messageData.message;
+
+            messageElement.appendChild(senderNameElement);
+            messageElement.appendChild(messageTextElement);
+            chatMessagesContainer.appendChild(messageElement);
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+
+        // Escuchar mensajes en tiempo real
+        function listenForChatMessages() {
+            const chatPath = `/artifacts/${appId}/public/data/trips/${mockTripId}/chat`;
+            const chatQuery = query(collection(db, chatPath));
+
+            onSnapshot(chatQuery, (querySnapshot) => {
+                // Limpiar mensajes existentes para evitar duplicados
+                chatMessagesContainer.innerHTML = '';
+                
+                const messages = [];
+                querySnapshot.forEach((doc) => {
+                    messages.push(doc.data());
+                });
+
+                // Ordenar mensajes por timestamp
+                messages.sort((a, b) => a.timestamp - b.timestamp);
+
+                // Renderizar todos los mensajes
+                messages.forEach(renderMessage);
+            });
+        }
+
+        // Enviar un mensaje
+        sendButton.addEventListener('click', async () => {
+            const messageText = chatInput.value.trim();
+            if (messageText === "") return;
+
+            const chatPath = `/artifacts/${appId}/public/data/trips/${mockTripId}/chat`;
+            
+            await addDoc(collection(db, chatPath), {
+                senderId: userId,
+                senderName: userRole,
+                message: messageText,
+                timestamp: Date.now(),
+            });
+            
+            chatInput.value = "";
+        });
+
+        // Event listener para la tecla Enter
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+
+        // Iniciar la aplicación
+        authenticate();
+
+    </script>
+</head>
+<body class="p-4 md:p-8">
+    <div class="message-box message-success" id="messageBox"></div>
+
+    <div class="max-w-3xl mx-auto space-y-6">
+        <!-- Título principal -->
+        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
+            <h1 class="text-3xl font-bold text-gray-800">TAXI A CIMCO</h1>
+            <i class="fas fa-car text-blue-600 text-4xl"></i>
+        </div>
+
+        <!-- Sección de Detalles del Viaje -->
+        <div id="trip-details-section" class="bg-white rounded-xl shadow-lg p-6 space-y-4 hidden">
+            <h2 class="text-xl font-bold text-gray-800 text-center">Detalles del Viaje Asignado</h2>
+            <div class="space-y-2">
+                <p id="driver-name" class="flex items-center"><i class="fas fa-user-circle text-blue-500 mr-2"></i></p>
+                <p id="driver-car" class="flex items-center"><i class="fas fa-car text-blue-500 mr-2"></i></p>
+            </div>
+            
+            <hr class="border-gray-200">
+
+            <!-- Sección de Chat en Tiempo Real -->
+            <div id="chat-section">
+                <h3 class="text-xl font-bold text-gray-800 text-center mt-6 mb-2">Chat con el Conductor</h3>
+                <div id="chat-container" class="bg-gray-100 p-4 rounded-lg shadow-inner flex flex-col h-80">
+                    <div id="chat-messages" class="flex flex-col flex-grow overflow-y-auto space-y-2">
+                        <!-- Los mensajes del chat se renderizarán aquí -->
+                    </div>
+                    <div class="flex mt-4">
+                        <input type="text" id="chat-input" placeholder="Escribe tu mensaje..." class="flex-grow rounded-lg border-2 border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <button id="send-button" class="bg-blue-600 text-white rounded-lg px-4 ml-2 shadow-md hover:bg-blue-700 transition duration-300">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Calificación -->
+        <div id="ratingModal" class="bg-white rounded-xl shadow-lg p-6 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Calificar al Conductor</h2>
+            <p class="text-gray-600 mb-6">¿Cómo fue tu experiencia con el conductor?</p>
+            <div class="flex justify-center space-x-2 mb-6 text-yellow-400 text-4xl">
+                <label class="cursor-pointer">
+                    <input type="radio" name="rating" value="1" class="hidden"> <i class="far fa-star hover:text-yellow-500"></i>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="rating" value="2" class="hidden"> <i class="far fa-star hover:text-yellow-500"></i>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="rating" value="3" class="hidden"> <i class="far fa-star hover:text-yellow-500"></i>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="rating" value="4" class="hidden"> <i class="far fa-star hover:text-yellow-500"></i>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="rating" value="5" class="hidden"> <i class="far fa-star hover:text-yellow-500"></i>
+                </label>
+            </div>
+            <textarea class="w-full h-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" placeholder="Comentarios adicionales..."></textarea>
+            <button class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">Enviar Calificación</button>
+        </div>
+    </div>
+</body>
+</html>

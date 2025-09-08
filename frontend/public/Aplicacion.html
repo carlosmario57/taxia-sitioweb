@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAXI A CIMCO - Unificada</title>
+    <!-- Incluir Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluir Font Awesome para los iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Estilos personalizados */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+            text-align: center;
+        }
+        .message-success { background-color: #d1fae5; color: #065f46; }
+        .message-error { background-color: #fee2e2; color: #991b1b; }
+    </style>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+            apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
+            authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
+            projectId: "pelagic-chalice-467818-e1",
+            storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
+            messagingSenderId: "191106268804",
+            appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
+            measurementId: "G-CPWSCLGKP2"
+        };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let userId;
+
+        // Referencias a elementos del DOM
+        const statusText = document.getElementById('status-text');
+        const actionButton = document.getElementById('action-button');
+        const driverPanel = document.getElementById('driver-panel');
+        const passengerPanel = document.getElementById('passenger-panel');
+        const pickupButton = document.getElementById('pickup-button');
+        const endTripButton = document.getElementById('end-trip-button');
+        const messageBox = document.getElementById('messageBox');
+        
+        const driverNameDisplay = document.getElementById('driver-name');
+        const driverPlateDisplay = document.getElementById('driver-plate');
+        const driverStatusDisplay = document.getElementById('driver-status');
+        
+        let userRole = 'pasajero'; // Por defecto, el rol es 'pasajero'
+        let currentTripId = null;
+
+        // Función para mostrar mensajes temporales
+        function showMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.className = `message-box ${type}`;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3000);
+        }
+
+        // Lógica de Autenticación y Asignación de Rol
+        async function authenticateAndSetRole() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser.uid;
+                
+                // Asignar el rol en base al userId (simulación)
+                // En un caso real, el rol se obtendría de la base de datos
+                if (userId.startsWith('conductor')) {
+                    userRole = 'conductor';
+                } else {
+                    userRole = 'pasajero';
+                }
+                
+                // Mostrar la interfaz correcta
+                if (userRole === 'conductor') {
+                    driverPanel.classList.remove('hidden');
+                    listenForNewTrips();
+                } else {
+                    passengerPanel.classList.remove('hidden');
+                }
+                
+                console.log(`Usuario autenticado con rol: ${userRole}`);
+                showMessage(`¡Bienvenido! Eres un ${userRole}.`, 'message-success');
+
+            } catch (error) {
+                console.error("Error al autenticar:", error);
+                showMessage("Error de autenticación. Intenta de nuevo.", 'message-error');
+            }
+        }
+
+        // Función para Pasajero: Solicitar un viaje
+        async function requestTrip() {
+            const tripData = {
+                passengerId: userId,
+                passengerName: "Usuario de Prueba",
+                pickupLocation: "Carrera 15 #1-10",
+                destination: "Centro Comercial Viva Guajira",
+                status: "requested", // 'requested', 'accepted', 'in_progress', 'completed'
+                driverId: null,
+                timestamp: Date.now()
+            };
+
+            const tripsRef = collection(db, `/artifacts/${appId}/public/data/trips`);
+            const newTrip = await addDoc(tripsRef, tripData);
+            currentTripId = newTrip.id;
+            
+            console.log(`Viaje solicitado con ID: ${currentTripId}`);
+            statusText.textContent = 'Buscando un conductor...';
+            actionButton.classList.add('hidden');
+            listenForTripUpdates();
+        }
+
+        // Función para Pasajero: Escuchar actualizaciones del viaje
+        function listenForTripUpdates() {
+            if (!currentTripId) return;
+            
+            const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, currentTripId);
+            
+            onSnapshot(tripDocRef, (doc) => {
+                const trip = doc.data();
+                if (trip) {
+                    console.log("Estado del viaje:", trip.status);
+                    
+                    if (trip.status === 'accepted') {
+                        statusText.textContent = `¡Conductor Encontrado!`;
+                        driverNameDisplay.textContent = `Conductor: ${trip.driverName}`;
+                        driverPlateDisplay.textContent = `Placa: ${trip.driverPlate}`;
+                        driverStatusDisplay.textContent = 'En camino...';
+                        actionButton.classList.remove('hidden');
+                        actionButton.textContent = 'Cancelar Viaje';
+                        actionButton.onclick = () => {
+                            // Lógica para cancelar el viaje
+                            console.log("Viaje cancelado por el pasajero.");
+                        };
+                    } else if (trip.status === 'in_progress') {
+                        statusText.textContent = 'Viaje en curso.';
+                        driverStatusDisplay.textContent = 'Viaje en progreso.';
+                    } else if (trip.status === 'completed') {
+                        statusText.textContent = '¡Viaje Finalizado!';
+                        driverStatusDisplay.textContent = 'El viaje ha terminado.';
+                        actionButton.classList.add('hidden');
+                        // Lógica para mostrar la calificación
+                    }
+                }
+            });
+        }
+        
+        // Función para Conductor: Escuchar nuevos viajes
+        function listenForNewTrips() {
+            const tripsRef = collection(db, `/artifacts/${appId}/public/data/trips`);
+            const q = query(tripsRef, where("status", "==", "requested"));
+            
+            onSnapshot(q, (querySnapshot) => {
+                querySnapshot.forEach(async (docSnapshot) => {
+                    const tripData = docSnapshot.data();
+                    console.log("Nuevo viaje solicitado:", tripData);
+                    
+                    // Lógica para que el conductor acepte el viaje
+                    // En un caso real, el conductor podría elegir aceptar
+                    const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, docSnapshot.id);
+                    await updateDoc(tripDocRef, {
+                        status: "accepted",
+                        driverId: userId,
+                        driverName: "Conductor Demo",
+                        driverPlate: "ABC-123"
+                    });
+                    
+                    currentTripId = docSnapshot.id;
+                    showMessage("Has aceptado un nuevo viaje.", "message-success");
+                    document.getElementById('driver-info').classList.add('hidden');
+                    document.getElementById('driver-trip-details').classList.remove('hidden');
+                    
+                    // Iniciar la escucha del estado de ese viaje en específico
+                    listenForDriverTripStatus(currentTripId);
+                });
+            });
+        }
+        
+        // Función para Conductor: Escuchar el estado de su viaje en específico
+        function listenForDriverTripStatus(tripId) {
+            const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, tripId);
+            onSnapshot(tripDocRef, (doc) => {
+                const trip = doc.data();
+                if (trip) {
+                    // Lógica del flujo del conductor
+                    if (trip.status === 'accepted') {
+                        document.getElementById('driver-trip-status').textContent = 'Estado: Viaje aceptado';
+                        document.getElementById('pickup-button').classList.remove('hidden');
+                    } else if (trip.status === 'in_progress') {
+                        document.getElementById('driver-trip-status').textContent = 'Estado: Viaje en progreso';
+                        document.getElementById('pickup-button').classList.add('hidden');
+                        document.getElementById('end-trip-button').classList.remove('hidden');
+                    } else if (trip.status === 'completed') {
+                        document.getElementById('driver-trip-status').textContent = 'Estado: Viaje completado';
+                        document.getElementById('end-trip-button').classList.add('hidden');
+                        // Lógica para mostrar un mensaje o volver a la pantalla de espera
+                        document.getElementById('driver-info').classList.remove('hidden');
+                        document.getElementById('driver-trip-details').classList.add('hidden');
+                    }
+                }
+            });
+        }
+        
+        // Función para Conductor: Botones manuales de flujo
+        pickupButton.addEventListener('click', async () => {
+            if (currentTripId) {
+                const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, currentTripId);
+                await updateDoc(tripDocRef, {
+                    status: "in_progress",
+                    pickupTime: Date.now()
+                });
+                showMessage("Has recogido al pasajero.", "message-success");
+            }
+        });
+        
+        endTripButton.addEventListener('click', async () => {
+            if (currentTripId) {
+                const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, currentTripId);
+                await updateDoc(tripDocRef, {
+                    status: "completed",
+                    endTime: Date.now()
+                });
+                showMessage("Viaje finalizado.", "message-success");
+                currentTripId = null;
+            }
+        });
+
+        // Event listener para el botón de Pasajero
+        actionButton.addEventListener('click', () => {
+            requestTrip();
+        });
+        
+        // Iniciar la aplicación
+        authenticateAndSetRole();
+        
+    </script>
+</head>
+<body class="p-4 md:p-8">
+    <div class="message-box message-success" id="messageBox"></div>
+
+    <div class="max-w-3xl mx-auto space-y-6">
+        <!-- Título principal -->
+        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
+            <h1 class="text-3xl font-bold text-gray-800">TAXI A CIMCO</h1>
+            <i class="fas fa-car text-blue-600 text-4xl"></i>
+        </div>
+
+        <!-- Panel del Pasajero -->
+        <div id="passenger-panel" class="bg-white rounded-xl shadow-lg p-6 space-y-4 hidden">
+            <h2 class="text-xl font-bold text-gray-800">Panel de Pasajero</h2>
+            <p id="status-text" class="text-lg text-gray-600 text-center">¡Solicita un viaje!</p>
+            <button id="action-button" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">
+                Solicitar Viaje
+            </button>
+            <div class="space-y-2 mt-4 text-center">
+                <p id="driver-name" class="text-gray-700"></p>
+                <p id="driver-plate" class="text-gray-700"></p>
+                <p id="driver-status" class="text-blue-500 font-semibold"></p>
+            </div>
+        </div>
+        
+        <!-- Panel del Conductor -->
+        <div id="driver-panel" class="bg-white rounded-xl shadow-lg p-6 space-y-4 hidden">
+            <h2 class="text-xl font-bold text-gray-800">Panel de Conductor</h2>
+            <div id="driver-info">
+                <p class="text-lg text-gray-600 text-center">Esperando solicitudes de viaje...</p>
+            </div>
+            <div id="driver-trip-details" class="hidden">
+                <p class="text-center font-semibold text-lg text-blue-600 mb-2">Viaje Asignado</p>
+                <p id="driver-trip-status" class="text-center text-gray-600 mb-4">Estado: Aceptado</p>
+                <div class="flex justify-center space-x-4">
+                    <button id="pickup-button" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-green-700 transition duration-300 hidden">
+                        <i class="fas fa-handshake mr-2"></i> Recoger Pasajero
+                    </button>
+                    <button id="end-trip-button" class="bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-red-700 transition duration-300 hidden">
+                        <i class="fas fa-flag-checkered mr-2"></i> Finalizar Viaje
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

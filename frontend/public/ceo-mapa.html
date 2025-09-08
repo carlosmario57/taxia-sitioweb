@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Conductores - TAXI A CIMCO</title>
+    <!-- Incluir Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluir Font Awesome para los iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Incluir Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" xintegrity="sha512-xodxRpdzUeQ8y6hE46b7aW2y0Jc5y60R7B4Q6R7e0V6aBw7r8n0S7d6k5R9l3c2I" crossorigin=""/>
+    <style>
+        /* Importar fuente Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        #map {
+            height: 70vh;
+            width: 100%;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Estilos personalizados para los iconos de los conductores */
+        .custom-driver-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .custom-driver-icon i {
+            font-size: 1.5rem;
+            color: white;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        .driver-status-online {
+            background-color: #22C55E;
+        }
+        .driver-status-on-trip {
+            background-color: #F97316;
+        }
+        .driver-status-offline {
+            background-color: #EF4444;
+        }
+
+        /* Estilos para el popup de Leaflet */
+        .leaflet-popup-content-wrapper {
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px -1px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
+            padding: 0;
+        }
+        .leaflet-popup-content {
+            margin: 0;
+            padding: 1rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+    </style>
+    <!-- Incluir Leaflet JS antes del script del módulo -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" xintegrity="sha512-xodxRpdzUeQ8y6hE46b7aW2y0Jc5y60R7B4Q6R7e0V6aBw7r8n0S7d6k5R9l3c2I" crossorigin=""></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales proporcionadas por el entorno de Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Objeto para guardar todos los marcadores
+        const driversMarkers = {};
+        // Almacenar todos los datos de los conductores para búsqueda y filtrado
+        let allDrivers = [];
+
+        // Iniciar sesión con el token proporcionado o de forma anónima
+        async function authenticateUser() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                console.log("Autenticación exitosa.");
+            } catch (error) {
+                console.error("Error al autenticar:", error);
+            }
+        }
+
+        // Definir iconos personalizados para los marcadores
+        const getDriverIcon = (status) => {
+            let statusClass = 'driver-status-offline';
+            if (status === 'online') {
+                statusClass = 'driver-status-online';
+            } else if (status === 'on_trip') {
+                statusClass = 'driver-status-on-trip';
+            }
+            return L.divIcon({
+                className: `custom-driver-icon ${statusClass}`,
+                html: `<i class="fas fa-car text-xl"></i>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+                popupAnchor: [0, -20]
+            });
+        };
+
+        // Función para renderizar los marcadores en el mapa
+        const renderMarkers = (driversToDisplay) => {
+            // Eliminar todos los marcadores existentes del mapa
+            for (const driverId in driversMarkers) {
+                map.removeLayer(driversMarkers[driverId]);
+            }
+            // Crear o actualizar solo los marcadores de los conductores a mostrar
+            driversToDisplay.forEach(driver => {
+                if (driver.location && driver.location.latitude && driver.location.longitude) {
+                    const { latitude, longitude } = driver.location;
+                    const internalNumber = driver.internalNumber || 'N/A';
+                    
+                    const driverIcon = getDriverIcon(driver.status);
+                    const marker = L.marker([latitude, longitude], { icon: driverIcon, driverData: driver }).addTo(map)
+                        .bindPopup(`
+                            <div class="p-2">
+                                <div class="font-bold text-gray-800">${driver.name}</div>
+                                <div class="text-gray-600">Estado: <span class="font-bold">${driver.status}</span></div>
+                                <div class="text-gray-600">Placa: ${driver.licensePlate}</div>
+                                <div class="text-gray-600">Número Interno: ${internalNumber}</div>
+                            </div>
+                        `);
+                    driversMarkers[driver.id] = marker;
+                }
+            });
+        };
+
+        // Función para filtrar los marcadores por estado y/o búsqueda
+        const applyFilterAndSearch = () => {
+            const statusFilter = document.querySelector('input[name="statusFilter"]:checked').value;
+            const searchTerm = document.getElementById('driverSearch').value.toLowerCase();
+            
+            const filteredDrivers = allDrivers.filter(driver => {
+                const driverStatus = driver.status;
+                const matchesStatus = (statusFilter === 'all' || driverStatus === statusFilter);
+                const matchesSearch = searchTerm === '' ||
+                                      (driver.licensePlate && driver.licensePlate.toLowerCase().includes(searchTerm)) ||
+                                      (driver.internalNumber && driver.internalNumber.toLowerCase().includes(searchTerm));
+                
+                return matchesStatus && matchesSearch;
+            });
+
+            renderMarkers(filteredDrivers);
+        };
+        
+        // Asignar la función a la ventana para el HTML
+        window.applyFilterAndSearch = applyFilterAndSearch;
+
+
+        // Configurar el mapa al cargar la ventana
+        window.onload = function() {
+            authenticateUser().then(() => {
+                const map = L.map('map').setView([4.7110, -74.0721], 12);
+                
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                }).addTo(map);
+
+                // Escuchar los cambios en la colección de conductores en tiempo real
+                onSnapshot(collection(db, `artifacts/${appId}/public/data/intermunicipal_drivers`), (snapshot) => {
+                    allDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    applyFilterAndSearch();
+                });
+            });
+        };
+
+        // Navegar de regreso al panel
+        window.navigateToPanel = function() {
+            window.location.href = 'ceo-panel.html';
+        };
+    </script>
+</head>
+<body class="p-4 md:p-8 bg-gray-100 min-h-screen flex flex-col items-center">
+    <div class="w-full max-w-7xl mx-auto space-y-6">
+        <!-- Navegación y Título -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-white rounded-2xl shadow-lg p-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4 md:mb-0">Mapa de Conductores</h1>
+            <button onclick="navigateToPanel()" class="bg-gray-700 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-gray-800 transition duration-300 transform hover:scale-105">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al Panel
+            </button>
+        </div>
+
+        <!-- Filtros de Estado y Búsqueda -->
+        <div class="bg-white rounded-2xl shadow-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center justify-center gap-4 text-sm font-semibold text-gray-600">
+                <div class="flex items-center space-x-2">
+                    <input type="radio" id="filterAll" name="statusFilter" value="all" checked onchange="applyFilterAndSearch()" class="hidden">
+                    <label for="filterAll" class="flex items-center cursor-pointer py-2 px-4 rounded-xl hover:bg-gray-200 transition duration-300">
+                        <i class="fas fa-filter"></i>
+                        <span class="ml-2">Todos</span>
+                    </label>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="radio" id="filterOnline" name="statusFilter" value="online" onchange="applyFilterAndSearch()" class="hidden">
+                    <label for="filterOnline" class="flex items-center cursor-pointer py-2 px-4 rounded-xl hover:bg-gray-200 transition duration-300">
+                        <div class="w-4 h-4 rounded-full bg-green-500"></div>
+                        <span class="ml-2">Online</span>
+                    </label>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="radio" id="filterOnTrip" name="statusFilter" value="on_trip" onchange="applyFilterAndSearch()" class="hidden">
+                    <label for="filterOnTrip" class="flex items-center cursor-pointer py-2 px-4 rounded-xl hover:bg-gray-200 transition duration-300">
+                        <div class="w-4 h-4 rounded-full bg-orange-500"></div>
+                        <span class="ml-2">En Servicio</span>
+                    </label>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="radio" id="filterOffline" name="statusFilter" value="offline" onchange="applyFilterAndSearch()" class="hidden">
+                    <label for="filterOffline" class="flex items-center cursor-pointer py-2 px-4 rounded-xl hover:bg-gray-200 transition duration-300">
+                        <div class="w-4 h-4 rounded-full bg-red-500"></div>
+                        <span class="ml-2">Offline</span>
+                    </label>
+                </div>
+            </div>
+            <div class="relative w-full md:w-1/3">
+                <input type="text" id="driverSearch" oninput="applyFilterAndSearch()" placeholder="Buscar por placa o número interno" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300">
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+        </div>
+
+        <!-- Contenedor del mapa -->
+        <div id="map"></div>
+
+        <!-- Leyenda -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 flex flex-wrap items-center justify-center gap-6 text-sm md:text-base font-semibold text-gray-600">
+            <div class="flex items-center space-x-3">
+                <div class="w-6 h-6 rounded-full bg-green-500"></div>
+                <span>Online</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <div class="w-6 h-6 rounded-full bg-orange-500"></div>
+                <span>En Servicio</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <div class="w-6 h-6 rounded-full bg-red-500"></div>
+                <span>Offline</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

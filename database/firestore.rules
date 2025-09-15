@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+match /databases/{database}/documents {
+// Proteger los datos de tu aplicación con el ID de la misma.
+match /artifacts/{appId} {
+
+  // Permitir que todos los usuarios autenticados lean y escriban en las colecciones
+  // públicas, como ubicaciones de taxis y solicitudes de viaje.
+  match /public/data/{collectionId}/{documentId} {
+    allow read, write: if request.auth != null;
+  }
+  
+  // Proteger los datos privados de los usuarios. Solo un usuario puede
+  // leer y escribir en su propia información de perfil y su historial.
+  match /users/{userId}/{collectionId}/{documentId} {
+    allow read, write: if request.auth.uid == userId;
+  }
+}
+
+}
+}

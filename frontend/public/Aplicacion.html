@@ -3,310 +3,329 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TAXI A CIMCO - Unificada</title>
-    <!-- Incluir Tailwind CSS -->
+    <title>TaxiA-CIMCO</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Incluir Font Awesome para los iconos -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Estilos personalizados */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
+            color: #1e293b;
         }
-        .message-box {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 1rem 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            display: none;
-            text-align: center;
+        .container {
+            max-width: 420px;
         }
-        .message-success { background-color: #d1fae5; color: #065f46; }
-        .message-error { background-color: #fee2e2; color: #991b1b; }
     </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
 
-    <!-- Firebase SDKs -->
+    <!-- Contenedor Principal -->
+    <div id="main-container" class="container mx-auto p-8 rounded-2xl shadow-xl bg-white space-y-6">
+
+        <!-- Logo y Título -->
+        <div class="text-center space-y-2">
+            <h1 class="text-3xl font-bold text-gray-800">TaxiA-CIMCO</h1>
+            <p class="text-gray-500">Conectando a la comunidad.</p>
+        </div>
+
+        <!-- Mensajes de Estado (Éxito/Error) -->
+        <div id="message-container" class="hidden text-center p-3 rounded-lg border"></div>
+
+        <!-- Pantalla de Carga/Autenticación -->
+        <div id="loading-screen" class="flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+            <p class="text-gray-600">Cargando...</p>
+        </div>
+
+        <!-- Formularios de Login y Registro -->
+        <div id="auth-forms" class="hidden space-y-6">
+            <!-- Formulario de Login -->
+            <form id="login-form" class="space-y-4">
+                <h2 class="text-2xl font-semibold text-center">Iniciar Sesión</h2>
+                <div>
+                    <label for="login-email" class="block text-sm font-medium text-gray-700">Correo Electrónico</label>
+                    <input type="email" id="login-email" required
+                           class="mt-1 block w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-colors duration-200">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                    <input type="password" id="login-password" required
+                           class="mt-1 block w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-colors duration-200">
+                </div>
+                <button type="submit" class="w-full py-2 px-4 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200">
+                    Entrar
+                </button>
+                <div class="text-center text-sm">
+                    <p>¿No tienes cuenta? <a href="#" id="show-register-form" class="text-indigo-600 hover:underline">Regístrate aquí</a></p>
+                </div>
+            </form>
+    
+            <!-- Formulario de Registro -->
+            <form id="register-form" class="hidden space-y-4">
+                <h2 class="text-2xl font-semibold text-center">Registrarse</h2>
+                <div>
+                    <label for="register-email" class="block text-sm font-medium text-gray-700">Correo Electrónico</label>
+                    <input type="email" id="register-email" required
+                           class="mt-1 block w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-colors duration-200">
+                </div>
+                <div>
+                    <label for="register-nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
+                    <input type="text" id="register-nombre" required
+                           class="mt-1 block w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-colors duration-200">
+                </div>
+                <div>
+                    <label for="register-password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                    <input type="password" id="register-password" required
+                           class="mt-1 block w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-ring-opacity-50 transition-colors duration-200">
+                </div>
+                <div>
+                    <label for="register-rol" class="block text-sm font-medium text-gray-700">Rol</label>
+                    <select id="register-rol" required
+                             class="mt-1 block w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-colors duration-200">
+                        <option value="pasajero">Pasajero</option>
+                        <option value="mototaxi">Mototaxi</option>
+                        <option value="motocarga">Motocarga</option>
+                        <option value="conductor-intermunicipal">Conductor Intermunicipal</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-2 px-4 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200">
+                    Registrar
+                </button>
+                <div class="text-center text-sm">
+                    <p>¿Ya tienes cuenta? <a href="#" id="show-login-form" class="text-indigo-600 hover:underline">Inicia sesión</a></p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Pantalla de Bienvenida -->
+        <div id="welcome-screen" class="hidden p-8 text-center space-y-4">
+            <h2 id="welcome-message" class="text-2xl font-bold text-gray-800"></h2>
+            <p id="user-role" class="text-gray-600"></p>
+            <p id="user-uid" class="text-sm text-gray-400 break-all"></p>
+            <div id="role-links" class="space-y-2">
+                <!-- Los enlaces de rol se insertarán aquí dinámicamente -->
+            </div>
+            <button id="logout-button" class="w-full py-2 px-4 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors duration-200">
+                Cerrar Sesión
+            </button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Variables globales
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Variables globales del entorno de Canvas.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = {
-            apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
-            authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
-            projectId: "pelagic-chalice-467818-e1",
-            storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
-            messagingSenderId: "191106268804",
-            appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
-            measurementId: "G-CPWSCLGKP2"
-        };
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Elementos del DOM
+        const authForms = document.getElementById('auth-forms');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const showRegisterLink = document.getElementById('show-register-form');
+        const showLoginLink = document.getElementById('show-login-form');
+        const messageContainer = document.getElementById('message-container');
+        const logoutButton = document.getElementById('logout-button');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const userRoleElem = document.getElementById('user-role');
+        const userUidElem = document.getElementById('user-uid');
+        const roleLinksContainer = document.getElementById('role-links');
 
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
         const auth = getAuth(app);
-        let userId;
+        const db = getFirestore(app);
 
-        // Referencias a elementos del DOM
-        const statusText = document.getElementById('status-text');
-        const actionButton = document.getElementById('action-button');
-        const driverPanel = document.getElementById('driver-panel');
-        const passengerPanel = document.getElementById('passenger-panel');
-        const pickupButton = document.getElementById('pickup-button');
-        const endTripButton = document.getElementById('end-trip-button');
-        const messageBox = document.getElementById('messageBox');
-        
-        const driverNameDisplay = document.getElementById('driver-name');
-        const driverPlateDisplay = document.getElementById('driver-plate');
-        const driverStatusDisplay = document.getElementById('driver-status');
-        
-        let userRole = 'pasajero'; // Por defecto, el rol es 'pasajero'
-        let currentTripId = null;
+        let userIsAuthReady = false;
 
-        // Función para mostrar mensajes temporales
+        // Función para mostrar mensajes de estado
         function showMessage(message, type) {
-            messageBox.textContent = message;
-            messageBox.className = `message-box ${type}`;
-            messageBox.style.display = 'block';
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 3000);
+            messageContainer.textContent = message;
+            messageContainer.classList.remove('hidden', 'border-green-500', 'text-green-700', 'border-red-500', 'text-red-700');
+            if (type === 'success') {
+                messageContainer.classList.add('border-green-500', 'text-green-700');
+            } else if (type === 'error') {
+                messageContainer.classList.add('border-red-500', 'text-red-700');
+            }
         }
+        
+        // Define los enlaces para cada rol
+        const roleRedirects = {
+            'pasajero': 'pasajero.html',
+            'mototaxi': 'mototaxi.html',
+            'motocarga': 'motocarga.html',
+            'conductor-intermunicipal': 'conductorinter.html',
+            'despachador-intermunicipal': 'despachadorinter.html',
+            'ceo': 'ceo-panel.html',
+            'ceo-mapa': 'ceo-mapa.html',
+            'panel-credito': 'panel-credito.html',
+            'panel-whatsapp': 'panel-whatsapp.html',
+            'qr-generador': 'qr-generador.html',
+            'paginaweb': 'paginaweb.html',
+            'acerca-de': 'acerca-de.html',
+        };
 
-        // Lógica de Autenticación y Asignación de Rol
-        async function authenticateAndSetRole() {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
+        // Lógica para alternar entre formularios
+        showRegisterLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+            messageContainer.classList.add('hidden');
+        });
+
+        showLoginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            messageContainer.classList.add('hidden');
+        });
+
+        // Manejar el cambio de estado de la autenticación
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const userId = user.uid;
+                    const userDocRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', userId);
+                    const userDocSnap = await getDoc(userDocRef);
+
+                    if (userDocSnap.exists()) {
+                        const userData = userDocSnap.data();
+                        welcomeMessage.textContent = `¡Bienvenido, ${userData.nombre}!`;
+                        userRoleElem.textContent = `Rol: ${userData.rol}`;
+                        userUidElem.textContent = `ID de usuario: ${userId}`;
+                        
+                        // Limpiar y crear los enlaces dinámicamente
+                        roleLinksContainer.innerHTML = '';
+                        const roleLink = roleRedirects[userData.rol];
+                        if (roleLink) {
+                            const linkElement = document.createElement('a');
+                            linkElement.href = roleLink;
+                            linkElement.textContent = `Ir a la aplicación de ${userData.rol}`;
+                            linkElement.className = 'w-full py-2 px-4 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors duration-200 block text-center';
+                            roleLinksContainer.appendChild(linkElement);
+                        } else {
+                            userRoleElem.textContent = `Rol desconocido: ${userData.rol}`;
+                        }
+                        
+                        authForms.classList.add('hidden');
+                        welcomeScreen.classList.remove('hidden');
+                    } else {
+                        // Si el usuario existe en Auth pero no en Firestore (ej. error en el registro), cerrar sesión
+                        await signOut(auth);
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                    showMessage("Error al cargar los datos del usuario. Por favor, intenta de nuevo.", "error");
+                    signOut(auth);
+                } finally {
+                    loadingScreen.classList.add('hidden');
+                }
+            } else {
+                welcomeScreen.classList.add('hidden');
+                authForms.classList.remove('hidden');
+                loadingScreen.classList.add('hidden');
+            }
+            userIsAuthReady = true;
+        });
+
+        // Intentar iniciar sesión con el token personalizado al cargar
+        if (initialAuthToken) {
+            signInWithCustomToken(auth, initialAuthToken).catch(async (error) => {
+                console.error("Custom token login failed:", error);
+                // Si falla el token, intentamos de forma anónima
+                try {
                     await signInAnonymously(auth);
+                } catch (anonError) {
+                    console.error("Anonymous login failed:", anonError);
+                    loadingScreen.classList.add('hidden');
+                    showMessage("No se pudo conectar. Por favor, recarga la página.", "error");
                 }
-                userId = auth.currentUser.uid;
-                
-                // Asignar el rol en base al userId (simulación)
-                // En un caso real, el rol se obtendría de la base de datos
-                if (userId.startsWith('conductor')) {
-                    userRole = 'conductor';
-                } else {
-                    userRole = 'pasajero';
-                }
-                
-                // Mostrar la interfaz correcta
-                if (userRole === 'conductor') {
-                    driverPanel.classList.remove('hidden');
-                    listenForNewTrips();
-                } else {
-                    passengerPanel.classList.remove('hidden');
-                }
-                
-                console.log(`Usuario autenticado con rol: ${userRole}`);
-                showMessage(`¡Bienvenido! Eres un ${userRole}.`, 'message-success');
+            });
+        } else {
+            signInAnonymously(auth).catch((error) => {
+                console.error("Anonymous login failed:", error);
+                loadingScreen.classList.add('hidden');
+                showMessage("No se pudo conectar. Por favor, recarga la página.", "error");
+            });
+        }
 
+        // Lógica de Registro con Firebase
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const nombre = document.getElementById('register-nombre').value;
+            const password = document.getElementById('register-password').value;
+            const rol = document.getElementById('register-rol').value;
+
+            loadingScreen.classList.remove('hidden');
+            authForms.classList.add('hidden');
+            messageContainer.classList.add('hidden');
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const userId = userCredential.user.uid;
+                
+                const userDocRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', userId);
+                await setDoc(userDocRef, {
+                    email: email,
+                    nombre: nombre,
+                    rol: rol,
+                    createdAt: new Date()
+                });
+
+                showMessage('Registro exitoso. ¡Iniciando sesión!', 'success');
+                registerForm.reset();
             } catch (error) {
-                console.error("Error al autenticar:", error);
-                showMessage("Error de autenticación. Intenta de nuevo.", 'message-error');
-            }
-        }
-
-        // Función para Pasajero: Solicitar un viaje
-        async function requestTrip() {
-            const tripData = {
-                passengerId: userId,
-                passengerName: "Usuario de Prueba",
-                pickupLocation: "Carrera 15 #1-10",
-                destination: "Centro Comercial Viva Guajira",
-                status: "requested", // 'requested', 'accepted', 'in_progress', 'completed'
-                driverId: null,
-                timestamp: Date.now()
-            };
-
-            const tripsRef = collection(db, `/artifacts/${appId}/public/data/trips`);
-            const newTrip = await addDoc(tripsRef, tripData);
-            currentTripId = newTrip.id;
-            
-            console.log(`Viaje solicitado con ID: ${currentTripId}`);
-            statusText.textContent = 'Buscando un conductor...';
-            actionButton.classList.add('hidden');
-            listenForTripUpdates();
-        }
-
-        // Función para Pasajero: Escuchar actualizaciones del viaje
-        function listenForTripUpdates() {
-            if (!currentTripId) return;
-            
-            const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, currentTripId);
-            
-            onSnapshot(tripDocRef, (doc) => {
-                const trip = doc.data();
-                if (trip) {
-                    console.log("Estado del viaje:", trip.status);
-                    
-                    if (trip.status === 'accepted') {
-                        statusText.textContent = `¡Conductor Encontrado!`;
-                        driverNameDisplay.textContent = `Conductor: ${trip.driverName}`;
-                        driverPlateDisplay.textContent = `Placa: ${trip.driverPlate}`;
-                        driverStatusDisplay.textContent = 'En camino...';
-                        actionButton.classList.remove('hidden');
-                        actionButton.textContent = 'Cancelar Viaje';
-                        actionButton.onclick = () => {
-                            // Lógica para cancelar el viaje
-                            console.log("Viaje cancelado por el pasajero.");
-                        };
-                    } else if (trip.status === 'in_progress') {
-                        statusText.textContent = 'Viaje en curso.';
-                        driverStatusDisplay.textContent = 'Viaje en progreso.';
-                    } else if (trip.status === 'completed') {
-                        statusText.textContent = '¡Viaje Finalizado!';
-                        driverStatusDisplay.textContent = 'El viaje ha terminado.';
-                        actionButton.classList.add('hidden');
-                        // Lógica para mostrar la calificación
-                    }
+                console.error('Error de registro:', error);
+                let errorMessage = 'Error en el registro.';
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'El correo electrónico ya está en uso.';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = 'La contraseña es muy débil. Debe tener al menos 6 caracteres.';
                 }
-            });
-        }
-        
-        // Función para Conductor: Escuchar nuevos viajes
-        function listenForNewTrips() {
-            const tripsRef = collection(db, `/artifacts/${appId}/public/data/trips`);
-            const q = query(tripsRef, where("status", "==", "requested"));
-            
-            onSnapshot(q, (querySnapshot) => {
-                querySnapshot.forEach(async (docSnapshot) => {
-                    const tripData = docSnapshot.data();
-                    console.log("Nuevo viaje solicitado:", tripData);
-                    
-                    // Lógica para que el conductor acepte el viaje
-                    // En un caso real, el conductor podría elegir aceptar
-                    const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, docSnapshot.id);
-                    await updateDoc(tripDocRef, {
-                        status: "accepted",
-                        driverId: userId,
-                        driverName: "Conductor Demo",
-                        driverPlate: "ABC-123"
-                    });
-                    
-                    currentTripId = docSnapshot.id;
-                    showMessage("Has aceptado un nuevo viaje.", "message-success");
-                    document.getElementById('driver-info').classList.add('hidden');
-                    document.getElementById('driver-trip-details').classList.remove('hidden');
-                    
-                    // Iniciar la escucha del estado de ese viaje en específico
-                    listenForDriverTripStatus(currentTripId);
-                });
-            });
-        }
-        
-        // Función para Conductor: Escuchar el estado de su viaje en específico
-        function listenForDriverTripStatus(tripId) {
-            const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, tripId);
-            onSnapshot(tripDocRef, (doc) => {
-                const trip = doc.data();
-                if (trip) {
-                    // Lógica del flujo del conductor
-                    if (trip.status === 'accepted') {
-                        document.getElementById('driver-trip-status').textContent = 'Estado: Viaje aceptado';
-                        document.getElementById('pickup-button').classList.remove('hidden');
-                    } else if (trip.status === 'in_progress') {
-                        document.getElementById('driver-trip-status').textContent = 'Estado: Viaje en progreso';
-                        document.getElementById('pickup-button').classList.add('hidden');
-                        document.getElementById('end-trip-button').classList.remove('hidden');
-                    } else if (trip.status === 'completed') {
-                        document.getElementById('driver-trip-status').textContent = 'Estado: Viaje completado';
-                        document.getElementById('end-trip-button').classList.add('hidden');
-                        // Lógica para mostrar un mensaje o volver a la pantalla de espera
-                        document.getElementById('driver-info').classList.remove('hidden');
-                        document.getElementById('driver-trip-details').classList.add('hidden');
-                    }
-                }
-            });
-        }
-        
-        // Función para Conductor: Botones manuales de flujo
-        pickupButton.addEventListener('click', async () => {
-            if (currentTripId) {
-                const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, currentTripId);
-                await updateDoc(tripDocRef, {
-                    status: "in_progress",
-                    pickupTime: Date.now()
-                });
-                showMessage("Has recogido al pasajero.", "message-success");
-            }
-        });
-        
-        endTripButton.addEventListener('click', async () => {
-            if (currentTripId) {
-                const tripDocRef = doc(db, `/artifacts/${appId}/public/data/trips`, currentTripId);
-                await updateDoc(tripDocRef, {
-                    status: "completed",
-                    endTime: Date.now()
-                });
-                showMessage("Viaje finalizado.", "message-success");
-                currentTripId = null;
+                showMessage(errorMessage, 'error');
+                loadingScreen.classList.add('hidden');
+                authForms.classList.remove('hidden');
             }
         });
 
-        // Event listener para el botón de Pasajero
-        actionButton.addEventListener('click', () => {
-            requestTrip();
+        // Lógica de Login con Firebase
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            loadingScreen.classList.remove('hidden');
+            authForms.classList.add('hidden');
+            messageContainer.classList.add('hidden');
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showMessage(`Inicio de sesión exitoso. ¡Bienvenido!`, 'success');
+                loginForm.reset();
+            } catch (error) {
+                console.error('Error de login:', error);
+                showMessage('Credenciales incorrectas. Por favor, verifica tu correo electrónico y contraseña.', 'error');
+                loadingScreen.classList.add('hidden');
+                authForms.classList.remove('hidden');
+            }
         });
-        
-        // Iniciar la aplicación
-        authenticateAndSetRole();
-        
+
+        // Lógica de Cerrar Sesión
+        logoutButton.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                showMessage('Has cerrado sesión.', 'success');
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                showMessage('Error al cerrar sesión. Por favor, intenta de nuevo.', 'error');
+            }
+        });
     </script>
-</head>
-<body class="p-4 md:p-8">
-    <div class="message-box message-success" id="messageBox"></div>
-
-    <div class="max-w-3xl mx-auto space-y-6">
-        <!-- Título principal -->
-        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
-            <h1 class="text-3xl font-bold text-gray-800">TAXI A CIMCO</h1>
-            <i class="fas fa-car text-blue-600 text-4xl"></i>
-        </div>
-
-        <!-- Panel del Pasajero -->
-        <div id="passenger-panel" class="bg-white rounded-xl shadow-lg p-6 space-y-4 hidden">
-            <h2 class="text-xl font-bold text-gray-800">Panel de Pasajero</h2>
-            <p id="status-text" class="text-lg text-gray-600 text-center">¡Solicita un viaje!</p>
-            <button id="action-button" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">
-                Solicitar Viaje
-            </button>
-            <div class="space-y-2 mt-4 text-center">
-                <p id="driver-name" class="text-gray-700"></p>
-                <p id="driver-plate" class="text-gray-700"></p>
-                <p id="driver-status" class="text-blue-500 font-semibold"></p>
-            </div>
-        </div>
-        
-        <!-- Panel del Conductor -->
-        <div id="driver-panel" class="bg-white rounded-xl shadow-lg p-6 space-y-4 hidden">
-            <h2 class="text-xl font-bold text-gray-800">Panel de Conductor</h2>
-            <div id="driver-info">
-                <p class="text-lg text-gray-600 text-center">Esperando solicitudes de viaje...</p>
-            </div>
-            <div id="driver-trip-details" class="hidden">
-                <p class="text-center font-semibold text-lg text-blue-600 mb-2">Viaje Asignado</p>
-                <p id="driver-trip-status" class="text-center text-gray-600 mb-4">Estado: Aceptado</p>
-                <div class="flex justify-center space-x-4">
-                    <button id="pickup-button" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-green-700 transition duration-300 hidden">
-                        <i class="fas fa-handshake mr-2"></i> Recoger Pasajero
-                    </button>
-                    <button id="end-trip-button" class="bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-red-700 transition duration-300 hidden">
-                        <i class="fas fa-flag-checkered mr-2"></i> Finalizar Viaje
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 </body>
 </html>

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Crédito para Conductores</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #2d3748;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        /* Estilos para los mensajes de la app */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-align: center;
+            z-index: 1000;
+            animation: fadeinout 4s forwards;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-box.success {
+            background-color: #22c55e;
+            color: #fff;
+        }
+
+        .message-box.error {
+            background-color: #ef4444;
+            color: #fff;
+        }
+
+        @keyframes fadeinout {
+            0%, 100% { opacity: 0; }
+            10%, 90% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Barra de navegación para el administrador -->
+    <nav class="bg-gray-800 p-4 shadow-lg">
+        <div class="container flex justify-center items-center space-x-4">
+            <a href="#" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md cursor-default">
+                Panel de Crédito
+            </a>
+            <a href="ceo-panel.html" class="text-white hover:bg-gray-700 py-2 px-6 rounded-lg transition duration-300">
+                Panel CEO
+            </a>
+            <a href="ceo-mapa.html" class="text-white hover:bg-gray-700 py-2 px-6 rounded-lg transition duration-300">
+                Mapa CEO
+            </a>
+        </div>
+    </nav>
+    <div id="message-container"></div>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-6">Panel de Administración de Crédito</h1>
+
+        <div id="loading" class="text-center text-lg mt-12">Cargando...</div>
+        <div id="app" class="hidden">
+            <!-- Sección para agregar un nuevo conductor -->
+            <div class="bg-gray-700 p-6 rounded-xl mb-8 shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">Agregar Nuevo Conductor</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <input type="text" id="driver-name-input" placeholder="Nombre o ID del conductor" class="p-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select id="driver-type-select" class="p-3 rounded-lg bg-gray-800 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="mototaxi">Mototaxi</option>
+                        <option value="motoparrillero">Motoparrillero</option>
+                        <option value="montacarga">Montacarga</option>
+                        <option value="despachador">Despachador Intermunicipal</option>
+                    </select>
+                    <button id="add-driver-btn" class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-md col-span-1 sm:col-span-2 lg:col-span-1">
+                        Agregar Conductor
+                    </button>
+                    <div class="lg:col-span-4">
+                        <p id="user-id-display" class="text-xs text-gray-400 mt-2"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de la lista de conductores con filtro -->
+            <div class="bg-gray-700 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">Conductores y Despachadores Registrados</h2>
+                <!-- Campo de búsqueda -->
+                <div class="mb-4">
+                    <input type="text" id="filter-input" placeholder="Buscar por nombre o ID de conductor..." class="w-full p-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div id="drivers-list" class="space-y-4">
+                    <!-- Los conductores se cargarán aquí dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales proporcionadas por el entorno de Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Referencias a elementos del DOM
+        const appDiv = document.getElementById('app');
+        const loadingDiv = document.getElementById('loading');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const driversListDiv = document.getElementById('drivers-list');
+        const addDriverBtn = document.getElementById('add-driver-btn');
+        const driverNameInput = document.getElementById('driver-name-input');
+        const driverTypeSelect = document.getElementById('driver-type-select');
+        const filterInput = document.getElementById('filter-input');
+        const messageContainer = document.getElementById('message-container');
+
+        let db, auth, userId;
+        let allDrivers = []; // Variable para guardar la lista completa de conductores
+
+        const DRIVER_PROPERTIES = {
+            mototaxi: {
+                maxDebt: -10000,
+                costPerService: 0.08,
+                unit: 'del valor',
+                displayName: 'Mototaxi'
+            },
+            motoparrillero: {
+                maxDebt: -10000,
+                costPerService: 0.08,
+                unit: 'del valor',
+                displayName: 'Motoparrillero'
+            },
+            montacarga: {
+                maxDebt: -15000,
+                costPerService: 500,
+                unit: 'pesos',
+                displayName: 'Montacarga'
+            },
+            despachador: {
+                maxDebt: -15000,
+                costPerService: 500,
+                unit: 'pesos',
+                displayName: 'Despachador Intermunicipal'
+            }
+        };
+
+        // Función para mostrar mensajes de la app
+        function showMessage(message, type = 'success') {
+            const messageBox = document.createElement('div');
+            messageBox.className = `message-box ${type}`;
+            messageBox.textContent = message;
+            messageContainer.appendChild(messageBox);
+
+            setTimeout(() => {
+                messageBox.remove();
+            }, 4000);
+        }
+        
+        // Función para inicializar Firebase
+        async function initFirebase() {
+            loadingDiv.classList.remove('hidden');
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Autenticación con el token personalizado
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                userId = auth.currentUser.uid;
+                userIdDisplay.textContent = `ID de Usuario (para compartir): ${userId}`;
+
+                console.log('Firebase y Firestore inicializados correctamente.');
+                
+                // Cargar la lista de conductores en tiempo real
+                loadDrivers();
+                
+                loadingDiv.classList.add('hidden');
+                appDiv.classList.remove('hidden');
+
+            } catch (e) {
+                console.error("Error al inicializar Firebase o al autenticar:", e);
+                showMessage('Error al iniciar la aplicación. Por favor, intente de nuevo más tarde.', 'error');
+                loadingDiv.classList.add('hidden');
+            }
+        }
+
+        // Función para renderizar la lista de conductores
+        function renderDrivers(drivers) {
+            if (drivers.length === 0) {
+                driversListDiv.innerHTML = '<p class="text-center text-gray-400">No hay conductores registrados. Agregue uno para empezar.</p>';
+                return;
+            }
+
+            driversListDiv.innerHTML = drivers.map(driver => {
+                const props = DRIVER_PROPERTIES[driver.type] || {};
+                const creditColor = driver.credit < 0 ? 'text-red-400' : 'text-green-400';
+                
+                return `
+                <div class="bg-gray-800 p-4 rounded-lg flex flex-col lg:flex-row items-center justify-between shadow-sm">
+                    <div class="flex-1 mb-2 lg:mb-0 lg:mr-4">
+                        <p class="font-bold text-lg">${driver.name}</p>
+                        <p class="text-sm text-gray-400">Tipo: ${props.displayName}</p>
+                        <p class="text-sm text-gray-400">Crédito: <span class="${creditColor} font-semibold">$${driver.credit.toFixed(2)}</span> / Límite de Deuda: $${Math.abs(props.maxDebt)}</p>
+                    </div>
+                    <div class="w-full lg:w-auto flex flex-col sm:flex-row gap-2 items-center">
+                        <input type="number" id="payment-amount-${driver.id}" placeholder="Monto abonado" min="1" class="w-full sm:w-28 p-2 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <button data-id="${driver.id}" data-action="add" class="w-full sm:w-auto bg-green-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                            Registrar Abono
+                        </button>
+                        ${driver.type === 'mototaxi' || driver.type === 'motoparrillero' ? `
+                            <input type="number" id="service-value-${driver.id}" placeholder="Valor del servicio" min="0" class="w-full sm:w-28 p-2 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <button data-id="${driver.id}" data-action="simulate-percentage" class="w-full sm:w-auto bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300">
+                                Simular Servicio
+                            </button>
+                        ` : `
+                            <button data-id="${driver.id}" data-action="simulate-fixed" class="w-full sm:w-auto bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300">
+                                Simular Servicio (-$${props.costPerService})
+                            </button>
+                        `}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // Función para cargar los conductores en tiempo real
+        function loadDrivers() {
+            const driversColRef = collection(db, `artifacts/${appId}/users/${userId}/drivers`);
+            // onSnapshot crea un listener en tiempo real para la colección
+            onSnapshot(driversColRef, (snapshot) => {
+                allDrivers = []; // Limpiar el array para la nueva lista
+                snapshot.forEach(doc => {
+                    allDrivers.push({ id: doc.id, ...doc.data() });
+                });
+                filterAndRenderDrivers(); // Renderizar la lista con el filtro aplicado
+            }, (error) => {
+                console.error("Error al escuchar cambios en Firestore:", error);
+                showMessage("Error al cargar los conductores. Por favor, recargue la página.", 'error');
+            });
+        }
+        
+        // Función para filtrar y renderizar la lista de conductores
+        function filterAndRenderDrivers() {
+            const filterValue = filterInput.value.toLowerCase();
+            const filteredDrivers = allDrivers.filter(driver => 
+                driver.name.toLowerCase().includes(filterValue) ||
+                driver.id.toLowerCase().includes(filterValue)
+            );
+            renderDrivers(filteredDrivers);
+        }
+
+        // Evento para el campo de búsqueda
+        filterInput.addEventListener('input', filterAndRenderDrivers);
+
+        // Evento para agregar un nuevo conductor
+        addDriverBtn.addEventListener('click', async () => {
+            const driverName = driverNameInput.value.trim();
+            const driverType = driverTypeSelect.value;
+
+            if (!driverName) {
+                showMessage('Por favor, ingrese un nombre o ID.', 'error');
+                return;
+            }
+
+            try {
+                // El path de la colección es privado para su usuario
+                const driversColRef = collection(db, `artifacts/${appId}/users/${userId}/drivers`);
+                await addDoc(driversColRef, {
+                    name: driverName,
+                    type: driverType,
+                    credit: 0, // El crédito inicial es 0 para que pueda ir a negativo
+                    createdAt: new Date()
+                });
+
+                driverNameInput.value = '';
+                showMessage(`Conductor "${driverName}" (${DRIVER_PROPERTIES[driverType].displayName}) agregado con $0 de crédito.`, 'success');
+
+            } catch (e) {
+                console.error("Error al agregar el conductor:", e);
+                showMessage(`Error al agregar el conductor. Inténtelo de nuevo.`, 'error');
+            }
+        });
+
+        // Manejador de eventos para los botones de la lista de conductores
+        driversListDiv.addEventListener('click', async (e) => {
+            const target = e.target;
+            const driverId = target.dataset.id;
+            const action = target.dataset.action;
+
+            if (!driverId) return;
+
+            const driverRef = doc(db, `artifacts/${appId}/users/${userId}/drivers`, driverId);
+            const driverDoc = await getDoc(driverRef);
+            if (!driverDoc.exists()) {
+                showMessage('Conductor no encontrado.', 'error');
+                return;
+            }
+
+            const driverData = driverDoc.data();
+            const props = DRIVER_PROPERTIES[driverData.type];
+            let newCredit;
+
+            try {
+                if (action === 'add') {
+                    const paymentAmountInput = document.getElementById(`payment-amount-${driverId}`);
+                    const paymentAmount = parseInt(paymentAmountInput.value);
+                    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+                         showMessage('Por favor, ingrese una cantidad válida de pago.', 'error');
+                         return;
+                    }
+                    newCredit = driverData.credit + paymentAmount;
+                    await updateDoc(driverRef, { credit: newCredit });
+                    paymentAmountInput.value = ''; // Limpiar el campo
+                    showMessage(`Abono de $${paymentAmount} registrado para "${driverData.name}". Nuevo crédito: $${newCredit.toFixed(2)}.`, 'success');
+                } else if (action === 'simulate-percentage') {
+                    const serviceValueInput = document.getElementById(`service-value-${driverId}`);
+                    const serviceValue = parseFloat(serviceValueInput.value);
+
+                    if (isNaN(serviceValue) || serviceValue <= 0) {
+                        showMessage('Por favor, ingrese un valor de servicio válido.', 'error');
+                        return;
+                    }
+
+                    const cost = serviceValue * props.costPerService;
+                    newCredit = driverData.credit - cost;
+                    
+                    if (newCredit < props.maxDebt) {
+                         showMessage(`El crédito de "${driverData.name}" ha superado el límite de deuda de $${Math.abs(props.maxDebt)}. No puede recibir más servicios.`, 'error');
+                         return;
+                    }
+                    
+                    await updateDoc(driverRef, { credit: newCredit });
+                    showMessage(`Servicio simulado para "${driverData.name}". Costo: $${cost.toFixed(2)}. Nuevo crédito: $${newCredit.toFixed(2)}.`, 'success');
+                } else if (action === 'simulate-fixed') {
+                    const cost = props.costPerService;
+                    newCredit = driverData.credit - cost;
+                    
+                    if (newCredit < props.maxDebt) {
+                         showMessage(`El crédito de "${driverData.name}" ha superado el límite de deuda de $${Math.abs(props.maxDebt)}. No puede recibir más servicios.`, 'error');
+                         return;
+                    }
+                    
+                    await updateDoc(driverRef, { credit: newCredit });
+                    showMessage(`Servicio simulado para "${driverData.name}". Costo: $${cost.toFixed(2)}. Nuevo crédito: $${newCredit.toFixed(2)}.`, 'success');
+                }
+            } catch (e) {
+                console.error("Error al actualizar el crédito:", e);
+                showMessage(`Error al actualizar el crédito. Inténtelo de nuevo.`, 'error');
+            }
+        });
+        
+        // Inicializar la aplicación al cargar la página
+        window.onload = initFirebase;
+    </script>
+</body>
+</html>

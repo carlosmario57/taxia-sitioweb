@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TAXI A CIMCO - Conductor Motocarga</title>
+    <title>TAXI A CIMCO - Montacarga</title>
     <!-- Incluir Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Incluir Font Awesome para los iconos -->
@@ -14,9 +14,29 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
+            color: #1a202c;
         }
         .container {
             max-width: 95%;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .text-saldo {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        .text-negativo {
+            color: #ef4444; /* Rojo */
+        }
+        .text-positivo {
+            color: #22c55e; /* Verde */
+        }
+        .rating-input:checked + div {
+            border-color: #2563eb;
+            background-color: #bfdbfe;
         }
         .message-box {
             position: fixed;
@@ -25,750 +45,455 @@
             transform: translateX(-50%);
             padding: 1rem 2rem;
             border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-weight: 600;
+            text-align: center;
             z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            color: white;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            animation: fadeinout 4s forwards;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .message-box.show {
-            opacity: 1;
+
+        .message-box.success {
+            background-color: #22c55e;
+            color: #fff;
         }
-        .page-section {
-            display: none;
+
+        .message-box.error {
+            background-color: #ef4444;
+            color: #fff;
         }
-        .page-section.active {
-            display: block;
+
+        @keyframes fadeinout {
+            0%, 100% { opacity: 0; }
+            10%, 90% { opacity: 1; }
         }
     </style>
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, updateDoc, deleteDoc, addDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-
-        // Global variables for Firebase and App ID
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { /* Tu configuración por defecto */ };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const storage = getStorage(app);
-
-        // Global state
-        let userId = null;
-        let userEmail = null;
-        let unsubscribeRequests = null;
-        let currentTripId = null;
-        let lastPassengerId = null;
-        let lastTripId = null;
-
-        // --- Utility Functions ---
-        window.showMessage = function(text, type = 'success') {
-            const messageBox = document.getElementById('messageBox');
-            messageBox.textContent = text;
-            messageBox.className = 'message-box show';
-            if (type === 'success') {
-                messageBox.style.backgroundColor = '#10B981';
-            } else if (type === 'error') {
-                messageBox.style.backgroundColor = '#EF4444';
-            } else {
-                messageBox.style.backgroundColor = '#F59E0B';
-            }
-            setTimeout(() => {
-                messageBox.className = 'message-box';
-            }, 3000);
-        };
-
-        window.showSection = function(sectionId) {
-            document.querySelectorAll('.page-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            document.getElementById(sectionId).classList.add('active');
-        };
-
-        // --- Authentication Logic ---
-        window.handleAuth = async function() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            if (!email || !password) {
-                showMessage('Por favor, ingresa tu correo y contraseña.', 'error');
-                return;
-            }
-
-            const isLogin = document.getElementById('loginForm').classList.contains('active');
-            try {
-                if (isLogin) {
-                    await signInWithEmailAndPassword(auth, email, password);
-                    showMessage('Inicio de sesión exitoso.', 'success');
-                } else {
-                    const name = document.getElementById('name').value;
-                    const cedula = document.getElementById('cedula').value;
-                    const phone = document.getElementById('phone').value;
-                    const fileInput = document.getElementById('document');
-
-                    if (!name || !cedula || !phone || !fileInput.files[0]) {
-                        showMessage('Por favor, completa todos los campos y sube tu documento.', 'error');
-                        return;
-                    }
-
-                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    const user = userCredential.user;
-                    const file = fileInput.files[0];
-
-                    // Subir el archivo a Firebase Storage
-                    const storageRef = ref(storage, `artifacts/${appId}/driver_documents/${user.uid}/${file.name}`);
-                    const uploadTask = await uploadBytes(storageRef, file);
-                    const fileURL = await getDownloadURL(uploadTask.ref);
-
-                    // Guardar los datos del conductor en Firestore
-                    await setDoc(doc(db, `artifacts/${appId}/public/data/motocarga_drivers`, user.uid), {
-                        name: name,
-                        cedula: cedula,
-                        phone: phone,
-                        email: email,
-                        documentURL: fileURL,
-                        status: 'pending',
-                        credit: 10000 // Credito inicial de 10,000
-                    });
-
-                    showMessage('Registro exitoso. Espera la aprobación.', 'success');
-                    showSection('pendingApprovalSection');
-                }
-            } catch (error) {
-                console.error("Authentication Error:", error);
-                if (error.code === 'auth/email-already-in-use') {
-                    showMessage('El correo ya está en uso. Por favor, inicia sesión.', 'error');
-                    window.toggleAuthForm();
-                } else if (error.code === 'auth/invalid-credential') {
-                    showMessage('Credenciales inválidas. Por favor, inténtalo de nuevo.', 'error');
-                } else {
-                    showMessage('Error de autenticación: ' + error.message, 'error');
-                }
-            }
-        };
-
-        window.toggleAuthForm = function() {
-            const loginForm = document.getElementById('loginForm');
-            const signupForm = document.getElementById('signupForm');
-            if (loginForm.classList.contains('active')) {
-                loginForm.classList.remove('active');
-                loginForm.classList.add('hidden');
-                signupForm.classList.remove('hidden');
-                signupForm.classList.add('active');
-            } else {
-                signupForm.classList.remove('active');
-                signupForm.classList.add('hidden');
-                loginForm.classList.remove('hidden');
-                loginForm.classList.add('active');
-            }
-        };
-
-        window.signOut = async function() {
-            try {
-                await auth.signOut();
-                showMessage('Sesión cerrada correctamente.', 'success');
-                showSection('authSection');
-            } catch (error) {
-                console.error("Error al cerrar sesión:", error);
-                showMessage('Error al cerrar sesión.', 'error');
-            }
-        };
-
-        // --- Trip Logic ---
-        window.goOnline = async function() {
-            try {
-                await updateDoc(doc(db, `artifacts/${appId}/public/data/motocarga_drivers`, userId), {
-                    online: true
-                });
-                showMessage('Estás en línea y listo para recibir viajes.', 'success');
-                document.getElementById('onlineStatus').classList.remove('bg-red-500');
-                document.getElementById('onlineStatus').classList.add('bg-green-500');
-                document.getElementById('onlineText').textContent = 'En línea';
-
-                // Start listening for trip requests
-                startListeningForRequests();
-            } catch (error) {
-                console.error("Error al ponerse en línea:", error);
-                showMessage('Error al conectarse. Inténtalo de nuevo.', 'error');
-            }
-        };
-
-        window.goOffline = async function() {
-            try {
-                await updateDoc(doc(db, `artifacts/${appId}/public/data/motocarga_drivers`, userId), {
-                    online: false
-                });
-                showMessage('Te has desconectado.', 'info');
-                document.getElementById('onlineStatus').classList.remove('bg-green-500');
-                document.getElementById('onlineStatus').classList.add('bg-red-500');
-                document.getElementById('onlineText').textContent = 'Desconectado';
-
-                // Stop listening for trip requests
-                if (unsubscribeRequests) {
-                    unsubscribeRequests();
-                }
-            } catch (error) {
-                console.error("Error al desconectarse:", error);
-                showMessage('Error al desconectarse. Inténtalo de nuevo.', 'error');
-            }
-        };
-
-        function startListeningForRequests() {
-            // Listen for new trip requests that are pending
-            const requestsRef = collection(db, `artifacts/${appId}/public/data/motocarga_trip_requests`);
-            const q = query(requestsRef, where("status", "==", "pending"));
-
-            unsubscribeRequests = onSnapshot(q, (snapshot) => {
-                const tripRequests = [];
-                snapshot.forEach(doc => {
-                    tripRequests.push({ id: doc.id, ...doc.data() });
-                });
-                renderTripRequests(tripRequests);
-            }, (error) => {
-                console.error("Error listening for trip requests:", error);
-                showMessage('Error al cargar las solicitudes de viaje.', 'error');
-            });
-        }
-
-        async function renderTripRequests(requests) {
-            const container = document.getElementById('tripRequestsContainer');
-            container.innerHTML = '';
-            if (requests.length === 0) {
-                container.innerHTML = `<p class="text-center text-gray-500">No hay solicitudes de viaje disponibles en este momento.</p>`;
-                return;
-            }
-
-            for (const request of requests) {
-                const passengerDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/motocarga_passengers`, request.passengerId));
-                const passengerData = passengerDoc.data();
-                const passengerName = passengerData?.name || 'Pasajero anónimo';
-
-                const card = document.createElement('div');
-                card.className = 'bg-gray-100 rounded-lg p-4 shadow-md flex flex-col space-y-2';
-                card.innerHTML = `
-                    <p><span class="font-semibold">Cliente:</span> ${passengerName}</p>
-                    <p><span class="font-semibold">Tipo de Material:</span> ${request.materialType || 'No especificado'}</p>
-                    <p><span class="font-semibold">Origen:</span> ${request.pickupLocation}</p>
-                    <p><span class="font-semibold">Destino:</span> ${request.destination}</p>
-                    <p><span class="font-semibold">Precio:</span> $${request.price}</p>
-                    <div class="flex justify-end space-x-2 mt-4">
-                        <button onclick="handleAcceptRequest('${request.id}')" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300">Aceptar</button>
-                        <button onclick="handleDeclineRequest('${request.id}')" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">Rechazar</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            }
-        }
-
-        window.handleAcceptRequest = async function(tripId) {
-            try {
-                // Get trip details and driver credit
-                const tripDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/motocarga_trip_requests`, tripId));
-                const tripData = tripDoc.data();
-                const driverDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/motocarga_drivers`, userId));
-                const driverData = driverDoc.data();
-
-                if (!tripData || !driverData) {
-                    showMessage('Error al obtener datos del viaje o del conductor.', 'error');
-                    return;
-                }
-
-                const commission = 500; // Comisión fija de 500 pesos
-                const newCredit = driverData.credit - commission;
-
-                if (newCredit < 0) {
-                    showMessage('Crédito insuficiente. Por favor, recarga tu saldo.', 'error');
-                    return;
-                }
-
-                // Update trip status and assign driver
-                await updateDoc(doc(db, `artifacts/${appId}/public/data/motocarga_trip_requests`, tripId), {
-                    status: 'accepted',
-                    driverId: userId,
-                    driverName: driverData.name,
-                });
-
-                // Update driver credit
-                await updateDoc(doc(db, `artifacts/${appId}/public/data/motocarga_drivers`, userId), {
-                    credit: newCredit
-                });
-                
-                currentTripId = tripId;
-                lastPassengerId = tripData.passengerId;
-                lastTripId = tripId;
-                showMessage('Viaje aceptado. Dirígete al punto de partida.', 'success');
-                showActiveTrip(tripId, tripData.destination, tripData.passengerName, tripData.manualAddressNote);
-            } catch (error) {
-                console.error("Error al aceptar el viaje:", error);
-                showMessage('Error al aceptar el viaje. Inténtalo de nuevo.', 'error');
-            }
-        };
-
-        window.handleDeclineRequest = async function(tripId) {
-            try {
-                // For this example, we'll just update the request status to declined.
-                await updateDoc(doc(db, `artifacts/${appId}/public/data/motocarga_trip_requests`, tripId), {
-                    status: 'declined',
-                    driverId: userId
-                });
-                showMessage('Viaje rechazado.', 'info');
-            } catch (error) {
-                console.error("Error al rechazar el viaje:", error);
-                showMessage('Error al rechazar el viaje. Inténtalo de nuevo.', 'error');
-            }
-        };
-
-        window.handleTripCompleted = async function() {
-            if (!currentTripId) {
-                showMessage('No hay un viaje activo.', 'error');
-                return;
-            }
-            try {
-                await updateDoc(doc(db, `artifacts/${appId}/public/data/motocarga_trip_requests`, currentTripId), {
-                    status: 'completed',
-                });
-                showMessage('Viaje completado. ¡Buen trabajo!', 'success');
-                showSection('ratePassengerSection');
-            } catch (error) {
-                console.error("Error al completar el viaje:", error);
-                showMessage('Error al completar el viaje.', 'error');
-            }
-        };
-        
-        window.ratePassenger = async function() {
-            const rating = document.querySelector('input[name="rating"]:checked');
-            if (!rating) {
-                showMessage('Por favor, selecciona una calificación.', 'error');
-                return;
-            }
-            try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/motocarga_ratings`), {
-                    tripId: currentTripId,
-                    driverId: userId,
-                    passengerId: lastPassengerId,
-                    rating: parseInt(rating.value),
-                    ratedBy: 'driver'
-                });
-                showMessage('Calificación enviada. ¡Gracias!', 'success');
-                currentTripId = null;
-                showSection('mainSection');
-            } catch (error) {
-                console.error("Error al calificar al pasajero:", error);
-                showMessage('Error al enviar la calificación.', 'error');
-            }
-        };
-        
-        window.showLastTripInfo = async function() {
-            if (!lastTripId) {
-                showMessage('No has completado ningún viaje todavía.', 'info');
-                return;
-            }
-            const tripDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/motocarga_trip_requests`, lastTripId));
-            const tripData = tripDoc.data();
-            if (tripData && tripData.passengerId) {
-                const passengerDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/motocarga_passengers`, tripData.passengerId));
-                const passengerData = passengerDoc.data();
-                if (passengerData) {
-                    showSection('lastTripSection');
-                    document.getElementById('lastPassengerName').textContent = `Nombre: ${passengerData.name}`;
-                    document.getElementById('lastPassengerPhone').textContent = `Teléfono: ${passengerData.phone}`;
-                } else {
-                    showMessage('No se encontraron los datos del último pasajero.', 'error');
-                }
-            } else {
-                showMessage('No se encontró información del último viaje.', 'error');
-            }
-        };
-
-
-        async function showActiveTrip(tripId, destination, passengerName, manualAddressNote) {
-            showSection('activeTripSection');
-            document.getElementById('tripPassengerName').textContent = `Cliente: ${passengerName}`;
-            document.getElementById('activeTripDestination').textContent = `Destino: ${destination}`;
-            
-            // Show GPS link
-            document.getElementById('activeTripGPS').innerHTML = `<a href="https://maps.google.com/maps?q=${destination}" target="_blank" class="text-blue-500 hover:underline">Ver en el mapa</a>`;
-            
-            // Show manual address note
-            const noteElement = document.getElementById('manualAddressNote');
-            if (manualAddressNote) {
-                noteElement.textContent = `Nota Adicional: ${manualAddressNote}`;
-                noteElement.classList.remove('hidden');
-            } else {
-                noteElement.classList.add('hidden');
-            }
-            
-            // Start listening to passenger-driver chat
-            const chatRef = collection(db, `artifacts/${appId}/public/data/motocarga_trip_requests/${tripId}/chat`);
-            onSnapshot(chatRef, (snapshot) => {
-                const messages = [];
-                snapshot.forEach(doc => messages.push(doc.data()));
-                renderChat(messages, 'passengerChatContainer');
-            }, (error) => {
-                console.error("Error listening to passenger chat:", error);
-            });
-        }
-        
-        window.sendPassengerMessage = async function() {
-            const message = document.getElementById('passengerMessageInput').value;
-            if (!message.trim()) return;
-            try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/motocarga_trip_requests/${currentTripId}/chat`), {
-                    senderId: userId,
-                    senderName: userEmail,
-                    message: message,
-                    timestamp: new Date()
-                });
-                document.getElementById('passengerMessageInput').value = '';
-            } catch (error) {
-                console.error("Error sending message:", error);
-                showMessage('Error al enviar mensaje.', 'error');
-            }
-        };
-        
-        window.showCommunityChat = function() {
-            showSection('communityChatSection');
-            const chatRef = collection(db, `artifacts/${appId}/public/data/motocarga_community_chat`);
-            onSnapshot(chatRef, (snapshot) => {
-                const messages = [];
-                snapshot.forEach(doc => messages.push(doc.data()));
-                renderChat(messages, 'communityChatContainer');
-            }, (error) => {
-                console.error("Error listening to community chat:", error);
-            });
-        };
-        
-        window.sendCommunityMessage = async function() {
-            const message = document.getElementById('communityMessageInput').value;
-            if (!message.trim()) return;
-            try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/motocarga_community_chat`), {
-                    senderId: userId,
-                    senderName: userEmail,
-                    message: message,
-                    timestamp: new Date()
-                });
-                document.getElementById('communityMessageInput').value = '';
-            } catch (error) {
-                console.error("Error sending message:", error);
-                showMessage('Error al enviar mensaje.', 'error');
-            }
-        };
-
-        function renderChat(messages, containerId) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-            messages.sort((a, b) => a.timestamp.toDate() - b.timestamp.toDate());
-            messages.forEach(msg => {
-                const messageDiv = document.createElement('div');
-                const isMyMessage = msg.senderId === userId;
-                messageDiv.className = `p-2 rounded-lg max-w-xs ${isMyMessage ? 'bg-blue-200 self-end ml-auto' : 'bg-gray-200 self-start mr-auto'}`;
-                messageDiv.innerHTML = `<span class="font-semibold text-sm block">${isMyMessage ? 'Tú' : msg.senderName}:</span> ${msg.message}`;
-                container.appendChild(messageDiv);
-            });
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // --- Recharge Logic ---
-        window.showRechargeSection = function() {
-            showSection('rechargeSection');
-        };
-
-        window.handleRecharge = async function() {
-            const amountInput = document.getElementById('rechargeAmount');
-            const amount = parseFloat(amountInput.value);
-
-            if (isNaN(amount) || amount <= 0) {
-                showMessage('Por favor, ingresa una cantidad válida mayor a cero.', 'error');
-                return;
-            }
-
-            // Simula un pago con Nequi. En una aplicación real, esto se conectaría a un API de pago.
-            // Aquí, simplemente agregamos el monto al crédito del conductor.
-            try {
-                const driverDocRef = doc(db, `artifacts/${appId}/public/data/motocarga_drivers`, userId);
-                await runTransaction(db, async (transaction) => {
-                    const driverDoc = await transaction.get(driverDocRef);
-                    if (!driverDoc.exists()) {
-                        throw "Driver does not exist!";
-                    }
-                    const newCredit = driverDoc.data().credit + amount;
-                    transaction.update(driverDocRef, { credit: newCredit });
-                });
-                
-                showMessage(`Recarga exitosa. Se han añadido $${amount.toFixed(2)} a tu crédito.`, 'success');
-                amountInput.value = ''; // Limpiar el input
-                showSection('mainSection'); // Volver a la pantalla principal
-            } catch (error) {
-                console.error("Error al procesar la recarga:", error);
-                showMessage('Error al recargar. Inténtalo de nuevo.', 'error');
-            }
-        };
-
-        // Auth state listener
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                userEmail = user.email;
-                console.log("Usuario autenticado:", userId, userEmail);
-
-                // Check driver status in Firestore
-                const driverDoc = doc(db, `artifacts/${appId}/public/data/motocarga_drivers`, userId);
-                onSnapshot(driverDoc, (docSnap) => {
-                    const data = docSnap.data();
-                    if (data) {
-                        document.getElementById('driverCredit').textContent = `$${data.credit.toFixed(2)}`;
-                        if (data.status === 'approved') {
-                            showSection('mainSection');
-                        } else if (data.status === 'pending') {
-                            showSection('pendingApprovalSection');
-                        } else if (data.status === 'rejected') {
-                            showSection('rejectedSection');
-                        }
-                    } else {
-                        showSection('authSection');
-                    }
-                });
-            } else {
-                console.log("No hay usuario autenticado.");
-                showSection('authSection');
-            }
-        });
-
-        window.onload = function() {
-            if (initialAuthToken) {
-                signInWithCustomToken(auth, initialAuthToken).then(() => {
-                    console.log("Signed in with custom token.");
-                }).catch(error => {
-                    console.error("Error signing in with custom token:", error);
-                });
-            }
-        };
-
-    </script>
 </head>
-<body class="bg-gray-100 p-4 min-h-screen flex items-center justify-center">
+<body class="bg-gray-100">
 
-    <!-- Mensaje de estado -->
-    <div id="messageBox" class="message-box text-white font-semibold"></div>
+    <div id="message-container"></div>
+    <div id="loading" class="text-center text-xl font-bold mt-20">
+        Cargando la aplicación...
+    </div>
 
-    <!-- Contenedor principal de la aplicación -->
-    <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg mx-auto space-y-6">
-
-        <!-- Sección de Autenticación -->
-        <div id="authSection" class="page-section active">
-            <h1 class="text-3xl font-bold text-gray-800 text-center">Bienvenido Conductor Motocarga</h1>
-            <p class="text-gray-600 mt-2 text-center">Inicia sesión o regístrate para continuar.</p>
-
-            <!-- Formulario de Inicio de Sesión -->
-            <div id="loginForm" class="mt-8 space-y-4 active">
-                <input type="email" id="email" placeholder="Correo Electrónico" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <input type="password" id="password" placeholder="Contraseña" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button onclick="handleAuth()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
-                    Iniciar Sesión
-                </button>
-                <button onclick="toggleAuthForm()" class="w-full text-blue-600 font-semibold mt-4">
-                    ¿No tienes una cuenta? Regístrate
-                </button>
-            </div>
-
-            <!-- Formulario de Registro (oculto por defecto) -->
-            <div id="signupForm" class="mt-8 space-y-4 hidden">
-                <input type="text" id="name" placeholder="Nombre completo" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-                <input type="text" id="cedula" placeholder="Número de Cédula" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-                <input type="tel" id="phone" placeholder="Número de teléfono" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-                <input type="email" id="email" placeholder="Correo Electrónico" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-                <input type="password" id="password" placeholder="Contraseña" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
-                <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700">Cédula o Licencia de Conducción</label>
-                    <input type="file" id="document" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
-                </div>
-                <button onclick="handleAuth()" class="w-full bg-green-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-green-700 transition duration-300">
-                    Registrarse
-                </button>
-                <button onclick="toggleAuthForm()" class="w-full text-green-600 font-semibold mt-4">
-                    ¿Ya tienes una cuenta? Inicia sesión
-                </button>
-            </div>
-        </div>
-
-        <!-- Sección Principal (aprobada) -->
-        <div id="mainSection" class="page-section p-4">
-            <h2 class="text-3xl font-bold text-gray-800 text-center mb-4">¡Bienvenido, Motocarga!</h2>
-            <div class="flex items-center justify-between mb-4 bg-gray-200 p-4 rounded-lg">
-                <span class="font-semibold text-gray-700">Crédito disponible:</span>
-                <span id="driverCredit" class="text-green-600 font-bold text-xl">$10,000</span>
-            </div>
-            
-            <div class="flex flex-col items-center space-y-4 mb-6">
-                <div class="flex items-center space-x-2">
-                    <div id="onlineStatus" class="w-4 h-4 rounded-full bg-red-500"></div>
-                    <span id="onlineText" class="text-gray-700 font-semibold">Desconectado</span>
-                </div>
-                <div class="flex space-x-2">
-                    <button onclick="goOnline()" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-700 transition duration-300">
-                        Conectarse
-                    </button>
-                    <button onclick="goOffline()" class="bg-gray-400 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-500 transition duration-300">
-                        Desconectarse
-                    </button>
-                </div>
-            </div>
-            
-            <hr class="my-4 border-gray-300">
-            
-            <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Solicitudes de Servicio Pendientes</h3>
-            <div id="tripRequestsContainer" class="space-y-4">
-                <p class="text-center text-gray-500">Conéctate para ver las solicitudes de servicio.</p>
-            </div>
-            
-            <div class="mt-8 flex flex-col space-y-4">
-                <button onclick="showRechargeSection()" class="w-full bg-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-purple-700 transition duration-300">
-                    Recargar Crédito
-                </button>
-                <button onclick="showCommunityChat()" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
-                    Chat de Gremio
-                </button>
-                <button onclick="showLastTripInfo()" class="w-full bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-yellow-600 transition duration-300">
-                    Objetos Olvidados
-                </button>
-            </div>
-
-            <button onclick="signOut()" class="w-full text-red-500 font-semibold mt-8">Cerrar Sesión</button>
-        </div>
-
-        <!-- Sección de Recarga de Crédito -->
-        <div id="rechargeSection" class="page-section p-4 text-center">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4">Recargar Crédito</h2>
-            <div class="bg-purple-100 text-purple-800 p-6 rounded-xl shadow-lg space-y-4 mb-4">
-                <div class="flex items-center justify-center space-x-2 mb-4">
-                    <img src="https://nequi.com.co/public/images/logo.png" alt="Logo de Nequi" class="h-10">
-                    <span class="text-2xl font-bold">Nequi</span>
-                </div>
-                <p class="text-lg">Ingresa la cantidad que deseas recargar.</p>
-                <div class="flex flex-col items-center space-y-4">
-                    <input type="number" id="rechargeAmount" placeholder="Cantidad a recargar" class="w-full p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 text-center text-2xl font-bold">
-                    <button onclick="handleRecharge()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-purple-700 transition duration-300">
-                        <i class="fas fa-wallet mr-2"></i> Recargar
-                    </button>
-                </div>
-            </div>
-            <button onclick="showSection('mainSection')" class="w-full text-gray-500 font-semibold mt-8">Volver</button>
-        </div>
-
-        <!-- Sección de Viaje Activo -->
-        <div id="activeTripSection" class="page-section p-4 text-center">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4">Servicio en Curso</h2>
-            <div class="bg-green-100 text-green-800 p-6 rounded-xl shadow-lg space-y-4 mb-4">
-                <p id="tripPassengerName" class="text-lg font-semibold"><i class="fas fa-user-circle text-xl mr-2"></i></p>
-                <p id="activeTripOrigin" class="text-lg"><i class="fas fa-map-marker-alt text-xl text-green-600 mr-2"></i>Origen: Ubicación del Cliente</p>
-                <p id="activeTripDestination" class="text-lg"><i class="fas fa-flag-checkered text-xl text-green-600 mr-2"></i></p>
-                <p id="manualAddressNote" class="text-sm italic text-gray-600 mt-2 hidden"></p>
-                <div id="activeTripGPS"></div>
-            </div>
-            
-            <!-- Chat con el pasajero -->
-            <div class="bg-gray-100 p-4 rounded-lg shadow-inner flex-grow flex flex-col h-64 overflow-y-scroll mb-4 space-y-2" id="passengerChatContainer"></div>
-            <div class="flex">
-                <input type="text" id="passengerMessageInput" placeholder="Escribe un mensaje al cliente..." class="flex-grow p-3 rounded-l-lg border border-gray-300 focus:outline-none">
-                <button onclick="sendPassengerMessage()" class="bg-blue-500 text-white p-3 rounded-r-lg hover:bg-blue-600 transition duration-300"><i class="fas fa-paper-plane"></i></button>
-            </div>
-
-            <div class="mt-4 flex flex-col space-y-2">
-                <button onclick="handleTripCompleted()" class="w-full bg-green-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-600 transition duration-300">
-                    Servicio Terminado
-                </button>
-                <button onclick="showSection('mainSection')" class="w-full text-gray-500 font-semibold">Cancelar Viaje</button>
-            </div>
-        </div>
-
-        <!-- Sección de Calificación de Pasajero -->
-        <div id="ratePassengerSection" class="page-section p-4 text-center">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4">Calificar al Pasajero</h2>
-            <p class="text-gray-600 mb-6">Por favor, califica tu experiencia con el pasajero.</p>
-            <div class="flex justify-center space-x-4 text-3xl text-gray-400 mb-8">
-                <label>
-                    <input type="radio" name="rating" value="1" class="hidden">
-                    <i class="fas fa-star hover:text-yellow-400 transition-colors cursor-pointer"></i>
-                </label>
-                <label>
-                    <input type="radio" name="rating" value="2" class="hidden">
-                    <i class="fas fa-star hover:text-yellow-400 transition-colors cursor-pointer"></i>
-                </label>
-                <label>
-                    <input type="radio" name="rating" value="3" class="hidden">
-                    <i class="fas fa-star hover:text-yellow-400 transition-colors cursor-pointer"></i>
-                </label>
-                <label>
-                    <input type="radio" name="rating" value="4" class="hidden">
-                    <i class="fas fa-star hover:text-yellow-400 transition-colors cursor-pointer"></i>
-                </label>
-                <label>
-                    <input type="radio" name="rating" value="5" class="hidden">
-                    <i class="fas fa-star hover:text-yellow-400 transition-colors cursor-pointer"></i>
-                </label>
-            </div>
-            <button onclick="ratePassenger()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
-                Enviar Calificación
+    <div id="app" class="hidden container p-6">
+        <h1 class="text-3xl font-bold text-center mb-8">TAXI A CIMCO - Montacarga</h1>
+        
+        <!-- Sección de vinculación de cuenta -->
+        <div id="auth-section" class="bg-gray-100 p-6 rounded-xl shadow-inner text-center">
+            <h2 class="text-2xl font-semibold mb-4">Ingresar / Registrarse</h2>
+            <p class="text-gray-600 mb-4">Ingresa tu número de cédula para vincular o crear tu perfil.</p>
+            <input type="text" id="driver-id-input" placeholder="Número de Cédula" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+            <button id="link-account-btn" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition duration-300">
+                Continuar
             </button>
         </div>
 
-        <!-- Sección de Objetos Olvidados -->
-        <div id="lastTripSection" class="page-section p-4 text-center">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4">Objetos Olvidados</h2>
-            <p class="text-gray-600 mb-6">
-                Si un pasajero ha olvidado un objeto, aquí puedes ver la información de tu último viaje para contactarlo.
-            </p>
-            <div class="bg-gray-100 p-6 rounded-xl shadow-lg space-y-4">
-                <p id="lastPassengerName" class="text-lg font-semibold"></p>
-                <p id="lastPassengerPhone" class="text-lg"></p>
-            </div>
-            <button onclick="showSection('mainSection')" class="w-full text-gray-500 font-semibold mt-8">Volver</button>
+        <!-- Formulario de Registro (oculto por defecto) -->
+        <div id="registration-form" class="hidden bg-gray-100 p-6 rounded-xl shadow-inner mt-8">
+            <h2 class="text-2xl font-semibold mb-4">Registro de Conductor</h2>
+            <p class="text-gray-600 mb-4">Por favor, completa tus datos para registrarte.</p>
+            <form id="register-driver-form" class="space-y-4">
+                <div>
+                    <label for="reg-name" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                    <input type="text" id="reg-name" class="mt-1 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="reg-id" class="block text-sm font-medium text-gray-700">Número de Cédula</label>
+                    <input type="text" id="reg-id" readonly class="mt-1 w-full p-3 rounded-lg bg-gray-200 border border-gray-300 focus:outline-none">
+                </div>
+                <div>
+                    <label for="reg-phone" class="block text-sm font-medium text-gray-700">Número de Teléfono</label>
+                    <input type="tel" id="reg-phone" class="mt-1 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="reg-email" class="block text-sm font-medium text-gray-700">Correo Electrónico</label>
+                    <input type="email" id="reg-email" class="mt-1 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="reg-vehicle-plate" class="block text-sm font-medium text-gray-700">Placa del Vehículo</label>
+                    <input type="text" id="reg-vehicle-plate" class="mt-1 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="reg-vehicle-number" class="block text-sm font-medium text-gray-700"># Interno del Vehículo</label>
+                    <input type="text" id="reg-vehicle-number" class="mt-1 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="reg-service-type" class="block text-sm font-medium text-gray-700">Tipo de Servicio</label>
+                    <select id="reg-service-type" class="mt-1 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Seleccione un tipo</option>
+                        <option value="mototaxi">Mototaxi</option>
+                        <option value="motoparrillero">Motoparrillero</option>
+                        <option value="montacarga" selected>Montacarga</option>
+                        <option value="despachador">Despachador Intermunicipal</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">Cédula o Licencia de Conducir (opcional)</label>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <div class="w-full">
+                            <label for="id-front-upload" class="flex flex-col items-center justify-center w-full h-32 bg-gray-200 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-300 transition duration-300">
+                                <i class="fas fa-camera text-3xl text-gray-500"></i>
+                                <span class="mt-2 text-sm text-gray-600">Frente de la Cédula</span>
+                            </label>
+                            <input type="file" id="id-front-upload" accept="image/*" capture="camera" class="hidden">
+                            <div id="id-front-preview" class="hidden mt-2">
+                                <img src="#" alt="Vista previa del frente de la cédula" class="w-full h-auto rounded-lg shadow-md">
+                            </div>
+                        </div>
+                        <div class="w-full">
+                            <label for="id-back-upload" class="flex flex-col items-center justify-center w-full h-32 bg-gray-200 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-300 transition duration-300">
+                                <i class="fas fa-camera text-3xl text-gray-500"></i>
+                                <span class="mt-2 text-sm text-gray-600">Reverso de la Cédula</span>
+                            </label>
+                            <input type="file" id="id-back-upload" accept="image/*" capture="camera" class="hidden">
+                            <div id="id-back-preview" class="hidden mt-2">
+                                <img src="#" alt="Vista previa del reverso de la cédula" class="w-full h-auto rounded-lg shadow-md">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition duration-300">
+                    Registrar Conductor
+                </button>
+            </form>
         </div>
 
-        <!-- Sección de Aprobación Pendiente -->
-        <div id="pendingApprovalSection" class="page-section p-4 text-center">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4">Revisión en Curso</h2>
-            <p class="text-gray-600 mb-4">
-                Tu solicitud de registro está siendo revisada por nuestro equipo. 
-                Te notificaremos cuando tu cuenta esté aprobada.
-            </p>
-            <i class="fas fa-hourglass-half text-6xl text-gray-500 my-8 animate-pulse"></i>
-            <button onclick="signOut()" class="w-full text-red-500 font-semibold mt-8">Cerrar Sesión</button>
-        </div>
-        
-        <!-- Sección de Registro Rechazado -->
-        <div id="rejectedSection" class="page-section p-4 text-center">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4">Registro Rechazado</h2>
-            <p class="text-gray-600 mb-4">
-                Lamentablemente, tu solicitud de registro ha sido rechazada. 
-                Por favor, contacta a soporte para más información.
-            </p>
-            <i class="fas fa-exclamation-triangle text-6xl text-red-500 my-8"></i>
-            <button onclick="signOut()" class="w-full text-red-500 font-semibold mt-8">Cerrar Sesión</button>
-        </div>
-        
-        <!-- Sección de Chat de Gremio -->
-        <div id="communityChatSection" class="page-section p-4">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4 text-center">Chat de Gremio</h2>
-            <p class="text-gray-600 mb-4 text-center">Comunícate con otros conductores.</p>
-            <div class="bg-gray-100 p-4 rounded-lg shadow-inner flex-grow flex flex-col h-64 overflow-y-scroll mb-4 space-y-2" id="communityChatContainer"></div>
-            <div class="flex">
-                <input type="text" id="communityMessageInput" placeholder="Escribe un mensaje..." class="flex-grow p-3 rounded-l-lg border border-gray-300 focus:outline-none">
-                <button onclick="sendCommunityMessage()" class="bg-blue-500 text-white p-3 rounded-r-lg hover:bg-blue-600 transition duration-300"><i class="fas fa-paper-plane"></i></button>
+        <!-- Contenido principal de la app (oculto al inicio) -->
+        <div id="main-content" class="hidden">
+            <div class="bg-blue-600 text-white p-6 rounded-xl text-center mb-8 shadow-md">
+                <p class="text-lg font-medium">Conductor:</p>
+                <p id="driver-name" class="text-2xl font-bold mb-2"></p>
+                <p class="text-lg font-medium">Tu Saldo Actual:</p>
+                <p id="driver-credit" class="text-saldo"></p>
+                <p class="text-xs mt-2 opacity-75">ID de Cédula: <span id="driver-cedula"></span></p>
+                <p class="text-xs mt-1 opacity-75">Tipo de Vehículo: <span id="driver-type"></span></p>
+                <p class="text-xs mt-1 opacity-75">ID de Usuario de la App: <span id="user-id"></span></p>
             </div>
-            <button onclick="showSection('mainSection')" class="w-full text-gray-500 font-semibold mt-8">Volver</button>
+    
+            <div class="bg-gray-100 p-6 rounded-xl shadow-inner mb-8 text-center">
+                <h2 class="text-2xl font-semibold mb-4">Registrar un Servicio</h2>
+                <p class="text-gray-600 mb-4">Se descontarán $500 pesos por cada servicio aceptado.</p>
+                <button id="record-service-btn" class="w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition duration-300">
+                    Aceptar y Registrar Servicio
+                </button>
+            </div>
+    
+            <div class="bg-gray-100 p-6 rounded-xl shadow-inner">
+                <h2 class="text-2xl font-semibold mb-4">Calificar el Servicio</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Opciones de calificación -->
+                    <label class="cursor-pointer">
+                        <input type="radio" name="rating" value="1" class="hidden peer">
+                        <div class="flex flex-col items-center p-4 bg-gray-200 rounded-lg peer-checked:bg-red-200 transition duration-300">
+                            <i class="fas fa-frown text-3xl text-red-500"></i>
+                            <span class="mt-1 text-sm text-gray-600">Malo</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="rating" value="2" class="hidden peer">
+                        <div class="flex flex-col items-center p-4 bg-gray-200 rounded-lg peer-checked:bg-yellow-200 transition duration-300">
+                            <i class="fas fa-meh text-3xl text-yellow-500"></i>
+                            <span class="mt-1 text-sm text-gray-600">Regular</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="rating" value="3" class="hidden peer">
+                        <div class="flex flex-col items-center p-4 bg-gray-200 rounded-lg peer-checked:bg-green-200 transition duration-300">
+                            <i class="fas fa-smile text-3xl text-green-500"></i>
+                            <span class="mt-1 text-sm text-gray-600">Bueno</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="rating" value="4" class="hidden peer">
+                        <div class="flex flex-col items-center p-4 bg-gray-200 rounded-lg peer-checked:bg-green-200 transition duration-300">
+                            <i class="fas fa-grin-stars text-3xl text-green-600"></i>
+                            <span class="mt-1 text-sm text-gray-600">Excelente</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
         </div>
-
     </div>
 
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, collection, query, where, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales del entorno de Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Referencias a elementos del DOM
+        const loadingDiv = document.getElementById('loading');
+        const appDiv = document.getElementById('app');
+        const authSection = document.getElementById('auth-section');
+        const registrationForm = document.getElementById('registration-form');
+        const mainContent = document.getElementById('main-content');
+        const driverIdInput = document.getElementById('driver-id-input');
+        const linkAccountBtn = document.getElementById('link-account-btn');
+        const driverNameDisplay = document.getElementById('driver-name');
+        const driverCreditDisplay = document.getElementById('driver-credit');
+        const driverCedulaDisplay = document.getElementById('driver-cedula');
+        const driverTypeDisplay = document.getElementById('driver-type');
+        const recordServiceBtn = document.getElementById('record-service-btn');
+        const messageContainer = document.getElementById('message-container');
+        const userIdDisplay = document.getElementById('user-id');
+
+        // Formulario de registro
+        const registerDriverForm = document.getElementById('register-driver-form');
+        const regNameInput = document.getElementById('reg-name');
+        const regIdInput = document.getElementById('reg-id');
+        const regPhoneInput = document.getElementById('reg-phone');
+        const regEmailInput = document.getElementById('reg-email');
+        const regVehiclePlateInput = document.getElementById('reg-vehicle-plate');
+        const regVehicleNumberInput = document.getElementById('reg-vehicle-number');
+        const regServiceTypeSelect = document.getElementById('reg-service-type');
+        const idFrontUpload = document.getElementById('id-front-upload');
+        const idBackUpload = document.getElementById('id-back-upload');
+        const idFrontPreview = document.getElementById('id-front-preview');
+        const idBackPreview = document.getElementById('id-back-preview');
+
+        let db, auth, userId, driverDocRef, currentDriverData;
+
+        // Función para mostrar mensajes de la app
+        function showMessage(message, type = 'success') {
+            const messageBox = document.createElement('div');
+            messageBox.className = `message-box ${type}`;
+            messageBox.textContent = message;
+            messageContainer.appendChild(messageBox);
+            setTimeout(() => {
+                messageBox.remove();
+            }, 4000);
+        }
+
+        // Función para inicializar Firebase
+        async function initFirebase() {
+            try {
+                // Inicializar la aplicación de Firebase
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Autenticar al usuario de forma anónima o con el token proporcionado
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                userId = auth.currentUser.uid;
+                userIdDisplay.textContent = userId; // Mostrar el ID de usuario en la UI
+                
+                console.log('Firebase y Firestore inicializados correctamente.');
+                loadingDiv.classList.add('hidden');
+                appDiv.classList.remove('hidden');
+
+            } catch (e) {
+                console.error("Error al inicializar Firebase o al autenticar:", e);
+                showMessage('Error al iniciar la aplicación. Por favor, intente de nuevo más tarde.', 'error');
+                loadingDiv.classList.add('hidden');
+            }
+        }
+        
+        // Función para manejar la subida de archivos (convertir a Base64)
+        function getBase64(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) {
+                    resolve(null);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Manejar la visualización de la vista previa de las imágenes
+        idFrontUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    idFrontPreview.classList.remove('hidden');
+                    idFrontPreview.querySelector('img').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                idFrontPreview.classList.add('hidden');
+            }
+        });
+
+        idBackUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    idBackPreview.classList.remove('hidden');
+                    idBackPreview.querySelector('img').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                idBackPreview.classList.add('hidden');
+            }
+        });
+
+
+        // Evento para vincular la cuenta del conductor
+        linkAccountBtn.addEventListener('click', async () => {
+            const driverIdNumber = driverIdInput.value.trim();
+            if (!driverIdNumber) {
+                showMessage('Por favor, ingrese su número de cédula para continuar.', 'error');
+                return;
+            }
+
+            try {
+                // Consultar la colección de conductores para ver si la cédula ya existe
+                const driversColRef = collection(db, `artifacts/${appId}/users/${userId}/drivers`);
+                const q = query(driversColRef, where("cedula", "==", driverIdNumber));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    // Si no existe, mostrar el formulario de registro y pre-llenar la cédula
+                    authSection.classList.add('hidden');
+                    registrationForm.classList.remove('hidden');
+                    regIdInput.value = driverIdNumber;
+                    showMessage('Perfil no encontrado. Por favor, regístrese.', 'info');
+                } else {
+                    // Si existe, vincular la cuenta y mostrar el contenido principal
+                    const driverDoc = querySnapshot.docs[0];
+                    driverDocRef = doc(db, `artifacts/${appId}/users/${userId}/drivers`, driverDoc.id);
+
+                    authSection.classList.add('hidden');
+                    mainContent.classList.remove('hidden');
+                    
+                    // Escuchar los cambios en tiempo real del documento del conductor
+                    onSnapshot(driverDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            currentDriverData = docSnap.data();
+                            driverNameDisplay.textContent = currentDriverData.name;
+                            driverCreditDisplay.textContent = `$${currentDriverData.credit.toFixed(2)}`;
+                            driverCreditDisplay.classList.remove('text-positivo', 'text-negativo');
+                            driverCreditDisplay.classList.add(currentDriverData.credit < 0 ? 'text-negativo' : 'text-positivo');
+                            driverCedulaDisplay.textContent = currentDriverData.cedula;
+                            driverTypeDisplay.textContent = currentDriverData.serviceType;
+                        } else {
+                            showMessage('Su perfil ha sido eliminado. Contacte al administrador.', 'error');
+                        }
+                    }, (error) => {
+                        console.error("Error al escuchar cambios en el documento:", error);
+                        showMessage('Error de conexión. Recargue la página.', 'error');
+                    });
+                    showMessage(`Cuenta vinculada exitosamente.`, 'success');
+                }
+
+            } catch (e) {
+                console.error("Error al buscar el perfil:", e);
+                showMessage('Error al vincular la cuenta. Inténtelo de nuevo.', 'error');
+            }
+        });
+
+        // Evento para enviar el formulario de registro
+        registerDriverForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const driverIdNumber = regIdInput.value.trim();
+            const driverName = regNameInput.value.trim();
+            const driverPhone = regPhoneInput.value.trim();
+            const driverEmail = regEmailInput.value.trim();
+            const driverPlate = regVehiclePlateInput.value.trim();
+            const driverVehicleNumber = regVehicleNumberInput.value.trim();
+            const serviceType = regServiceTypeSelect.value;
+            const idFrontFile = idFrontUpload.files[0];
+            const idBackFile = idBackUpload.files[0];
+
+            if (!driverName || !driverIdNumber || !driverPhone || !driverEmail || !driverPlate || !driverVehicleNumber || !serviceType) {
+                showMessage('Por favor, completa todos los campos obligatorios.', 'error');
+                return;
+            }
+
+            try {
+                // Convertir las imágenes a Base64 si existen
+                const idFrontBase64 = idFrontFile ? await getBase64(idFrontFile) : null;
+                const idBackBase64 = idBackFile ? await getBase64(idBackFile) : null;
+
+                // Crear el nuevo documento del conductor en la colección de drivers del usuario actual
+                const driversColRef = collection(db, `artifacts/${appId}/users/${userId}/drivers`);
+                await setDoc(doc(driversColRef, driverIdNumber), {
+                    cedula: driverIdNumber,
+                    name: driverName,
+                    phone: driverPhone,
+                    email: driverEmail,
+                    vehiclePlate: driverPlate,
+                    vehicleNumber: driverVehicleNumber,
+                    serviceType: serviceType,
+                    idFrontImage: idFrontBase64, // Almacenar imagen en base64 (opcional)
+                    idBackImage: idBackBase64,   // Almacenar imagen en base64 (opcional)
+                    credit: 0, // El crédito inicial es 0
+                    createdAt: new Date()
+                });
+
+                showMessage('¡Registro exitoso! Tu perfil ha sido creado. Puedes empezar a registrar servicios.', 'success');
+                
+                // Ocultar el formulario de registro y mostrar el contenido principal
+                registrationForm.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+
+                // Víncular el documento recién creado para escuchar cambios
+                driverDocRef = doc(db, `artifacts/${appId}/users/${userId}/drivers`, driverIdNumber);
+                onSnapshot(driverDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        currentDriverData = docSnap.data();
+                        driverNameDisplay.textContent = currentDriverData.name;
+                        driverCreditDisplay.textContent = `$${currentDriverData.credit.toFixed(2)}`;
+                        driverCreditDisplay.classList.remove('text-positivo', 'text-negativo');
+                        driverCreditDisplay.classList.add(currentDriverData.credit < 0 ? 'text-negativo' : 'text-positivo');
+                        driverCedulaDisplay.textContent = currentDriverData.cedula;
+                        driverTypeDisplay.textContent = currentDriverData.serviceType;
+                    }
+                });
+
+            } catch (e) {
+                console.error("Error al registrar el conductor:", e);
+                showMessage('Error al registrar. Inténtelo de nuevo.', 'error');
+            }
+        });
+
+        // Evento para registrar un servicio (lógica con costo fijo)
+        recordServiceBtn.addEventListener('click', async () => {
+            if (!driverDocRef) {
+                showMessage('Primero debe vincular su cuenta.', 'error');
+                return;
+            }
+
+            try {
+                const cost = 500;
+                const newCredit = currentDriverData.credit - cost;
+                const maxDebt = -10000;
+
+                if (newCredit < maxDebt) {
+                    showMessage(`¡Atención! Su crédito superará el límite de deuda de $${Math.abs(maxDebt)}. No puede registrar este servicio.`, 'error');
+                    return;
+                }
+
+                // Actualizar el documento en Firestore
+                await updateDoc(driverDocRef, {
+                    credit: newCredit
+                });
+                
+                showMessage(`Servicio registrado. Se descontaron $${cost} de tu crédito.`, 'success');
+
+            } catch (e) {
+                console.error("Error al registrar el servicio:", e);
+                showMessage('Error al registrar el servicio. Inténtelo de nuevo.', 'error');
+            }
+        });
+        
+        // Inicializar la aplicación al cargar la página
+        window.onload = initFirebase;
+    </script>
 </body>
 </html>

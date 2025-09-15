@@ -9,16 +9,25 @@
     <!-- Incluir Font Awesome para los iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        /* Importación de la fuente Inter */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
+            color: #1a202c;
         }
+        /* Oculta todas las secciones de la página por defecto */
+        .page-section {
+            display: none;
+        }
+        /* Estilos para el cuadro de mensajes temporales */
         .message-box {
             position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
+            background-color: #2d3748;
+            color: white;
             padding: 1rem 2rem;
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -26,204 +35,621 @@
             display: none;
             text-align: center;
         }
-        .message-success { background-color: #d1fae5; color: #065f46; }
-        .message-error { background-color: #fee2e2; color: #991b1b; }
-        .chat-container {
-            height: 350px;
-            overflow-y: auto;
+        /* Estilos para el modal de confirmación */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
         }
-        .chat-message.sender {
-            align-self: flex-end;
-            background-color: #3b82f6;
-            color: white;
-            border-bottom-right-radius: 0.5rem;
+        .modal-content {
+            background-color: #fefefe;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 90%;
+            width: 400px;
+            text-align: center;
         }
-        .chat-message.receiver {
-            align-self: flex-start;
-            background-color: #e5e7eb;
-            color: #1f2937;
-            border-bottom-left-radius: 0.5rem;
+        .modal-buttons button {
+            transition: all 0.3s ease;
+        }
+        .modal-buttons button:hover {
+            transform: translateY(-2px);
         }
     </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <!-- Firebase SDKs -->
+    <!-- Contenedor Principal de la App -->
+    <div class="container bg-white p-8 rounded-2xl shadow-lg w-full max-w-lg space-y-6">
+
+        <!-- Mensajes del Sistema (reemplaza alert/confirm) -->
+        <div id="messageBox" class="message-box"></div>
+
+        <!-- Sección de Carga (visible mientras se inicializa Firebase y la autenticación) -->
+        <div id="loadingSection" class="page-section flex flex-col items-center justify-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid"></div>
+            <p class="mt-4 text-gray-600 font-semibold">Cargando...</p>
+        </div>
+
+        <!-- Sección de Registro del Conductor -->
+        <div id="registrationSection" class="page-section">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">Registro de Conductor</h2>
+            <form id="registrationForm" class="space-y-4">
+                <input type="hidden" id="userIdInput">
+                <div class="flex flex-col">
+                    <label for="name" class="text-sm font-medium text-gray-700">Nombre Completo</label>
+                    <input type="text" id="name" placeholder="Tu Nombre" required class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                </div>
+                <div class="flex flex-col">
+                    <label for="cedula" class="text-sm font-medium text-gray-700">Cédula</label>
+                    <input type="text" id="cedula" placeholder="Tu Cédula" required class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                </div>
+                <div class="flex flex-col">
+                    <label for="placa" class="text-sm font-medium text-gray-700">Placa del Vehículo</label>
+                    <input type="text" id="placa" placeholder="Placa del Vehículo" required class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                </div>
+                <div class="flex flex-col">
+                    <label for="vehicleType" class="text-sm font-medium text-gray-700">Tipo de Vehículo</label>
+                    <select id="vehicleType" required class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="">Selecciona el tipo</option>
+                        <option value="mototaxi">Mototaxi</option>
+                        <option value="motocarga">Motocarga</option>
+                        <option value="camion">Camión</option>
+                        <option value="bus">Bus</option>
+                        <option value="automovil">Automóvil</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">Registrarme</button>
+            </form>
+            <p class="text-center text-xs mt-4 text-gray-500">
+                <!-- Muestra el ID de usuario para depuración -->
+                Tu ID de usuario: <span id="registrationUserId"></span>
+            </p>
+        </div>
+        
+        <!-- Sección de Espera de Aprobación -->
+        <div id="pendingApprovalSection" class="page-section flex flex-col items-center justify-center text-center">
+            <i class="fas fa-hourglass-half text-6xl text-yellow-500 mb-8 animate-pulse"></i>
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Registro en Proceso</h2>
+            <p class="text-gray-600 mb-4">
+                Tu solicitud está siendo revisada por el administrador.
+                Te notificaremos cuando sea aprobada.
+            </p>
+            <p class="text-gray-600 font-semibold mt-4">ID de Usuario:</p>
+            <p id="pendingUserId" class="text-sm font-mono text-gray-500 break-all"></p>
+        </div>
+
+        <!-- Sección de Rechazo -->
+        <div id="rejectedSection" class="page-section flex flex-col items-center justify-center text-center">
+            <i class="fas fa-exclamation-triangle text-6xl text-red-500 mb-8"></i>
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Registro Rechazado</h2>
+            <p class="text-gray-600 mb-4">
+                Lamentablemente, tu solicitud de registro ha sido rechazada. 
+                Por favor, contacta a soporte para más información.
+            </p>
+            <p class="text-gray-600 font-semibold mt-4">ID de Usuario:</p>
+            <p id="rejectedUserId" class="text-sm font-mono text-gray-500 break-all"></p>
+            <button onclick="signOut()" class="w-full text-red-500 font-semibold mt-8">Cerrar Sesión</button>
+        </div>
+        
+        <!-- Sección del Panel del Conductor Aprobado -->
+        <div id="driverPanelSection" class="page-section">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-3xl font-bold text-gray-800">Panel del Conductor</h2>
+                <div class="relative">
+                    <!-- Botón para cambiar el estado (Online/Offline) -->
+                    <button id="statusBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-full font-semibold transition-colors duration-300">
+                        <i class="fas fa-circle text-gray-500 mr-2"></i> Estado
+                    </button>
+                    <!-- Menú de opciones de estado -->
+                    <div id="statusMenu" class="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl z-10 hidden">
+                        <a href="#" onclick="changeStatus('online')" class="block px-4 py-2 text-gray-800 hover:bg-green-100 rounded-t-lg"><i class="fas fa-circle text-green-500 mr-2"></i> Online</a>
+                        <a href="#" onclick="changeStatus('offline')" class="block px-4 py-2 text-gray-800 hover:bg-red-100 rounded-b-lg"><i class="fas fa-circle text-red-500 mr-2"></i> Offline</a>
+                    </div>
+                </div>
+            </div>
+            <p class="text-sm font-semibold text-gray-500 mb-4 break-all">ID de Usuario: <span id="driverPanelUserId"></span></p>
+
+            <!-- Contenedor para mostrar solicitudes de servicio -->
+            <div class="bg-blue-50 p-4 rounded-xl shadow-inner mb-6">
+                <h3 class="text-xl font-bold text-blue-800 mb-4">Solicitudes de Servicio</h3>
+                <div id="serviceRequestsContainer" class="space-y-4">
+                    <p id="noRequestsMessage" class="text-gray-500 text-center">No hay solicitudes disponibles.</p>
+                </div>
+            </div>
+
+            <!-- Tarjeta de servicio activo (visible cuando el conductor acepta un servicio) -->
+            <div id="activeServiceCard" class="bg-green-100 p-6 rounded-2xl shadow-md hidden">
+                <h3 class="text-2xl font-bold text-green-800 mb-4">Servicio en Curso</h3>
+                <p id="activeServiceInfo" class="text-lg text-gray-700"></p>
+                <!-- Contenedor del chat -->
+                <div id="activeServiceChat" class="bg-white p-4 rounded-lg shadow-inner mt-4 h-64 overflow-y-auto flex flex-col-reverse">
+                    <div id="chatMessages"></div>
+                </div>
+                <!-- Formulario para enviar mensajes del chat -->
+                <div class="flex mt-4">
+                    <input type="text" id="chat-input" placeholder="Escribe tu mensaje..." class="flex-grow rounded-lg border-2 border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    <button id="send-button" class="bg-blue-600 text-white rounded-lg px-4 ml-2 shadow-md hover:bg-blue-700 transition duration-300">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <!-- Botón para completar el servicio -->
+                <button id="completeServiceBtn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-green-700 transition duration-300 mt-4">
+                    Completar Servicio
+                </button>
+            </div>
+            
+            <button onclick="signOut()" class="w-full text-red-500 font-semibold mt-8">Cerrar Sesión</button>
+        </div>
+
+        <!-- Modal de Confirmación Personalizado -->
+        <div id="confirmationModal" class="modal">
+            <div class="modal-content">
+                <p id="modalMessage" class="text-lg font-semibold mb-6"></p>
+                <div class="modal-buttons flex justify-center space-x-4">
+                    <button id="confirmBtn" class="bg-blue-600 text-white px-6 py-2 rounded-full shadow-md">Confirmar</button>
+                    <button id="cancelBtn" class="bg-gray-300 text-gray-800 px-6 py-2 rounded-full shadow-md">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script de Firebase y lógica de la aplicación -->
     <script type="module">
+        // Importaciones de Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, onSnapshot, collection, query, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variables globales
+        // Variables globales para la configuración de Firebase (se inyectan en el entorno)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = {
-          apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
-          authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
-          projectId: "pelagic-chalice-467818-e1",
-          storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
-          messagingSenderId: "191106268804",
-          appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
-          measurementId: "G-CPWSCLGKP2"
-        };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Inicializar Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        let userId;
-        let userRole;
-        
-        // --- Mock Data y Lógica de Flujo ---
-        // En una aplicación real, estos datos se obtendrían de la solicitud de viaje aceptada.
-        // Aquí los simulamos para el ejemplo de chat.
-        const mockTripId = "trip_pasajero_12345";
-        const mockPassengerName = "Carlos V.";
-        const mockPassengerPhone = "+57 300 123 4567";
-        const mockPickupLocation = "Universidad de La Guajira";
-        const mockDestinationLocation = "Terminal de Transporte";
+        let db, auth;
+        let currentUserId = null;
+        let driverData = null;
+        let activeServiceId = null;
+        let unsubscribeService = null;
+        let unsubscribeChat = null;
 
-        // Lógica de autenticación
-        async function authenticate() {
-            try {
+        // Referencias del DOM
+        const loadingSection = document.getElementById('loadingSection');
+        const registrationSection = document.getElementById('registrationSection');
+        const pendingApprovalSection = document.getElementById('pendingApprovalSection');
+        const rejectedSection = document.getElementById('rejectedSection');
+        const driverPanelSection = document.getElementById('driverPanelSection');
+        const registrationForm = document.getElementById('registrationForm');
+        const userIdInput = document.getElementById('userIdInput');
+        const registrationUserIdSpan = document.getElementById('registrationUserId');
+        const pendingUserIdSpan = document.getElementById('pendingUserId');
+        const rejectedUserIdSpan = document.getElementById('rejectedUserId');
+        const driverPanelUserIdSpan = document.getElementById('driverPanelUserId');
+        const statusBtn = document.getElementById('statusBtn');
+        const statusMenu = document.getElementById('statusMenu');
+        const serviceRequestsContainer = document.getElementById('serviceRequestsContainer');
+        const noRequestsMessage = document.getElementById('noRequestsMessage');
+        const activeServiceCard = document.getElementById('activeServiceCard');
+        const activeServiceInfo = document.getElementById('activeServiceInfo');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const completeServiceBtn = document.getElementById('completeServiceBtn');
+        const messageBox = document.getElementById('messageBox');
+        const confirmationModal = document.getElementById('confirmationModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+
+        // Función para mostrar mensajes temporales
+        function showMessage(message) {
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3000);
+        }
+
+        // Función para mostrar una sección de la UI y ocultar las demás
+        function showSection(sectionId) {
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            document.getElementById(sectionId).style.display = 'block';
+        }
+
+        // Función para mostrar el modal de confirmación personalizado
+        function showConfirmationModal(message) {
+            modalMessage.textContent = message;
+            confirmationModal.style.display = 'flex';
+            return new Promise((resolve) => {
+                confirmBtn.onclick = () => {
+                    confirmationModal.style.display = 'none';
+                    resolve(true);
+                };
+                cancelBtn.onclick = () => {
+                    confirmationModal.style.display = 'none';
+                    resolve(false);
+                };
+            });
+        }
+
+        // Inicialización de Firebase
+        try {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            console.log("Firebase inicializado.");
+        } catch (error) {
+            console.error("Error al inicializar Firebase:", error);
+            showMessage("Error al conectar con el servidor.");
+        }
+
+        // Listener del estado de autenticación de Firebase
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                userIdInput.value = currentUserId;
+                registrationUserIdSpan.textContent = currentUserId;
+                pendingUserIdSpan.textContent = currentUserId;
+                rejectedUserIdSpan.textContent = currentUserId;
+                driverPanelUserIdSpan.textContent = currentUserId;
+                await checkDriverStatus();
+            } else {
+                showSection('loadingSection');
+                // Si no hay token inicial, intentamos el inicio de sesión anónimo
                 if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } catch (error) {
+                        console.error("Error al iniciar sesión con token personalizado:", error);
+                        await signInAnonymously(auth);
+                    }
                 } else {
                     await signInAnonymously(auth);
                 }
-                userId = auth.currentUser.uid;
-                userRole = "conductor";
-                console.log("Usuario autenticado. UID:", userId);
-                
-                // Mostrar la sección de viaje
-                document.getElementById('trip-details-section').classList.remove('hidden');
-                document.getElementById('passengerName').textContent = mockPassengerName;
-                document.getElementById('passengerPhone').textContent = mockPassengerPhone;
-                document.getElementById('pickupLocation').textContent = `Recogida: ${mockPickupLocation}`;
-                document.getElementById('destinationLocation').textContent = `Destino: ${mockDestinationLocation}`;
-                
-                // Iniciar la escucha del chat
-                listenForChatMessages();
+            }
+        });
 
+        // Verificación del estado del conductor en la base de datos
+        async function checkDriverStatus() {
+            if (!currentUserId) return;
+            const driverDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/drivers`, currentUserId);
+            // onSnapshot es crucial para escuchar cambios en tiempo real
+            onSnapshot(driverDocRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    driverData = docSnap.data();
+                    if (driverData.status === 'approved') {
+                        // El conductor está aprobado, mostrar el panel y buscar servicios
+                        showSection('driverPanelSection');
+                        listenForServices();
+                        // Si ya tiene un servicio activo, lo carga
+                        if (driverData.lastServiceId) {
+                             activeServiceId = driverData.lastServiceId;
+                             listenForActiveService();
+                        }
+                    } else if (driverData.status === 'pending') {
+                        // El conductor está pendiente de aprobación
+                        showSection('pendingApprovalSection');
+                    } else if (driverData.status === 'rejected') {
+                        // El conductor fue rechazado
+                        showSection('rejectedSection');
+                    } else {
+                        // Estado 'on-service' o inesperado, mostrar el panel
+                        showSection('driverPanelSection');
+                        listenForServices();
+                        listenForActiveService();
+                    }
+                } else {
+                    // El conductor no está registrado, mostrar formulario de registro
+                    showSection('registrationSection');
+                }
+            });
+        }
+
+        // Manejo del formulario de registro
+        registrationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const cedula = document.getElementById('cedula').value;
+            const placa = document.getElementById('placa').value;
+            const vehicleType = document.getElementById('vehicleType').value;
+            
+            try {
+                const driverDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/drivers`, currentUserId);
+                await setDoc(driverDocRef, {
+                    name: name,
+                    cedula: cedula,
+                    placa: placa,
+                    vehicleType: vehicleType,
+                    status: 'pending',
+                    isAvailable: false,
+                    lastOnline: null,
+                    joinedAt: serverTimestamp()
+                });
+                showMessage('Registro enviado para aprobación.');
+                showSection('pendingApprovalSection');
             } catch (error) {
-                console.error("Error al autenticar:", error);
+                console.error("Error al registrar el conductor:", error);
+                showMessage('Error en el registro. Inténtalo de nuevo.');
+            }
+        });
+
+        // Alternar el menú de estado del conductor
+        statusBtn.addEventListener('click', () => {
+            statusMenu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (event) => {
+            if (!statusBtn.contains(event.target) && !statusMenu.contains(event.target)) {
+                statusMenu.classList.add('hidden');
+            }
+        });
+
+        // Cambiar el estado del conductor (online/offline)
+        async function changeStatus(status) {
+            statusMenu.classList.add('hidden');
+            if (!driverData) return;
+            const isAvailable = (status === 'online');
+            const driverDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/drivers`, currentUserId);
+            try {
+                await updateDoc(driverDocRef, {
+                    isAvailable: isAvailable,
+                    lastOnline: isAvailable ? serverTimestamp() : null
+                });
+                showMessage(`Estado cambiado a ${status === 'online' ? 'Online' : 'Offline'}`);
+                // Actualizar el botón de estado en la UI
+                const icon = statusBtn.querySelector('i');
+                const textNode = statusBtn.childNodes[1]; 
+                if (isAvailable) {
+                    icon.className = 'fas fa-circle text-green-500 mr-2';
+                    textNode.textContent = ' Online';
+                    statusBtn.classList.remove('bg-gray-200');
+                    statusBtn.classList.add('bg-green-100');
+                } else {
+                    icon.className = 'fas fa-circle text-red-500 mr-2';
+                    textNode.textContent = ' Offline';
+                    statusBtn.classList.remove('bg-green-100');
+                    statusBtn.classList.add('bg-gray-200');
+                }
+            } catch (error) {
+                console.error("Error al actualizar el estado:", error);
+                showMessage('Error al cambiar el estado.');
+            }
+        }
+        window.changeStatus = changeStatus; // Hacer la función accesible globalmente
+
+        // Escuchar por servicios disponibles para el tipo de vehículo del conductor
+        function listenForServices() {
+            if (unsubscribeService) unsubscribeService();
+            const serviceRequestsRef = collection(db, `artifacts/${appId}/public/data/services`);
+            const q = query(serviceRequestsRef, where("status", "==", "pending"));
+
+            unsubscribeService = onSnapshot(q, (snapshot) => {
+                const requests = [];
+                snapshot.forEach(doc => {
+                    const service = doc.data();
+                    if (service.vehicleType === driverData.vehicleType) {
+                        requests.push({ id: doc.id, ...service });
+                    }
+                });
+                
+                // Ordenar por timestamp de forma descendente para mostrar las más nuevas primero
+                requests.sort((a, b) => b.requestedAt.toMillis() - a.requestedAt.toMillis());
+
+                renderServiceRequests(requests);
+            });
+        }
+        
+        // Renderizar las solicitudes de servicio en la UI
+        function renderServiceRequests(requests) {
+            serviceRequestsContainer.innerHTML = '';
+            if (requests.length === 0) {
+                noRequestsMessage.style.display = 'block';
+            } else {
+                noRequestsMessage.style.display = 'none';
+                requests.forEach(request => {
+                    const requestCard = document.createElement('div');
+                    requestCard.className = 'bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 space-y-2';
+                    requestCard.innerHTML = `
+                        <p class="font-bold">Origen: <span class="font-normal text-gray-700">${request.origin}</span></p>
+                        <p class="font-bold">Destino: <span class="font-normal text-gray-700">${request.destination}</span></p>
+                        <p class="font-bold">Pasajero: <span class="font-normal text-gray-700">${request.passengerName}</span></p>
+                        <p class="font-bold">Fecha: <span class="font-normal text-gray-700">${new Date(request.requestedAt.toMillis()).toLocaleString()}</span></p>
+                        <button class="accept-btn w-full bg-blue-600 text-white font-semibold py-2 rounded-lg mt-2 hover:bg-blue-700 transition duration-300" data-id="${request.id}">
+                            Aceptar Servicio
+                        </button>
+                    `;
+                    serviceRequestsContainer.appendChild(requestCard);
+                });
+                // Añadir listeners a los botones de aceptar
+                document.querySelectorAll('.accept-btn').forEach(button => {
+                    button.addEventListener('click', handleAcceptService);
+                });
             }
         }
 
-        // --- Lógica del Chat ---
-        const chatMessagesContainer = document.getElementById('chat-messages');
-        const chatInput = document.getElementById('chat-input');
-        const sendButton = document.getElementById('send-button');
+        // Manejar la aceptación de un servicio
+        async function handleAcceptService(event) {
+            const serviceId = event.target.dataset.id;
+            const confirmed = await showConfirmationModal('¿Estás seguro de que quieres aceptar este servicio?');
+            if (confirmed) {
+                const serviceDocRef = doc(db, `artifacts/${appId}/public/data/services`, serviceId);
+                const passengerDocRef = doc(db, `artifacts/${appId}/public/data/passengers`, serviceId);
+                const chatDocRef = doc(db, `artifacts/${appId}/public/data/chats`, serviceId);
+                
+                try {
+                    // Actualizar el servicio a 'assigned' y el conductor
+                    await updateDoc(serviceDocRef, {
+                        status: 'assigned',
+                        assignedDriverId: driverData.cedula,
+                        assignedDriverName: driverData.name,
+                        assignedDriverPlaca: driverData.placa,
+                        assignedAt: serverTimestamp()
+                    });
+                    
+                    // Asegurarse de que el pasajero tenga el driver ID
+                    await updateDoc(passengerDocRef, {
+                         assignedDriverId: driverData.cedula,
+                         assignedDriverName: driverData.name,
+                         assignedDriverPlaca: driverData.placa
+                    });
 
-        // Función para renderizar un mensaje en la UI
-        function renderMessage(messageData) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('p-3', 'rounded-xl', 'max-w-xs', 'my-2', 'break-words', 'shadow-sm');
-            
-            const isSender = messageData.senderId === userId;
-            messageElement.classList.add(isSender ? 'chat-message', 'sender' : 'chat-message', 'receiver');
+                    // Iniciar el chat
+                    await setDoc(chatDocRef, {
+                        serviceId: serviceId,
+                        participants: [driverData.cedula, passengerDocRef.id]
+                    });
 
-            const senderNameElement = document.createElement('span');
-            senderNameElement.classList.add('block', 'text-xs', 'font-semibold', 'mb-1', isSender ? 'text-white' : 'text-gray-600');
-            senderNameElement.textContent = isSender ? 'Tú' : messageData.senderName;
-            
-            const messageTextElement = document.createElement('p');
-            messageTextElement.classList.add('text-sm');
-            messageTextElement.textContent = messageData.message;
+                    // Actualizar el estado del conductor
+                    const driverDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/drivers`, currentUserId);
+                    await updateDoc(driverDocRef, {
+                        status: 'on-service',
+                        isAvailable: false, // Conductor no disponible mientras está en un servicio
+                        lastServiceId: serviceId
+                    });
 
-            messageElement.appendChild(senderNameElement);
-            messageElement.appendChild(messageTextElement);
-            chatMessagesContainer.appendChild(messageElement);
-            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+                    activeServiceId = serviceId;
+                    showMessage('¡Servicio aceptado!');
+                    listenForActiveService();
+                } catch (error) {
+                    console.error("Error al aceptar el servicio:", error);
+                    showMessage('Error al aceptar el servicio. Puede que ya haya sido tomado.');
+                }
+            }
+        }
+        
+        // Escuchar por cambios en el servicio activo
+        function listenForActiveService() {
+            if (activeServiceId) {
+                if (unsubscribeService) unsubscribeService(); // Unsubscribe de la escucha de servicios pendientes
+                // Escuchar el servicio
+                unsubscribeService = onSnapshot(doc(db, `artifacts/${appId}/public/data/services`, activeServiceId), (docSnap) => {
+                    if (docSnap.exists() && docSnap.data().status === 'in-progress') {
+                        activeServiceCard.classList.remove('hidden');
+                        const service = docSnap.data();
+                        activeServiceInfo.innerHTML = `
+                            <p class="font-bold text-gray-800">Origen: <span class="font-normal">${service.origin}</span></p>
+                            <p class="font-bold text-gray-800">Destino: <span class="font-normal">${service.destination}</span></p>
+                            <p class="font-bold text-gray-800">Pasajero: <span class="font-normal">${service.passengerName}</span></p>
+                        `;
+                        listenForChat(activeServiceId);
+                    } else if (docSnap.exists() && docSnap.data().status === 'completed') {
+                        // El servicio ha sido completado por el pasajero
+                        activeServiceId = null;
+                        showMessage('¡Servicio completado!');
+                        activeServiceCard.classList.add('hidden');
+                        checkDriverStatus(); // Volver a revisar el estado
+                    }
+                });
+            }
         }
 
-        // Escuchar mensajes en tiempo real
-        function listenForChatMessages() {
-            const chatPath = `/artifacts/${appId}/public/data/trips/${mockTripId}/chat`;
-            const chatQuery = query(collection(db, chatPath));
-
-            onSnapshot(chatQuery, (querySnapshot) => {
-                // Limpiar mensajes existentes para evitar duplicados
-                chatMessagesContainer.innerHTML = '';
-                
+        // Escuchar los mensajes del chat
+        function listenForChat(serviceId) {
+            if (unsubscribeChat) unsubscribeChat();
+            const chatRef = collection(db, `artifacts/${appId}/public/data/chats/${serviceId}/messages`);
+            const q = query(chatRef);
+            
+            unsubscribeChat = onSnapshot(q, (snapshot) => {
                 const messages = [];
-                querySnapshot.forEach((doc) => {
-                    messages.push(doc.data());
+                snapshot.forEach(doc => {
+                    messages.push({ id: doc.id, ...doc.data() });
                 });
-
-                // Ordenar mensajes por timestamp
-                messages.sort((a, b) => a.timestamp - b.timestamp);
-
-                // Renderizar todos los mensajes
-                messages.forEach(renderMessage);
+                messages.sort((a, b) => a.sentAt.toMillis() - b.sentAt.toMillis()); // Ordenar por fecha
+                renderChatMessages(messages);
             });
+        }
+        
+        // Renderizar los mensajes del chat
+        function renderChatMessages(messages) {
+            chatMessages.innerHTML = '';
+            messages.forEach(msg => {
+                const messageElement = document.createElement('div');
+                const isDriver = msg.senderId === currentUserId;
+                const alignment = isDriver ? 'self-end' : 'self-start';
+                const bgColor = isDriver ? 'bg-blue-200' : 'bg-gray-200';
+                messageElement.className = `max-w-[75%] p-2 rounded-lg mb-2 ${alignment} ${bgColor}`;
+                messageElement.innerHTML = `<p class="text-sm">${msg.text}</p>`;
+                chatMessages.appendChild(messageElement);
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Desplazarse al final
         }
 
         // Enviar un mensaje
         sendButton.addEventListener('click', async () => {
-            const messageText = chatInput.value.trim();
-            if (messageText === "") return;
+            const text = chatInput.value.trim();
+            if (text === "" || !activeServiceId) return;
 
-            const chatPath = `/artifacts/${appId}/public/data/trips/${mockTripId}/chat`;
-            
-            await addDoc(collection(db, chatPath), {
-                senderId: userId,
-                senderName: userRole,
-                message: messageText,
-                timestamp: Date.now(),
-            });
-            
-            chatInput.value = "";
+            try {
+                const messagesRef = collection(db, `artifacts/${appId}/public/data/chats/${activeServiceId}/messages`);
+                await addDoc(messagesRef, {
+                    senderId: currentUserId,
+                    text: text,
+                    sentAt: serverTimestamp()
+                });
+                chatInput.value = '';
+            } catch (error) {
+                console.error("Error al enviar el mensaje:", error);
+                showMessage('Error al enviar el mensaje.');
+            }
         });
-
-        // Event listener para la tecla Enter
-        chatInput.addEventListener('keydown', (e) => {
+        chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendButton.click();
             }
         });
 
-        // Iniciar la aplicación
-        authenticate();
+        // Marcar servicio como completado
+        completeServiceBtn.addEventListener('click', async () => {
+            if (!activeServiceId) return;
+            const confirmed = await showConfirmationModal('¿Marcar este servicio como completado? Esto finalizará el viaje.');
+            if (confirmed) {
+                try {
+                    // Actualizar el estado del servicio a 'completed' para el pasajero
+                    const serviceDocRef = doc(db, `artifacts/${appId}/public/data/services`, activeServiceId);
+                    await updateDoc(serviceDocRef, {
+                        status: 'completed'
+                    });
 
+                    // Actualizar el estado del conductor
+                    const driverDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/drivers`, currentUserId);
+                    await updateDoc(driverDocRef, {
+                        status: 'approved',
+                        isAvailable: false, // Por defecto, el conductor vuelve a offline
+                        lastServiceId: null
+                    });
+                    
+                    activeServiceId = null;
+                    showMessage('¡Servicio completado!');
+                    activeServiceCard.classList.add('hidden');
+                    checkDriverStatus(); // Volver a revisar el estado
+                } catch (error) {
+                    console.error("Error al completar el servicio:", error);
+                    showMessage('Error al completar el servicio.');
+                }
+            }
+        });
+
+        // Función para cerrar sesión (se expone globalmente)
+        window.signOut = async function() {
+            try {
+                await signOut(auth);
+                showMessage('Sesión cerrada.');
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                showMessage('Error al cerrar sesión.');
+            }
+        };
     </script>
-</head>
-<body class="p-4 md:p-8">
-    <div class="message-box message-success" id="messageBox"></div>
-
-    <div class="max-w-3xl mx-auto space-y-6">
-        <!-- Título principal -->
-        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
-            <h1 class="text-3xl font-bold text-gray-800">TAXI A CIMCO</h1>
-            <i class="fas fa-car text-blue-600 text-4xl"></i>
-        </div>
-
-        <!-- Sección de Detalles del Viaje -->
-        <div id="trip-details-section" class="bg-white rounded-xl shadow-lg p-6 space-y-4 hidden">
-            <h2 class="text-xl font-bold text-gray-800 text-center">Información del Pasajero</h2>
-            <div class="space-y-2 text-center">
-                <p id="passengerName" class="flex items-center justify-center"><i class="fas fa-user-circle text-blue-500 mr-2"></i></p>
-                <p id="passengerPhone" class="flex items-center justify-center"><i class="fas fa-phone text-blue-500 mr-2"></i></p>
-                <p id="pickupLocation" class="flex items-center justify-center"><i class="fas fa-map-marker-alt text-blue-500 mr-2"></i></p>
-                <p id="destinationLocation" class="flex items-center justify-center"><i class="fas fa-bullseye text-blue-500 mr-2"></i></p>
-            </div>
-            
-            <hr class="border-gray-200">
-
-            <!-- Sección de Chat en Tiempo Real -->
-            <div id="chat-section">
-                <h3 class="text-xl font-bold text-gray-800 text-center mt-6 mb-2">Chat con el Pasajero</h3>
-                <div id="chat-container" class="bg-gray-100 p-4 rounded-lg shadow-inner flex flex-col h-80">
-                    <div id="chat-messages" class="flex flex-col flex-grow overflow-y-auto space-y-2">
-                        <!-- Los mensajes del chat se renderizarán aquí -->
-                    </div>
-                    <div class="flex mt-4">
-                        <input type="text" id="chat-input" placeholder="Escribe tu mensaje..." class="flex-grow rounded-lg border-2 border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                        <button id="send-button" class="bg-blue-600 text-white rounded-lg px-4 ml-2 shadow-md hover:bg-blue-700 transition duration-300">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </body>
 </html>

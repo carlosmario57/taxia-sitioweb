@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Colección de solicitudes de viaje
+    match /solicitudes_viaje/{id} {
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['pasajero','servicio','estado','fechaCreacion','expiraEn'])
+                    && request.resource.data.estado == 'pendiente';
+      allow update, delete: if false; // Las solicitudes no se pueden modificar ni borrar directamente
+      allow read: if request.auth != null;
+    }
+
+    // Colección de viajes
+    match /viajes/{id} {
+      allow create: if request.auth != null
+                    && request.auth.token.role in ['conductor','despachador']
+                    && request.resource.data.keys().hasAll(['solicitudId','conductor','estado','fechaInicio']);
+      allow update: if request.auth != null
+                    && request.auth.token.role in ['conductor','despachador']
+                    && request.resource.data.estado in ['activo','finalizado','cancelado'];
+      allow read: if request.auth != null
+                    && request.auth.token.role in ['conductor','despachador','pasajero'];
+      allow delete: if false;
+    }
+
+    // Colección de pagos
+    match /pagos/{id} {
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['usuarioId','monto','fecha']);
+      allow read: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    // Colección de usuarios
+    match /usuarios/{id} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == id;
+    }
+
+    // Protección por defecto para otros documentos
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}

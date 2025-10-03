@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro Pasajero - TAXIA CIMCO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+  <div class="w-full max-w-md p-8 bg-white rounded-lg shadow-xl">
+    <div class="text-center mb-6">
+      <i class="fas fa-user-plus text-5xl text-blue-600 mb-4"></i>
+      <h1 class="text-3xl font-bold text-gray-800">Regístrate como Pasajero</h1>
+    </div>
+
+    <!-- FORMULARIO -->
+    <form id="registroForm" class="space-y-4">
+      <div>
+        <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre completo</label>
+        <input type="text" id="nombre" name="nombre" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required>
+      </div>
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+        <input type="email" id="email" name="email" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required>
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+        <input type="password" id="password" name="password" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required minlength="6">
+      </div>
+      <div>
+        <label for="telefono" class="block text-sm font-medium text-gray-700">Teléfono</label>
+        <input type="tel" id="telefono" name="telefono" placeholder="+573123456789" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required>
+      </div>
+      
+      <button type="submit" class="w-full py-3 px-4 bg-blue-600 text-white font-bold rounded-md shadow-md hover:bg-blue-700 transition-colors">
+        Registrarse
+      </button>
+    </form>
+
+    <p id="mensaje" class="mt-4 text-center text-sm font-medium"></p>
+  </div>
+
+  <!-- Firebase + Registro -->
+  <script type="module">
+    // ✅ Configuración propia de pasajero
+    import { app, auth, db } from "/js/firebase-config-pasajero.js";
+
+    // Registro del pasajero usando Cloud Function
+    document.getElementById('registroForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        nombre: form.nombre.value,
+        email: form.email.value,
+        password: form.password.value,
+        telefono: form.telefono.value,
+        rol: "pasajero"   // ✅ Campo clave para diferenciarlo en Firestore
+      };
+      
+      const mensajeDiv = document.getElementById('mensaje');
+      mensajeDiv.textContent = 'Registrando...';
+      mensajeDiv.style.color = 'gray';
+
+      try {
+        const response = await fetch(
+          "https://us-central1-pelagic-chalice-467818-e1.cloudfunctions.net/registrarConductor", 
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          }
+        );
+
+        const result = await response.json();
+
+        if (response.ok) {
+          mensajeDiv.textContent = "¡Registro exitoso! Bienvenido pasajero.";
+          mensajeDiv.style.color = "green";
+
+          setTimeout(() => {
+            window.location.href = "pasajero.html";
+          }, 1500);
+        } else {
+          throw new Error(result.error || "Error desconocido.");
+        }
+      } catch (error) {
+        console.error("Error en el registro:", error);
+        let errorMessage = "Ocurrió un error en el registro. Intenta de nuevo.";
+        if (error.message.includes("email-already-in-use")) {
+          errorMessage = "El email ya está en uso. Intenta iniciar sesión.";
+        } else if (error.message.includes("weak-password")) {
+          errorMessage = "La contraseña es muy débil. Debe tener al menos 6 caracteres.";
+        }
+        mensajeDiv.textContent = errorMessage;
+        mensajeDiv.style.color = "red";
+      }
+    });
+  </script>
+</body>
+</html>

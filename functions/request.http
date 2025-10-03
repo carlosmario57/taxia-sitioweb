@@ -1,0 +1,56 @@
+CONFIGURACIÓN DE URL
+Esta URL apunta a la función 'api' que corre en el emulador de Firebase Functions (puerto 5001).
+Tu ID de proyecto: pelagic-chalice-467818-e1
+@BASE_URL = http://127.0.0.1:5001/pelagic-chalice-467818-e1/us-central1/api
+
+-----------------------------------------------------------
+1. 🔍 Health check (Paso 1)
+Verifica que el servidor Express esté vivo.
+Debería devolver: Backend TaxiA-CIMCO v2 - Ready...
+-----------------------------------------------------------
+GET {{BASE_URL}}/
+Accept: text/plain
+
+-----------------------------------------------------------
+2. 👤 Crear Pasajero Demo (Paso 2)
+Crea un pasajero en Firestore. NECESITAS COPIAR el 'id' de la respuesta.
+-----------------------------------------------------------
+POST {{BASE_URL}}/demoCrearPasajero
+Content-Type: application/json
+
+{}
+
+-----------------------------------------------------------
+3. 🚗 Crear Conductor Demo (Paso 3, Opcional)
+Crea un conductor disponible.
+-----------------------------------------------------------
+POST {{BASE_URL}}/demoCrearConductor
+Content-Type: application/json
+
+{}
+
+-----------------------------------------------------------
+4. 🚖 Solicitar Servicio (Paso 4)
+¡IMPORTANTE! Reemplaza el valor de @pasajeroId con el ID copiado del Paso 2.
+-----------------------------------------------------------
+COPIA EL ID DEL PASAJERO AQUÍ:
+Ejemplo: @pasajeroId = a1b2C3d4E5f6
+@pasajeroId = COPIA_AQUI_EL_ID_DEL_PASAJERO
+
+POST {{BASE_URL}}/solicitarServicio
+Content-Type: application/json
+
+{
+"usuario": "{{pasajeroId}}",
+"origen": "Plaza Central",
+"destino": "Aeropuerto",
+"tipoServicio": "Estándar"
+}
+
+-----------------------------------------------------------
+5. 📋 Listar servicios (Paso 5)
+Muestra todos los servicios creados en Firestore.
+Deberías ver el servicio solicitado en el paso 4.
+-----------------------------------------------------------
+GET {{BASE_URL}}/listarServicios
+Accept: application/json

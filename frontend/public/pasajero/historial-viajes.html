@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial de Viajes - TAXIA CIMCO</title>
+  <link rel="stylesheet" href="../../styles/style.css">
+  <style>
+    .viaje-card {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 10px 0;
+      background: #f9f9f9;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .viaje-card h3 {
+      margin: 0 0 10px;
+    }
+    .viaje-card p {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📜 Historial de Viajes</h1>
+    <p>Bienvenido, <span id="userEmail"></span></p>
+
+    <div id="viajesList"></div>
+
+    <button onclick="window.location.href='panel-pasajero.html'">⬅️ Volver</button>
+    <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+  </div>
+
+  <script type="module">
+    import { getAuth, onAuthStateChanged, signOut } 
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, query, where, getDocs } 
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { app } from "../../../public/js/firebase-config-pasajero.js";
+
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const viajesList = document.getElementById("viajesList");
+    const userEmailEl = document.getElementById("userEmail");
+
+    // Verificar sesión activa
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        userEmailEl.textContent = user.email;
+
+        // Consultar viajes en Firestore para este pasajero
+        const q = query(
+          collection(db, "viajes"),
+          where("pasajeroId", "==", user.uid)
+        );
+
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          viajesList.innerHTML = "<p>No tienes viajes registrados aún 🚖</p>";
+        } else {
+          querySnapshot.forEach((doc) => {
+            const viaje = doc.data();
+            const card = document.createElement("div");
+            card.classList.add("viaje-card");
+            card.innerHTML = `
+              <h3>📍 Viaje</h3>
+              <p><strong>Origen:</strong> ${viaje.origen}</p>
+              <p><strong>Destino:</strong> ${viaje.destino}</p>
+              <p><strong>Fecha:</strong> ${viaje.fecha || "Sin fecha"}</p>
+              <p><strong>Estado:</strong> ${viaje.estado || "Pendiente"}</p>
+            `;
+            viajesList.appendChild(card);
+          });
+        }
+
+      } else {
+        window.location.href = "login-pasajero.html";
+      }
+    });
+
+    // Cerrar sesión
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "login-pasajero.html";
+    });
+  </script>
+</body>
+</html>

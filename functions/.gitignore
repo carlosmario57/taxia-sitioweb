@@ -1,10 +1,65 @@
-# Compiled JavaScript files
+# ============================================================
+# 🛠️ BUILD (salida de TypeScript / Vite / React)
+# ============================================================
 lib/**/*.js
 lib/**/*.js.map
+dist/
+build/
+.cache/
+out/
 
-# TypeScript v1 declaration files
+# ============================================================
+# 📦 DEPENDENCIAS
+# ============================================================
+node_modules/
+.pnp.*
+.pnp.js
+
+# ============================================================
+# ⚠️ ARCHIVOS SENSIBLES
+# ============================================================
+.env
+.env.local
+.env.*.local
+.env.example         # <-- OPCIONAL: si quieres que este sí suba, elimina esta línea
+serviceAccount.json
+serviceAccountKey.json
+*.pem
+*.key
+
+# ============================================================
+# 🔍 LOGS DE DEBUGGING (Firebase / Node)
+# ============================================================
+firebase-debug.log
+firestore-debug.log
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+*-debug.log
+
+# ============================================================
+# 📂 TIPADO ANTIGUO (si existiera)
+# ============================================================
 typings/
 
-# Node.js dependency directory
-node_modules/
+# ============================================================
+# 💻 SISTEMA / EDITORES
+# ============================================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ============================================================
+# 📱 FRONTEND (React / Vite / PWA)
+# ============================================================
 *.local
+*.cache
+*.tsbuildinfo
+
+# ============================================================
+# 🔥 FIREBASE
+# ============================================================
+.firebaserc

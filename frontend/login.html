@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iniciar Sesión - TAXIA CIMCO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-md p-8 bg-white rounded-lg shadow-xl">
+        <div class="text-center mb-6">
+            <i class="fas fa-user-circle text-5xl text-blue-600 mb-4"></i>
+            <h1 class="text-3xl font-bold text-gray-800">Iniciar Sesión</h1>
+        </div>
+
+        <form id="loginForm" class="space-y-4">
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" id="email" name="email" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required>
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                <input type="password" id="password" name="password" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required>
+            </div>
+
+            <button type="submit" class="w-full py-3 px-4 bg-blue-600 text-white font-bold rounded-md shadow-md hover:bg-blue-700 transition-colors">
+                Ingresar
+            </button>
+        </form>
+
+        <p id="mensaje" class="mt-4 text-center text-sm font-medium"></p>
+        <div class="mt-6 text-center text-sm text-gray-600">
+            <p>¿No tienes una cuenta? 
+                <a href="registro-pasajero.html" class="font-bold text-blue-600 hover:text-blue-700 transition-colors">Regístrate como pasajero</a> 
+                o 
+                <a href="registro-conductor.html" class="font-bold text-green-600 hover:text-green-700 transition-colors">Regístrate como conductor</a>
+            </p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        // 🔹 Configuración Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
+            authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
+            projectId: "pelagic-chalice-467818-e1",
+            storageBucket: "pelagic-chalice-467818-e1.firebasestorage.app",
+            messagingSenderId: "191106268804",
+            appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
+            measurementId: "G-CPWSCLGKP2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // ✅ MAPA DE ROLES: Un objeto para gestionar las redirecciones de forma más limpia.
+        const roleMap = {
+            'pasajero': 'pasajero.html',
+            'mototaxi': 'mototaxi.html',
+            'motoparrillero': 'motoparrillero.html',
+            'motocarga': 'motocarga.html',
+            'conductorinter': 'conductorinter.html',
+            'despachadorinter': 'despachadorinter.html',
+            'ceo': 'ceo-panel.html', // ✅ Nuevo rol añadido
+        };
+
+        // Escucha el evento de envío del formulario
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const mensajeDiv = document.getElementById('mensaje');
+            mensajeDiv.textContent = 'Iniciando sesión...';
+            mensajeDiv.style.color = 'gray';
+
+            try {
+                // Autenticación con email y contraseña
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                
+                // Obtiene el rol del usuario desde Firestore
+                const userRole = await getUserRoleFromFirestore(user.uid);
+
+                if (userRole) {
+                    mensajeDiv.textContent = '¡Inicio de sesión exitoso! Redirigiendo...';
+                    mensajeDiv.style.color = 'green';
+                    
+                    // Redirección basada en el rol, usando el mapa
+                    setTimeout(() => {
+                        const redirectUrl = roleMap[userRole] || 'index.html';
+                        window.location.href = redirectUrl;
+                    }, 1500);
+                } else {
+                    // Si no se encuentra un rol válido, considera esto un error
+                    mensajeDiv.textContent = "Error: No se pudo obtener tu rol. Contacta al soporte.";
+                    mensajeDiv.style.color = 'red';
+                    auth.signOut(); // Cierra la sesión por seguridad
+                }
+
+            } catch (error) {
+                console.error("Error en el inicio de sesión:", error.code, error.message);
+                
+                // Mensajes de error más amigables
+                let errorMessage = "Ocurrió un error. Intenta de nuevo.";
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                    case 'auth/invalid-credential':
+                        errorMessage = "Email o contraseña inválidos. Revisa tus credenciales.";
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMessage = "Demasiados intentos. Intenta más tarde.";
+                        break;
+                }
+                mensajeDiv.textContent = errorMessage;
+                mensajeDiv.style.color = 'red';
+            }
+        });
+
+        // ✅ Lógica para buscar el rol del usuario en Firestore
+        async function getUserRoleFromFirestore(uid) {
+            try {
+                // Nota: Tu plan de proyecto usa la colección `drivers` para conductores.
+                // Tu código usa la colección `usuarios`.
+                // Por coherencia con el plan de proyecto, el código debe buscar en la colección de 'drivers' y 'pasajeros'.
+                // Una mejor práctica sería tener una sola colección `users` que contenga todos los roles.
+                // Vamos a adaptar el código para buscar en la colección `users` para una mejor escalabilidad.
+
+                const docRef = doc(db, "users", uid); // ✅ Cambiado a una colección genérica 'users'
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists() && docSnap.data().rol) {
+                    return docSnap.data().rol;
+                }
+                
+                return null; // Devuelve null si no se encuentra el documento o el rol
+            } catch (error) {
+                console.error("Error al obtener el rol del usuario:", error);
+                return null;
+            }
+        }
+    </script>
+</body>
+</html>

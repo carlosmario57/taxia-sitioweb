@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Despachador - TAXIA CIMCO</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="form-container">
+    <h2>Iniciar Sesión - Despachador</h2>
+    <form id="loginDespachadorForm">
+      <label for="email">Correo Electrónico</label>
+      <input type="email" id="email" name="email" placeholder="ejemplo@gmail.com" required>
+
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" name="password" placeholder="********" required>
+
+      <button type="submit">Ingresar</button>
+    </form>
+    <p>¿No tienes cuenta? <a href="registro-despachador.html">Regístrate aquí</a></p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    const auth = firebase.auth();
+    const form = document.getElementById("loginDespachadorForm");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = form.email.value;
+      const password = form.password.value;
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        alert("Bienvenido despachador 📲");
+        window.location.href = "panel-despachador.html";
+      } catch (error) {
+        alert("Error al iniciar sesión: " + error.message);
+      }
+    });
+  </script>
+</body>
+</html>

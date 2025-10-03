@@ -1,34 +1,82 @@
-# Archivos de entorno y configuración
+# ============================================================
+# 🚖 TaxiA-CIMCO – .gitignore definitivo
+# ============================================================
+
+# ============================================================
+# 🛠️ BUILD / COMPILADOS
+# ============================================================
+lib/
+dist/
+dist-ssr/
+build/
+.cache/
+out/
+.tmp/
+*.tsbuildinfo
+*.map
+
+# ============================================================
+# 📦 DEPENDENCIAS
+# ============================================================
+node_modules/
+functions/node_modules/
+frontend/node_modules/
+.pnp.*
+.pnp.js
+
+# ============================================================
+# ⚠️ ARCHIVOS SENSIBLES
+# ============================================================
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
+.envrc
 .env.yaml
+serviceAccount.json
+serviceAccountKey.json
+*.pem
+*.key
 
-# Dependencias del proyecto
-/node_modules
-/venv
-__pycache__/
+# Mantener plantillas seguras (permitir subir estas)
+!.env.example
+!frontend/.env.example
+!functions/.env.example
 
-# Archivos de depuración y logs
-*.log
-npm-debug.log*
+# ============================================================
+# 🔍 LOGS DE DEBUGGING
+# ============================================================
 firebase-debug.log
 firestore-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Archivos específicos del IDE (como VS Code)
+# ============================================================
+# 📂 TIPADO ANTIGUO (si existiera)
+# ============================================================
+typings/
+
+# ============================================================
+# 💻 SISTEMA / EDITORES
+# ============================================================
+.DS_Store
+Thumbs.db
 .vscode/
+.idea/
+*.swp
+*.swo
 
-# Archivos generados por el build
-/build
-/dist
-/public/build
-/functions/node_modules
-/functions/lib
-/firebase/lib
-/firebase/functions/lib
-
-# Archivos de Firebase
+# ============================================================
+# 🔥 FIREBASE
+# ============================================================
 .firebase/
-serviceAccountKey.json
+.firebaserc
+*.runtimeconfig.json
+
+# ============================================================
+# 📱 PWA / FRONTEND
+# ============================================================
+*.manifest.json
+*.webmanifest

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa de Flota - TAXIA CIMCO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    html { scroll-behavior: smooth; }
+    .text-neon-cyan { color: #00F0FF; }
+    .text-neon-purple { color: #B300F2; }
+    .bg-gradient-to-r-neon { background-image: linear-gradient(to right, #B300F2, #00F0FF); }
+    .map-container {
+      height: 70vh;
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px -5px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-gray-200">
+
+  <!-- Header -->
+  <header class="bg-slate-800 shadow-lg fixed top-0 w-full z-50">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <a href="ceo-panel.html" class="flex items-center space-x-2">
+        <i class="fas fa-chart-line text-4xl text-neon-cyan"></i>
+        <h1 class="text-2xl font-extrabold text-white">Panel de CEO</h1>
+      </a>
+      <nav class="flex space-x-8 text-gray-400 font-semibold">
+        <a href="ceo-panel.html" class="hover:text-neon-cyan transition duration-300">Resumen</a>
+        <a href="ceo-mapa.html" class="hover:text-neon-cyan transition duration-300 font-bold">Mapa de Flota</a>
+        <a href="panel-credito.html" class="hover:text-neon-cyan transition duration-300">Créditos</a>
+        <a href="../index.html" class="hover:text-neon-cyan transition duration-300">Cerrar Sesión</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="py-24 px-4 md:px-8">
+    <div class="container mx-auto max-w-7xl">
+      <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r-neon mb-8 text-center">
+        Mapa de Flota en Vivo
+      </h2>
+      <p class="text-center text-gray-400 mb-6">
+        Visualiza en tiempo real la ubicación de los vehículos, su rol y estado.
+      </p>
+
+      <div id="map" class="map-container"></div>
+
+      <!-- Estadísticas -->
+      <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
+          <h3 class="text-2xl font-bold text-white mb-2">Vehículos Disponibles</h3>
+          <p id="disponibles" class="text-4xl font-extrabold text-neon-cyan">0</p>
+        </div>
+        <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
+          <h3 class="text-2xl font-bold text-white mb-2">Vehículos en Servicio</h3>
+          <p id="enServicio" class="text-4xl font-extrabold text-neon-purple">0</p>
+        </div>
+        <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
+          <h3 class="text-2xl font-bold text-white mb-2">Vehículos Inactivos</h3>
+          <p id="inactivos" class="text-4xl font-extrabold text-red-400">0</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-slate-800 text-gray-400 py-8 px-4 mt-12">
+    <div class="container mx-auto text-center">
+      <p>© 2025 TAXIA CIMCO. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+
+  <!-- Firebase + Leaflet -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
+      authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
+      projectId: "pelagic-chalice-467818-e1",
+      storageBucket: "pelagic-chalice-467818-e1.appspot.com",
+      messagingSenderId: "191106268804",
+      appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
+      measurementId: "G-CPWSCLGKP2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Inicializar Leaflet
+    const map = L.map('map').setView([9.5649, -73.3345], 13); // La Jagua de Ibirico
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    let markers = {};
+
+    // Iconos personalizados
+    function elegirIcono(status) {
+      switch (status) {
+        case "available": return L.icon({ iconUrl: "https://maps.google.com/mapfiles/ms/icons/green-dot.png", iconSize: [32, 32] });
+        case "on-trip": return L.icon({ iconUrl: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png", iconSize: [32, 32] });
+        default: return L.icon({ iconUrl: "https://maps.google.com/mapfiles/ms/icons/red-dot.png", iconSize: [32, 32] });
+      }
+    }
+
+    // Escuchar en Firestore
+    const driversCollectionRef = collection(db, "conductores");
+    onSnapshot(driversCollectionRef, (snapshot) => {
+      let disponibles = 0, enServicio = 0, inactivos = 0;
+
+      const activeIds = snapshot.docs.map(doc => doc.id);
+      Object.keys(markers).forEach(docId => {
+        if (!activeIds.includes(docId)) {
+          map.removeLayer(markers[docId]);
+          delete markers[docId];
+        }
+      });
+
+      snapshot.forEach((doc) => {
+        const driver = doc.data();
+        if (driver.location && driver.location.lat && driver.location.lng) {
+          const position = [driver.location.lat, driver.location.lng];
+
+          if (driver.status === "available") disponibles++;
+          else if (driver.status === "on-trip") enServicio++;
+          else inactivos++;
+
+          if (markers[doc.id]) {
+            markers[doc.id].setLatLng(position);
+          } else {
+            markers[doc.id] = L.marker(position, { icon: elegirIcono(driver.status) })
+              .addTo(map)
+              .bindPopup(\`
+                <div class="text-slate-900 font-sans">
+                  <h1 class="text-lg font-bold">\${driver.name || 'Conductor'}</h1>
+                  <p>Rol: \${driver.rol || 'N/A'}</p>
+                  <p>Estado: <span class="font-semibold">\${driver.status || 'Sin estado'}</span></p>
+                </div>
+              \`);
+          }
+        }
+      });
+
+      document.getElementById("disponibles").textContent = disponibles;
+      document.getElementById("enServicio").textContent = enServicio;
+      document.getElementById("inactivos").textContent = inactivos;
+    });
+    <!-- Dentro del script de ceo-mapa.html -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCseKkOoHY8pbSnUWSEWyPR8et1BVccr7s",
+    authDomain: "pelagic-chalice-467818-e1.firebaseapp.com",
+    projectId: "pelagic-chalice-467818-e1",
+    storageBucket: "pelagic-chalice-467818-e1.appspot.com",
+    messagingSenderId: "191106268804",
+    appId: "1:191106268804:web:8b2aa9689abaa35c880cd1",
+    measurementId: "G-CPWSCLGKP2"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  let map;
+  let markers = {};
+
+  // Inicializar Google Maps
+  window.initMap = function() {
+    const mapContainer = document.getElementById("map");
+    mapContainer.innerHTML = '';
+
+    map = new google.maps.Map(mapContainer, {
+      center: { lat: 9.5649, lng: -73.3345 }, // La Jagua de Ibirico
+      zoom: 13,
+      styles: [{ elementType: "geometry", stylers: [{ color: "#1d2c4d" }] }]
+    });
+
+    cargarConductores();
+  };
+
+  // Escuchar conductores en Firestore
+  function cargarConductores() {
+    const driversCollectionRef = collection(db, "conductores");
+
+    onSnapshot(driversCollectionRef, (snapshot) => {
+      let disponibles = 0, enServicio = 0, inactivos = 0;
+
+      const activeIds = snapshot.docs.map(doc => doc.id);
+      Object.keys(markers).forEach(docId => {
+        if (!activeIds.includes(docId)) {
+          markers[docId].setMap(null);
+          delete markers[docId];
+        }
+      });
+
+      snapshot.forEach((doc) => {
+        const driver = doc.data();
+        if (driver.location && driver.location.lat && driver.location.lng) {
+          const position = { lat: driver.location.lat, lng: driver.location.lng };
+
+          if (driver.status === "available") disponibles++;
+          else if (driver.status === "on-trip") enServicio++;
+          else inactivos++;
+
+          // Popup con botón al detalle
+          const info = new google.maps.InfoWindow({
+            content: `
+              <div class="text-slate-900 font-sans">
+                <h1 class="text-lg font-bold">${driver.name || 'Conductor'}</h1>
+                <p>Rol: ${driver.rol || 'N/A'}</p>
+                <p>Estado: <span class="font-semibold">${driver.status || 'Sin estado'}</span></p>
+                <a href="detalle-conductor.html?uid=${doc.id}"
+                   class="mt-2 inline-block bg-indigo-600 text-white px-3 py-1 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">
+                  Ver Detalle
+                </a>
+              </div>
+            `
+          });
+
+          if (markers[doc.id]) {
+            markers[doc.id].setPosition(position);
+          } else {
+            markers[doc.id] = new google.maps.Marker({
+              position,
+              map,
+              title: `${driver.name} - ${driver.status}`,
+              icon: {
+                url: elegirIcono(driver.status),
+                scaledSize: new google.maps.Size(32, 32)
+              }
+            });
+            markers[doc.id].addListener("click", () => {
+              info.open({ anchor: markers[doc.id], map });
+            });
+          }
+        }
+      });
+
+      document.getElementById("disponibles").textContent = disponibles;
+      document.getElementById("enServicio").textContent = enServicio;
+      document.getElementById("inactivos").textContent = inactivos;
+    });
+  }
+
+  // Iconos personalizados
+  function elegirIcono(status) {
+    switch (status) {
+      case "available": return "http://maps.google.com/mapfiles/ms/icons/green-dot.png";
+      case "on-trip": return "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+      default: return "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
+    }
+  }
+  </script>
+</body>
+</html>

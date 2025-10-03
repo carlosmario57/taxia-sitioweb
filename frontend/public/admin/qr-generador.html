@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Códigos QR de TaxiA CIMCO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a09;
+            color: #e5e5e5;
+        }
+        .text-neon-cyan { color: #00F0FF; }
+        .text-neon-purple { color: #B300F2; }
+        .bg-gradient-to-r-neon {
+            background-image: linear-gradient(to right, #B300F2, #00F0FF);
+        }
+        .btn-neon-gradient {
+            background-image: linear-gradient(to right, #B300F2, #00F0FF);
+        }
+        .btn-neon-gradient:hover {
+            transform: scale(1.05);
+            transition: transform 0.3s ease;
+        }
+        /* Oculta el mensaje del medio para que el QR sea más limpio */
+        #qr-text-overlay {
+            display: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="content-container" class="bg-slate-800 p-8 md:p-12 rounded-2xl shadow-xl flex flex-col items-center max-w-lg w-full transform transition-all duration-300 opacity-0 -translate-y-10">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r-neon mb-4 text-center">
+            TaxiA CIMCO
+        </h1>
+        <h2 id="role-title" class="text-3xl md:text-4xl font-bold text-white mb-8 text-center"></h2>
+
+        <div class="relative w-64 h-64 md:w-80 md:h-80 bg-white p-2 rounded-2xl shadow-inner mb-8">
+            <canvas id="qr-canvas" class="w-full h-full"></canvas>
+            <div id="qr-text-overlay" class="absolute inset-0 flex items-center justify-center">
+                <p class="text-center font-black text-xl md:text-2xl text-black leading-tight">TaxiA<br>CIMCO</p>
+            </div>
+        </div>
+
+        <button id="downloadBtn" class="w-full btn-neon-gradient text-white py-3 px-6 rounded-xl font-bold text-lg">
+            <i class="fas fa-download mr-2"></i> Descargar QR
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const role = params.get('role');
+            const url = params.get('url');
+
+            const roles = {
+                'pasajero': 'Pasajero',
+                'mototaxi': 'Mototaxi',
+                'motoparrillero': 'Motoparrillero',
+                'motocarga': 'Motocarga',
+                'despachadorinter': 'Despachador Intermunicipal',
+                'conductorinter': 'Conductor Intermunicipal'
+            };
+
+            const roleTitle = document.getElementById('role-title');
+            const canvas = document.getElementById('qr-canvas');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const container = document.getElementById('content-container');
+            const overlayText = document.getElementById('qr-text-overlay');
+
+            if (role && url && roles[role]) {
+                roleTitle.textContent = roles[role];
+
+                // Animación de entrada
+                setTimeout(() => {
+                    container.classList.remove('opacity-0', '-translate-y-10');
+                    container.classList.add('opacity-100', 'translate-y-0');
+                }, 100);
+
+                // Generar el código QR
+                QRCode.toCanvas(canvas, url, {
+                    width: 320,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                }, function (error) {
+                    if (error) {
+                        console.error('Error al generar el código QR:', error);
+                        roleTitle.textContent = 'Error';
+                        return;
+                    }
+                    console.log('Código QR generado con éxito.');
+                    // Ocultar el texto superpuesto si se genera correctamente
+                    overlayText.style.display = 'none'; 
+                });
+
+                // Manejar la descarga del QR
+                downloadBtn.addEventListener('click', function() {
+                    const link = document.createElement('a');
+                    link.download = `taxia-cimco-${role}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    link.remove();
+                });
+            } else {
+                roleTitle.textContent = 'Error: Parámetros inválidos';
+                container.classList.remove('opacity-0', '-translate-y-10');
+                container.classList.add('opacity-100', 'translate-y-0');
+                downloadBtn.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+match /databases/{database}/documents {
+
+// ========================
+// 👤 Usuarios
+// ========================
+match /usuarios/{userId} {
+  // El propio usuario puede leer y actualizar solo su perfil
+  allow read, update: if request.auth != null && request.auth.uid == userId;
+
+  // Crear perfil al registrarse (auth ya existe)
+  allow create: if request.auth != null;
+
+  // Nadie puede borrar perfiles
+  allow delete: if false;
+}
+
+// ========================
+// 💰 Movimientos de crédito
+// ========================
+match /movimientos/{movId} {
+  // Solo el CEO puede leer/escribir todos los movimientos
+  allow read, write: if request.auth != null && request.auth.token.rol == "ceo";
+
+  // Conductores y despachadores solo pueden leer sus propios movimientos
+  allow read: if request.auth != null &&
+    (request.auth.token.rol in ["mototaxi", "motoparrillero", "motocarga", "despachadorinter", "conductorinter"]) &&
+    resource.data.userId == request.auth.uid;
+}
+
+// ========================
+// 🚕 Viajes
+// ========================
+// NOTA: Se ha capturado el ID del viaje como {viajeId} para usarlo en la subcolección.
+match /viajes/{viajeId} {
+  // --- Crear ---
+  // Solo los pasajeros pueden crear un viaje
+  allow create: if request.auth != null && request.auth.token.rol == "pasajero";
+
+  // --- Leer ---
+  allow read: if request.auth != null && (
+    // El propio pasajero puede leer su viaje
+    resource.data.pasajeroId == request.auth.uid ||
+    // El conductor asignado puede leer
+    resource.data.conductorId == request.auth.uid ||
+    // El despachador de la cooperativa puede leer
+    (request.auth.token.rol == "despachadorinter" && resource.data.cooperativa == request.auth.token.cooperativa) ||
+    // El CEO puede leer todo
+    request.auth.token.rol == "ceo"
+  );
+
+  // --- Actualizar ---
+  allow update: if request.auth != null && (
+    // El pasajero puede cancelar su viaje si sigue pendiente
+    (request.auth.token.rol == "pasajero" &&
+      request.auth.uid == resource.data.pasajeroId &&
+      resource.data.status == "pendiente") ||
+
+    // Un conductor puede aceptar solo si aún está pendiente y él es el asignado
+    (request.auth.token.rol in ["mototaxi", "motoparrillero", "motocarga", "conductorinter"] &&
+      request.auth.uid == resource.data.conductorId) ||
+      // Para que un conductor pueda aceptar o actualizar el estado,
+      // se verifica que sea el conductorId y que esté en el rol correcto.
+
+    // Despachador de la misma cooperativa puede asignar/reasignar
+    (request.auth.token.rol == "despachadorinter" &&
+      resource.data.cooperativa == request.auth.token.cooperativa) ||
+
+    // El CEO puede actualizar cualquier viaje
+    request.auth.token.rol == "ceo"
+  );
+
+  // --- Borrar ---
+  allow delete: if request.auth != null && request.auth.token.rol == "ceo";
+
+  // ========================
+  // 💬 Subcolección chat
+  // ========================
+  match /chat/{msgId} {
+    // Usamos la función get() para obtener los datos del documento 'viajes/{viajeId}' (el padre).
+    // La variable {viajeId} fue capturada en el match superior.
+    function getViajeData() {
+      return get(/databases/$(database)/documents/viajes/$(viajeId)).data;
+    }
+
+    // Permitir crear y leer si es pasajero, conductor asignado, despachador de cooperativa o CEO
+    allow read, create: if request.auth != null && (
+      // El usuario es el pasajero
+      request.auth.uid == getViajeData().pasajeroId ||
+      // El usuario es el conductor asignado
+      request.auth.uid == getViajeData().conductorId ||
+      // Es un despachador de la misma cooperativa
+      (request.auth.token.rol == "despachadorinter" &&
+        getViajeData().cooperativa == request.auth.token.cooperativa) ||
+      // Es el CEO
+      request.auth.token.rol == "ceo"
+    );
+  }
+}
+
+// ========================
+// Reportes globales (solo CEO)
+// ========================
+match /reportes/{docId} {
+  allow read, write: if request.auth != null && request.auth.token.rol == "ceo";
+}
+
+// ========================
+// Bloqueo por defecto
+// ========================
+match /{document=**} {
+  allow read, write: if false;
+}
+
+}
+}

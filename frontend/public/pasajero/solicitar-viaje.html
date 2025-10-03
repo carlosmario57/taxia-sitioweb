@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitar Viaje - TAXIA CIMCO</title>
+  <link rel="stylesheet" href="../../styles/style.css">
+  <style>
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    input, select, button {
+      padding: 10px;
+      font-size: 1em;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .message {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚖 Solicitar Viaje</h1>
+    <p>Bienvenido, <span id="userEmail"></span></p>
+
+    <form id="viajeForm">
+      <label for="origen">📍 Origen</label>
+      <input type="text" id="origen" required placeholder="Escribe tu punto de partida">
+
+      <label for="destino">🏁 Destino</label>
+      <input type="text" id="destino" required placeholder="Escribe tu destino">
+
+      <button type="submit">✅ Solicitar</button>
+    </form>
+
+    <p id="message" class="message"></p>
+
+    <button onclick="window.location.href='panel-pasajero.html'">⬅️ Volver</button>
+    <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+  </div>
+
+  <script type="module">
+    import { getAuth, onAuthStateChanged, signOut }
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp }
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { app } from "../../../public/js/firebase-config-pasajero.js";
+
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const userEmailEl = document.getElementById("userEmail");
+    const viajeForm = document.getElementById("viajeForm");
+    const messageEl = document.getElementById("message");
+
+    let currentUser = null;
+
+    // Verificar sesión activa
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        userEmailEl.textContent = user.email;
+      } else {
+        window.location.href = "login-pasajero.html";
+      }
+    });
+
+    // Guardar viaje en Firestore
+    viajeForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const origen = document.getElementById("origen").value.trim();
+      const destino = document.getElementById("destino").value.trim();
+
+      try {
+        await addDoc(collection(db, "viajes"), {
+          pasajeroId: currentUser.uid,
+          emailPasajero: currentUser.email,
+          origen,
+          destino,
+          estado: "Pendiente",
+          fecha: new Date().toLocaleString(),
+          timestamp: serverTimestamp()
+        });
+
+        messageEl.textContent = "✅ Viaje solicitado con éxito.";
+        messageEl.style.color = "green";
+        viajeForm.reset();
+      } catch (error) {
+        console.error("Error al guardar viaje:", error);
+        messageEl.textContent = "❌ Hubo un error al solicitar el viaje.";
+        messageEl.style.color = "red";
+      }
+    });
+
+    // Cerrar sesión
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "login-pasajero.html";
+    });
+  </script>
+</body>
+</html>

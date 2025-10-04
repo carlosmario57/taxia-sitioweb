@@ -22,42 +22,69 @@
       box-shadow: 0 6px 20px -5px #00F0FF;
     }
 
-    /* 🔹 Estilo para el recuadro de versión */
+    /* 🌈 PANEL DE VERSIÓN MODERNO */
     #version-panel {
       position: fixed;
-      bottom: 10px;
-      right: 10px;
-      background: rgba(17, 25, 40, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(0, 240, 255, 0.4);
-      border-radius: 8px;
+      bottom: 14px;
+      right: 14px;
+      background: linear-gradient(135deg, #00bcd4, #3f51b5, #9c27b0);
+      background-size: 300% 300%;
+      animation: gradienteFlujo 6s ease infinite;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 13px;
       padding: 8px 14px;
-      color: #00F0FF;
-      font-size: 0.8rem;
-      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
       z-index: 9999;
-      box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+    }
+    #version-panel:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 16px rgba(0, 255, 255, 0.8);
+    }
+    @keyframes gradienteFlujo {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Modal informativo */
+    #version-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    }
+    #version-modal .content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      width: 350px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+      text-align: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #version-modal button {
+      background: #3f51b5;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #version-modal button:hover {
+      background: #283593;
     }
   </style>
 </head>
+
 <body class="bg-slate-900 text-gray-200">
-
-  <!-- Overlay de carga -->
-  <div id="loading-overlay" class="fixed inset-0 bg-slate-900 bg-opacity-75 z-[100] flex items-center justify-center hidden">
-    <div class="text-center">
-      <i class="fas fa-spinner fa-spin text-neon-cyan text-4xl mb-4"></i>
-      <p class="text-white text-lg font-semibold">Cargando...</p>
-    </div>
-  </div>
-
-  <!-- Modal mensajes -->
-  <div id="message-modal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-75 z-[100] flex items-center justify-center">
-    <div class="bg-slate-800 p-8 rounded-lg shadow-xl text-center max-w-sm w-full border border-slate-700">
-      <div id="message-icon" class="text-4xl mb-4"></div>
-      <p id="message-text" class="text-lg font-semibold text-white mb-6"></p>
-      <button onclick="hideMessage()" class="btn-neon-gradient text-white py-2 px-6 rounded-md font-bold">Aceptar</button>
-    </div>
-  </div>
 
   <!-- Header -->
   <header class="bg-slate-800 shadow-lg fixed top-0 w-full z-50">
@@ -67,25 +94,23 @@
         <h1 class="text-2xl font-extrabold text-white">Panel de CEO</h1>
       </a>
       <nav class="flex space-x-8 text-gray-400 font-semibold">
-        <a href="ceo-mapa.html" class="hover:text-neon-cyan transition duration-300">Mapa de Flota</a>
-        <a href="panel-credito.html" class="hover:text-neon-cyan transition duration-300">Créditos</a>
-        <a href="panel-whats.html" class="hover:text-neon-cyan transition duration-300">WhatsApp</a>
-        <a href="qr-generador.html" class="hover:text-neon-cyan transition duration-300">Generar QR</a>
-        <a href="#" onclick="signOutUser()" class="hover:text-neon-cyan transition duration-300">Cerrar Sesión</a>
+        <a href="ceo-mapa.html" class="hover:text-neon-cyan">Mapa de Flota</a>
+        <a href="panel-credito.html" class="hover:text-neon-cyan">Créditos</a>
+        <a href="panel-whats.html" class="hover:text-neon-cyan">WhatsApp</a>
+        <a href="qr-generador.html" class="hover:text-neon-cyan">Generar QR</a>
+        <a href="#" onclick="signOutUser()" class="hover:text-neon-cyan">Cerrar Sesión</a>
       </nav>
     </div>
   </header>
 
   <!-- Main -->
   <main class="py-24 px-4 md:px-8">
-    <div class="container mx-auto max-w-7xl">
-
-      <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r-neon mb-8 text-center">
+    <div class="container mx-auto max-w-7xl text-center">
+      <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r-neon mb-8">
         Resumen de Operaciones
       </h2>
 
-      <!-- Estadísticas -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
         <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
           <div class="flex items-center space-x-4">
             <i class="fas fa-taxi text-4xl text-neon-cyan"></i>
@@ -106,7 +131,7 @@
         </div>
       </div>
 
-      <!-- Tabla de usuarios -->
+      <!-- Tabla -->
       <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
         <h3 class="text-2xl font-bold text-white mb-6">Usuarios Pendientes de Aprobación</h3>
         <div class="overflow-x-auto">
@@ -127,168 +152,50 @@
           </table>
         </div>
       </div>
-
     </div>
   </main>
 
   <!-- Footer -->
-  <footer class="bg-slate-800 text-gray-400 py-8 px-4 mt-12">
-    <div class="container mx-auto text-center">
-      <p>&copy; 2025 TAXIA CIMCO. Todos los derechos reservados.</p>
-    </div>
+  <footer class="bg-slate-800 text-gray-400 py-8 px-4 mt-12 text-center">
+    <p>&copy; 2025 TAXIA CIMCO. Todos los derechos reservados.</p>
   </footer>
 
-  <!-- Panel de versión flotante -->
-  <div id="version-panel">Versión: cargando...</div>
+  <!-- 🌈 Panel de versión -->
+  <div id="version-panel" onclick="mostrarInfoVersion()">
+    🚀 TAXIA-CIMCO — <span id="version-info">Cargando...</span>
+  </div>
 
-  <!-- Firebase -->
-  <script type="module">
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { app } from "/js/firebase-config-ceo.js";
+  <!-- Modal informativo -->
+  <div id="version-modal">
+    <div class="content">
+      <h3>Información del Despliegue</h3>
+      <p id="modal-version"></p>
+      <p id="modal-fecha"></p>
+      <p id="modal-entorno"></p>
+      <p id="modal-notas"></p>
+      <button onclick="cerrarInfoVersion()">Cerrar</button>
+    </div>
+  </div>
 
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const loadingOverlay = document.getElementById('loading-overlay');
-    const messageModal = document.getElementById('message-modal');
-    const messageText = document.getElementById('message-text');
-    const messageIcon = document.getElementById('message-icon');
-    const usuariosTabla = document.getElementById("usuariosTabla");
-    const totalConductoresEl = document.getElementById("totalConductores");
-    const totalPasajerosEl = document.getElementById("totalPasajeros");
-
-    // ===============================
-    // 🔹 Mostrar versión en el panel
-    // ===============================
-    async function mostrarVersionPanel() {
-      try {
-        const res = await fetch("/version.json", { cache: "no-store" });
-        const data = await res.json();
-        const versionBox = document.getElementById("version-panel");
-        versionBox.textContent = `🚖 TAXIA CIMCO — Versión: ${data.version} • ${data.deployed}`;
-      } catch (error) {
-        console.warn("No se pudo cargar version.json:", error);
-      }
-    }
-    mostrarVersionPanel();
-
-    // Mensajes
-    window.showMessage = (text, type = 'info') => {
-      let iconClass = '', iconColor = '';
-      if (type === 'success') { iconClass = 'fas fa-check-circle'; iconColor = 'text-green-500'; }
-      else if (type === 'error') { iconClass = 'fas fa-exclamation-triangle'; iconColor = 'text-red-500'; }
-      else { iconClass = 'fas fa-info-circle'; iconColor = 'text-blue-500'; }
-      messageText.textContent = text;
-      messageIcon.className = `${iconClass} ${iconColor} mb-4`;
-      messageModal.classList.remove('hidden');
-    };
-    window.hideMessage = () => messageModal.classList.add('hidden');
-
-    // Cerrar sesión
-    window.signOutUser = async () => {
-      try {
-        await signOut(auth);
-        window.location.href = '../index.html';
-      } catch (error) {
-        console.error("Error al cerrar sesión:", error);
-        showMessage('Error al cerrar sesión. Inténtalo de nuevo.', 'error');
-      }
-    };
-
-    // Aprobar/Rechazar
-    window.aprobarUsuario = async (id) => {
-      try {
-        loadingOverlay.classList.remove('hidden');
-        await updateDoc(doc(db, "usuarios", id), { estado: "aprobado" });
-        showMessage("Usuario aprobado ✅", "success");
-      } catch (error) {
-        console.error("Error al aprobar usuario:", error);
-        showMessage("Error al aprobar usuario. Intenta de nuevo.", "error");
-      } finally {
-        loadingOverlay.classList.add('hidden');
-      }
-    };
-    window.rechazarUsuario = async (id) => {
-      try {
-        loadingOverlay.classList.remove('hidden');
-        await updateDoc(doc(db, "usuarios", id), { estado: "rechazado" });
-        showMessage("Usuario rechazado ❌", "success");
-      } catch (error) {
-        console.error("Error al rechazar usuario:", error);
-        showMessage("Error al rechazar usuario. Intenta de nuevo.", "error");
-      } finally {
-        loadingOverlay.classList.add('hidden');
-      }
-    };
-
-    // Listeners
-    function startRealtimeListeners() {
-      onSnapshot(collection(db, "usuarios"), (snapshot) => {
-        const pendientes = [];
-        let totalConductores = 0;
-        snapshot.forEach((docSnap) => {
-          const usuario = docSnap.data();
-          if (usuario.rol === "conductor") totalConductores++;
-          if (usuario.estado === "pendiente") pendientes.push({ id: docSnap.id, ...usuario });
-        });
-        renderizarUsuariosPendientes(pendientes);
-        totalConductoresEl.textContent = totalConductores;
-      });
-
-      onSnapshot(collection(db, "pasajeros"), (snap) => {
-        totalPasajerosEl.textContent = snap.size;
-      });
-    }
-
-    function renderizarUsuariosPendientes(usuarios) {
-      usuariosTabla.innerHTML = "";
-      if (usuarios.length === 0) {
-        usuariosTabla.innerHTML = `<tr><td colspan='6' class='p-3 text-center text-gray-500'>No hay usuarios pendientes de aprobación.</td></tr>`;
-      } else {
-        usuarios.forEach(usuario => {
-          const row = document.createElement("tr");
-          row.classList.add("border-b","border-slate-700");
-          row.innerHTML = `
-            <td class="p-3">${usuario.nombre || "-"}</td>
-            <td class="p-3 capitalize">${usuario.rol || "-"}</td>
-            <td class="p-3">${usuario.email || "-"}</td>
-            <td class="p-3">${usuario.telefono || "-"}</td>
-            <td class="p-3"><span class="bg-yellow-500 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full">Pendiente</span></td>
-            <td class="p-3 text-center space-x-2">
-              <a href="detalle-conductor.html?uid=${usuario.id}" class="px-3 py-1 bg-blue-600 rounded-md hover:bg-blue-700 text-white">Detalles</a>
-              <button onclick="aprobarUsuario('${usuario.id}')" class="px-3 py-1 bg-green-600 rounded-md hover:bg-green-700 text-white">Aprobar</button>
-              <button onclick="rechazarUsuario('${usuario.id}')" class="px-3 py-1 bg-red-600 rounded-md hover:bg-red-700 text-white">Rechazar</button>
-            </td>
-          `;
-          usuariosTabla.appendChild(row);
-        });
-      }
-    }
-
-    // Autenticación
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        startRealtimeListeners();
-        loadingOverlay.classList.add('hidden');
-      } else {
-        window.location.href = "../index.html";
-      }
-    });
-  </script>
-
-  <!-- 🔧 Botón oculto de limpieza de caché -->
-  <button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+  <!-- Script Modal -->
   <script>
-  document.addEventListener("keydown", async (e) => {
-    if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) await reg.unregister();
-      const names = await caches.keys();
-      for (const n of names) await caches.delete(n);
-      alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  async function mostrarInfoVersion() {
+    const modal = document.getElementById("version-modal");
+    try {
+      const versionData = await fetch("/version.json").then(r => r.json());
+      document.getElementById("modal-version").innerText = "Versión: " + versionData.version;
+      document.getElementById("modal-fecha").innerText = "Fecha: " + versionData.fecha;
+      document.getElementById("modal-entorno").innerText = "Entorno: Producción";
+      document.getElementById("modal-notas").innerText = "Último despliegue automático exitoso.";
+      document.getElementById("version-info").innerText = versionData.version;
+    } catch (e) {
+      document.getElementById("version-info").innerText = "Error al cargar versión";
     }
-  });
+    modal.style.display = "flex";
+  }
+  function cerrarInfoVersion() {
+    document.getElementById("version-modal").style.display = "none";
+  }
   </script>
 
 <script src="/js/version-footer.js"></script>

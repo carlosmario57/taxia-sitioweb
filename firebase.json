@@ -8,18 +8,44 @@
       "firebase-debug.log",
       "firestore-debug.log",
       "npm-debug.log",
-      "yarn-debug.log"
+      "yarn-debug.log",
+      ".env",
+      ".env.local",
+      "serviceAccount.json"
     ],
     "predeploy": [
       "npm --prefix \"$RESOURCE_DIR\" run build"
     ]
   },
+
   "hosting": {
     "public": "frontend/public",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      ".env",
+      ".env.local"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      },
+      {
+        "source": "/service-worker.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
     ],
     "rewrites": [
       {
@@ -28,18 +54,28 @@
       }
     ]
   },
+
   "emulators": {
     "functions": {
       "port": 5001
     },
-    "hosting": {
-      "port": 5000
-    },
     "firestore": {
       "port": 8080
     },
+    "hosting": {
+      "port": 5000
+    },
+    "pubsub": {
+      "port": 8085
+    },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "port": 4000
     }
+  },
+
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   }
 }

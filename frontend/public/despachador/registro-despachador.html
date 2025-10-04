@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -8,17 +8,17 @@
 </head>
 <body>
   <div class="form-container">
-    <h2>Iniciar Sesión - Despachador</h2>
+    <h2>Iniciar SesiÃ³n - Despachador</h2>
     <form id="loginDespachadorForm">
-      <label for="email">Correo Electrónico</label>
+      <label for="email">Correo ElectrÃ³nico</label>
       <input type="email" id="email" name="email" placeholder="ejemplo@gmail.com" required>
 
-      <label for="password">Contraseña</label>
+      <label for="password">ContraseÃ±a</label>
       <input type="password" id="password" name="password" placeholder="********" required>
 
       <button type="submit">Ingresar</button>
     </form>
-    <p>¿No tienes cuenta? <a href="registro-despachador.html">Regístrate aquí</a></p>
+    <p>Â¿No tienes cuenta? <a href="registro-despachador.html">RegÃ­strate aquÃ­</a></p>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
@@ -35,12 +35,29 @@
 
       try {
         await auth.signInWithEmailAndPassword(email, password);
-        alert("Bienvenido despachador 📲");
+        alert("Bienvenido despachador ðŸ“²");
         window.location.href = "panel-despachador.html";
       } catch (error) {
-        alert("Error al iniciar sesión: " + error.message);
+        alert("Error al iniciar sesiÃ³n: " + error.message);
       }
     });
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
@@ -29,13 +29,13 @@
     let userId = null; // El ID del despachador actual
 
     /**
-     * Inicializa Firebase y maneja la autenticación para obtener un userId seguro.
+     * Inicializa Firebase y maneja la autenticaciÃ³n para obtener un userId seguro.
      */
     async function initFirebaseAndLoadData() {
         try {
             if (Object.keys(firebaseConfig).length === 0) {
                 console.error("Firebase config is missing.");
-                document.getElementById('viajes-lista').innerHTML = `<p class="text-red-500">Error: La configuración de Firebase no está disponible.</p>`;
+                document.getElementById('viajes-lista').innerHTML = `<p class="text-red-500">Error: La configuraciÃ³n de Firebase no estÃ¡ disponible.</p>`;
                 return;
             }
 
@@ -43,16 +43,16 @@
             db = getFirestore(app);
             auth = getAuth(app);
 
-            // 1. Manejo de autenticación
+            // 1. Manejo de autenticaciÃ³n
             await new Promise(resolve => {
                 const unsubscribe = onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
                     } else if (initialAuthToken) {
                         await signInWithCustomToken(auth, initialAuthToken);
-                        // onAuthStateChanged se disparará de nuevo
+                        // onAuthStateChanged se dispararÃ¡ de nuevo
                     } else {
-                        // Si no hay token, iniciamos sesión anónimamente
+                        // Si no hay token, iniciamos sesiÃ³n anÃ³nimamente
                         const anonymousUser = await signInAnonymously(auth);
                         userId = anonymousUser.user.uid;
                     }
@@ -63,7 +63,7 @@
                 });
             });
 
-            // 2. Carga de datos después de la autenticación
+            // 2. Carga de datos despuÃ©s de la autenticaciÃ³n
             if (userId) {
                 cargarViajesEnTiempoReal();
             } else {
@@ -74,7 +74,7 @@
             document.getElementById('user-id-display').textContent = `ID Despachador: ${userId}`;
 
         } catch (error) {
-            console.error("Error en la inicialización de Firebase:", error);
+            console.error("Error en la inicializaciÃ³n de Firebase:", error);
             mostrarNotificacion(`Error al iniciar la app: ${error.message}`, "bg-red-600");
         }
     }
@@ -88,7 +88,7 @@
 
       const contenedor = document.getElementById("viajes-lista");
 
-      // La ruta pública para viajes: /artifacts/{appId}/public/data/viajes
+      // La ruta pÃºblica para viajes: /artifacts/{appId}/public/data/viajes
       const viajesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'viajes');
       
       // Consulta: solo viajes con estado "pendiente"
@@ -101,7 +101,7 @@
         if (snapshot.empty) {
             contenedor.innerHTML = `
                 <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg shadow-inner" role="alert">
-                    <p class="font-bold">¡Sin Viajes Pendientes!</p>
+                    <p class="font-bold">Â¡Sin Viajes Pendientes!</p>
                     <p>Esperando nuevas solicitudes...</p>
                 </div>
             `;
@@ -141,7 +141,7 @@
 
             <button onclick="asignarConductor('${docSnap.id}')"
               class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition duration-150 transform hover:scale-[1.01] flex items-center justify-center">
-              <i class="fas fa-taxi mr-2"></i> ✅ Asignar y Despachar
+              <i class="fas fa-taxi mr-2"></i> âœ… Asignar y Despachar
             </button>
           `;
           contenedor.appendChild(card);
@@ -158,7 +158,7 @@
      */
     async function asignarConductor(viajeId) {
       if (!db || !userId) {
-          mostrarNotificacion("Error: La aplicación no está inicializada o autenticada.", "bg-red-600");
+          mostrarNotificacion("Error: La aplicaciÃ³n no estÃ¡ inicializada o autenticada.", "bg-red-600");
           return;
       }
       
@@ -166,7 +166,7 @@
       const conductor = input.value.trim();
 
       if (conductor === "") {
-        mostrarNotificacion("⚠️ Por favor, ingresa el nombre del conductor.", "bg-yellow-500");
+        mostrarNotificacion("âš ï¸ Por favor, ingresa el nombre del conductor.", "bg-yellow-500");
         return;
       }
 
@@ -181,16 +181,16 @@
           despachadorId: userId 
         });
 
-        mostrarNotificacion(`🚖 Viaje asignado a ${conductor}. ¡Actualización en tiempo real!`, "bg-green-600");
+        mostrarNotificacion(`ðŸš– Viaje asignado a ${conductor}. Â¡ActualizaciÃ³n en tiempo real!`, "bg-green-600");
         
       } catch (error) {
         console.error("Error al asignar conductor:", error);
-        mostrarNotificacion(`❌ Error al asignar el viaje: ${error.message}`, "bg-red-600");
+        mostrarNotificacion(`âŒ Error al asignar el viaje: ${error.message}`, "bg-red-600");
       }
     }
 
     /**
-     * Muestra una notificación temporal.
+     * Muestra una notificaciÃ³n temporal.
      */
     function mostrarNotificacion(message, bgColorClass) {
         const notifContainer = document.getElementById('notification-container');
@@ -209,13 +209,13 @@
     window.onload = initFirebaseAndLoadData;
     window.asignarConductor = asignarConductor;
   </script>
-  <!-- Íconos de Font Awesome (para iconos profesionales) -->
+  <!-- Ãconos de Font Awesome (para iconos profesionales) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
   <!-- Contenedor de Notificaciones (reemplazo de alert()) -->
   <div id="notification-container" class="fixed top-5 right-5 z-50 space-y-2">
-    <!-- Las notificaciones aparecerán aquí -->
+    <!-- Las notificaciones aparecerÃ¡n aquÃ­ -->
   </div>
   
   <!-- Encabezado -->
@@ -239,8 +239,25 @@
     
     <!-- Contenedor de Viajes -->
     <div id="viajes-lista" class="grid grid-cols-1 gap-6">
-      <div class="text-center p-6 text-green-500"><i class="fas fa-spinner fa-spin"></i> Inicializando aplicación...</div>
+      <div class="text-center p-6 text-green-500"><i class="fas fa-spinner fa-spin"></i> Inicializando aplicaciÃ³n...</div>
     </div>
   </main>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

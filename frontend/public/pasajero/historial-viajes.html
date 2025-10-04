@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -24,13 +24,13 @@
 </head>
 <body>
   <div class="container">
-    <h1>📜 Historial de Viajes</h1>
+    <h1>ðŸ“œ Historial de Viajes</h1>
     <p>Bienvenido, <span id="userEmail"></span></p>
 
     <div id="viajesList"></div>
 
-    <button onclick="window.location.href='panel-pasajero.html'">⬅️ Volver</button>
-    <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+    <button onclick="window.location.href='panel-pasajero.html'">â¬…ï¸ Volver</button>
+    <button id="logoutBtn" class="logout-btn">Cerrar SesiÃ³n</button>
   </div>
 
   <script type="module">
@@ -46,7 +46,7 @@
     const viajesList = document.getElementById("viajesList");
     const userEmailEl = document.getElementById("userEmail");
 
-    // Verificar sesión activa
+    // Verificar sesiÃ³n activa
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         userEmailEl.textContent = user.email;
@@ -60,14 +60,14 @@
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-          viajesList.innerHTML = "<p>No tienes viajes registrados aún 🚖</p>";
+          viajesList.innerHTML = "<p>No tienes viajes registrados aÃºn ðŸš–</p>";
         } else {
           querySnapshot.forEach((doc) => {
             const viaje = doc.data();
             const card = document.createElement("div");
             card.classList.add("viaje-card");
             card.innerHTML = `
-              <h3>📍 Viaje</h3>
+              <h3>ðŸ“ Viaje</h3>
               <p><strong>Origen:</strong> ${viaje.origen}</p>
               <p><strong>Destino:</strong> ${viaje.destino}</p>
               <p><strong>Fecha:</strong> ${viaje.fecha || "Sin fecha"}</p>
@@ -82,11 +82,28 @@
       }
     });
 
-    // Cerrar sesión
+    // Cerrar sesiÃ³n
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await signOut(auth);
       window.location.href = "login-pasajero.html";
     });
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

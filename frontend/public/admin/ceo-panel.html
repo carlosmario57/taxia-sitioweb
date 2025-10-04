@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -11,9 +11,7 @@
     body { font-family: 'Inter', sans-serif; }
     .text-neon-cyan { color: #00F0FF; }
     .text-neon-purple { color: #B300F2; }
-    .bg-gradient-to-r-neon {
-      background-image: linear-gradient(to right, #B300F2, #00F0FF);
-    }
+    .bg-gradient-to-r-neon { background-image: linear-gradient(to right, #B300F2, #00F0FF); }
     .btn-neon-gradient {
       background-image: linear-gradient(to right, #B300F2, #00F0FF);
       transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
@@ -22,6 +20,23 @@
     .btn-neon-gradient:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px -5px #00F0FF;
+    }
+
+    /* 🔹 Estilo para el recuadro de versión */
+    #version-panel {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(17, 25, 40, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: #00F0FF;
+      font-size: 0.8rem;
+      font-weight: 600;
+      z-index: 9999;
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
     }
   </style>
 </head>
@@ -123,11 +138,14 @@
     </div>
   </footer>
 
+  <!-- Panel de versión flotante -->
+  <div id="version-panel">Versión: cargando...</div>
+
   <!-- Firebase -->
   <script type="module">
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { app } from "../js/firebase-config-ceo.js";
+    import { app } from "/js/firebase-config-ceo.js";
 
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -139,6 +157,21 @@
     const usuariosTabla = document.getElementById("usuariosTabla");
     const totalConductoresEl = document.getElementById("totalConductores");
     const totalPasajerosEl = document.getElementById("totalPasajeros");
+
+    // ===============================
+    // 🔹 Mostrar versión en el panel
+    // ===============================
+    async function mostrarVersionPanel() {
+      try {
+        const res = await fetch("/version.json", { cache: "no-store" });
+        const data = await res.json();
+        const versionBox = document.getElementById("version-panel");
+        versionBox.textContent = `🚖 TAXIA CIMCO — Versión: ${data.version} • ${data.deployed}`;
+      } catch (error) {
+        console.warn("No se pudo cargar version.json:", error);
+      }
+    }
+    mostrarVersionPanel();
 
     // Mensajes
     window.showMessage = (text, type = 'info') => {
@@ -197,9 +230,7 @@
         snapshot.forEach((docSnap) => {
           const usuario = docSnap.data();
           if (usuario.rol === "conductor") totalConductores++;
-          if (usuario.estado === "pendiente") {
-            pendientes.push({ id: docSnap.id, ...usuario });
-          }
+          if (usuario.estado === "pendiente") pendientes.push({ id: docSnap.id, ...usuario });
         });
         renderizarUsuariosPendientes(pendientes);
         totalConductoresEl.textContent = totalConductores;
@@ -245,5 +276,22 @@
       }
     });
   </script>
+
+  <!-- 🔧 Botón oculto de limpieza de caché -->
+  <button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+  <script>
+  document.addEventListener("keydown", async (e) => {
+    if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) await reg.unregister();
+      const names = await caches.keys();
+      for (const n of names) await caches.delete(n);
+      alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+    }
+  });
+  </script>
+
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+

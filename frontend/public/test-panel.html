@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -33,21 +33,21 @@
 <body class="p-6">
 
     <div class="container mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">⚙️ Panel de Pruebas: Flujo de Servicio</h1>
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">âš™ï¸ Panel de Pruebas: Flujo de Servicio</h1>
         <p class="text-center text-gray-600 mb-8">
             Utiliza este panel para simular una solicitud de servicio llamando a tu Cloud Function HTTP.
         </p>
 
-        <!-- Sección de Configuración -->
+        <!-- SecciÃ³n de ConfiguraciÃ³n -->
         <div class="card bg-white p-6 rounded-xl mb-8">
-            <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-blue-600">Configuración de la Prueba</h2>
+            <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-blue-600">ConfiguraciÃ³n de la Prueba</h2>
             <div class="space-y-4">
                 
                 <div>
                     <label for="api-url" class="block text-sm font-medium text-gray-700">URL de la Cloud Function (API)</label>
                     <!-- URL ACTUALIZADA CON EL VALOR DE TU CONSOLA -->
                     <input type="text" id="api-url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:border-blue-500" value="https://us-central1-pelagic-chalice-467818-e1.cloudfunctions.net/api/solicitarServicio" placeholder="https://[region]-[project-id].cloudfunctions.net/api/solicitarServicio" readonly>
-                    <p class="mt-1 text-xs text-green-600 font-medium">✅ URL de la API detectada y configurada automáticamente.</p>
+                    <p class="mt-1 text-xs text-green-600 font-medium">âœ… URL de la API detectada y configurada automÃ¡ticamente.</p>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -65,22 +65,22 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label for="origen" class="block text-sm font-medium text-gray-700">Ubicación Origen (Lat,Lng)</label>
+                        <label for="origen" class="block text-sm font-medium text-gray-700">UbicaciÃ³n Origen (Lat,Lng)</label>
                         <input type="text" id="origen" value="10.4630, -73.2532" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="lat,lng">
                     </div>
                     <div>
-                        <label for="destino" class="block text-sm font-medium text-gray-700">Ubicación Destino (Lat,Lng)</label>
+                        <label for="destino" class="block text-sm font-medium text-gray-700">UbicaciÃ³n Destino (Lat,Lng)</label>
                         <input type="text" id="destino" value="10.4700, -73.2600" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="lat,lng">
                     </div>
                 </div>
 
                 <button id="solicitar-btn" class="w-full py-3 px-4 rounded-lg shadow-md text-white font-semibold btn-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    🔴 SOLICITAR SERVICIO (Llamar a la API)
+                    ðŸ”´ SOLICITAR SERVICIO (Llamar a la API)
                 </button>
             </div>
         </div>
 
-        <!-- Sección de Resultados de la API -->
+        <!-- SecciÃ³n de Resultados de la API -->
         <div class="card bg-gray-800 p-6 rounded-xl text-white">
             <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2 text-indigo-300">Respuesta de la API</h2>
             
@@ -128,7 +128,7 @@
                 const [latDestino, lngDestino] = destino.split(',').map(s => s.trim());
 
 
-                // Datos que se enviarán a la Cloud Function (simulando el cuerpo de la solicitud)
+                // Datos que se enviarÃ¡n a la Cloud Function (simulando el cuerpo de la solicitud)
                 const requestBody = {
                     pasajeroId: pasajeroId,
                     conductorId: conductorId,
@@ -140,7 +140,7 @@
                         lat: parseFloat(latDestino),
                         lng: parseFloat(lngDestino)
                     },
-                    tipoServicio: 'Estándar', 
+                    tipoServicio: 'EstÃ¡ndar', 
                 };
 
                 try {
@@ -166,7 +166,7 @@
 
                     if (!response.ok) {
                         // Manejo de errores HTTP (400, 500, etc.)
-                        throw new Error(data.message || `Error HTTP: ${response.status} - ${response.statusText}. Respuesta de la función: ${JSON.stringify(data, null, 2)}`);
+                        throw new Error(data.message || `Error HTTP: ${response.status} - ${response.statusText}. Respuesta de la funciÃ³n: ${JSON.stringify(data, null, 2)}`);
                     }
 
                     // Mostrar la respuesta exitosa
@@ -177,16 +177,33 @@
 
                 } catch (error) {
                     // Manejo de errores de red o errores lanzados desde la respuesta
-                    apiResponsePre.textContent = `Fallo en la Solicitud:\n${error.message}\n\nRevisa la consola para más detalles.`;
+                    apiResponsePre.textContent = `Fallo en la Solicitud:\n${error.message}\n\nRevisa la consola para mÃ¡s detalles.`;
                     apiResponsePre.classList.add('text-red-400');
                     console.error("Error completo en la prueba de API:", error);
                 } finally {
                     loadingSpinner.classList.add('hidden');
                     solicitarBtn.disabled = false;
-                    solicitarBtn.textContent = '✅ SOLICITUD ENVIADA (Haz clic para enviar de nuevo)';
+                    solicitarBtn.textContent = 'âœ… SOLICITUD ENVIADA (Haz clic para enviar de nuevo)';
                 }
             });
         });
     </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

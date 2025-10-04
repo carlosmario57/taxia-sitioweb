@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -15,7 +15,7 @@
   <pre id="output"></pre>
 
   <script>
-    const API_URL = "http://localhost:5001/tu-proyecto/us-central1/app"; // ⚡ ajusta según tu hosting
+    const API_URL = "http://localhost:5001/tu-proyecto/us-central1/app"; // âš¡ ajusta segÃºn tu hosting
 
     async function registrarConductor() {
       const res = await fetch(`${API_URL}/registrarConductor`, {
@@ -23,7 +23,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: "conductor@test.com",
-          nombre: "Juan Pérez",
+          nombre: "Juan PÃ©rez",
           password: "123456",
           telefono: "3001234567",
           cedula: "123456789",
@@ -42,7 +42,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: "pasajero@test.com",
-          nombre: "Carlos López",
+          nombre: "Carlos LÃ³pez",
           telefono: "3017654321",
           direccion_recogida: "Calle 123 #45-67"
         })
@@ -68,5 +68,22 @@
       document.getElementById("output").textContent = JSON.stringify(await res.json(), null, 2);
     }
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

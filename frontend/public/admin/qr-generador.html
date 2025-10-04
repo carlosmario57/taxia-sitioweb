@@ -1,121 +1,206 @@
-<!DOCTYPE html>
-<html lang="es" class="scroll-smooth">
+﻿<!DOCTYPE html>
+<html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Códigos QR de TaxiA CIMCO</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de QR - TAXI A CIMCO</title>
+    <!-- Incluir Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Incluir Font Awesome para los iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Incluir librería de QRious para generar códigos QR -->
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0c0a09;
-            color: #e5e5e5;
+            background-color: #e2e8f0;
         }
-        .text-neon-cyan { color: #00F0FF; }
-        .text-neon-purple { color: #B300F2; }
-        .bg-gradient-to-r-neon {
-            background-image: linear-gradient(to right, #B300F2, #00F0FF);
+        .container {
+            max-width: 95%;
         }
-        .btn-neon-gradient {
-            background-image: linear-gradient(to right, #B300F2, #00F0FF);
-        }
-        .btn-neon-gradient:hover {
-            transform: scale(1.05);
-            transition: transform 0.3s ease;
-        }
-        /* Oculta el mensaje del medio para que el QR sea más limpio */
-        #qr-text-overlay {
-            display: none;
+        /* La superposición ya no es estrictamente necesaria para el texto centrado en canvas, 
+           pero se mantiene el estilo base para referencias. */
+        .qr-container {
+            position: relative;
+            display: inline-block;
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4">
-
-    <div id="content-container" class="bg-slate-800 p-8 md:p-12 rounded-2xl shadow-xl flex flex-col items-center max-w-lg w-full transform transition-all duration-300 opacity-0 -translate-y-10">
-        <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r-neon mb-4 text-center">
-            TaxiA CIMCO
-        </h1>
-        <h2 id="role-title" class="text-3xl md:text-4xl font-bold text-white mb-8 text-center"></h2>
-
-        <div class="relative w-64 h-64 md:w-80 md:h-80 bg-white p-2 rounded-2xl shadow-inner mb-8">
-            <canvas id="qr-canvas" class="w-full h-full"></canvas>
-            <div id="qr-text-overlay" class="absolute inset-0 flex items-center justify-center">
-                <p class="text-center font-black text-xl md:text-2xl text-black leading-tight">TaxiA<br>CIMCO</p>
-            </div>
+<body class="p-4 md:p-8 flex items-center justify-center min-h-screen">
+    <div class="max-w-xl w-full space-y-6 bg-white rounded-xl shadow-lg p-6 md:p-8 text-center">
+        <!-- Navegación -->
+        <div class="flex justify-between items-center bg-gray-100 rounded-xl p-4 shadow-sm mb-6">
+            <a href="ceo-panel.html" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Volver
+            </a>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Generador de QR</h1>
         </div>
 
-        <button id="downloadBtn" class="w-full btn-neon-gradient text-white py-3 px-6 rounded-xl font-bold text-lg">
-            <i class="fas fa-download mr-2"></i> Descargar QR
-        </button>
+        <p class="text-gray-600">Selecciona el tipo de aplicación para generar su código QR de descarga.</p>
+        
+        <!-- Controles para la selección de la app -->
+        <div class="flex flex-wrap justify-center gap-4">
+            <button onclick="generateQR('pasajero')" class="app-btn bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">
+                <i class="fas fa-user-tie mr-2"></i> Pasajero
+            </button>
+            <button onclick="generateQR('mototaxi')" class="app-btn bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">
+                <i class="fas fa-motorcycle mr-2"></i> Mototaxi
+            </button>
+            <button onclick="generateQR('motocarga')" class="app-btn bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">
+                <i class="fas fa-truck-pickup mr-2"></i> Motocarga
+            </button>
+            <button onclick="generateQR('despachador_intermunicipal')" class="app-btn bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">
+                <i class="fas fa-user-cog mr-2"></i> Desp. Intermunicipal
+            </button>
+            <button onclick="generateQR('conductor_intermunicipal')" class="app-btn bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-300 transition duration-300">
+                <i class="fas fa-bus mr-2"></i> Cond. Intermunicipal
+            </button>
+        </div>
+        
+        <!-- Contenedor del QR y título de rol (Nuevo título para el rol/app) -->
+        <div class="flex flex-col items-center mt-8">
+            <h2 id="qr-role-title" class="text-xl font-extrabold text-blue-700 mb-4 hidden"></h2>
+            <div id="qr-code-container" class="qr-container hidden">
+                <canvas id="qr-canvas" class="w-full h-auto max-w-sm rounded-lg shadow-xl border-4 border-gray-300"></canvas>
+            </div>
+            <p id="qr-message" class="text-gray-500 mt-4">Selecciona un tipo de aplicación para generar el código QR.</p>
+        </div>
+
+        <!-- Botones de acción -->
+        <div id="action-buttons" class="flex justify-center gap-4 mt-8 hidden">
+            <button onclick="downloadQR()" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 flex items-center">
+                <i class="fas fa-download mr-2"></i> Descargar QR
+            </button>
+            <button onclick="copyQRLink()" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-green-700 transition duration-300 flex items-center">
+                <i class="fas fa-copy mr-2"></i> Copiar enlace
+            </button>
+        </div>
+
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            const role = params.get('role');
-            const url = params.get('url');
+        const appUrls = {
+            'pasajero': 'https://taxi-a-cimco.com/app/pasajero',
+            'mototaxi': 'https://taxi-a-cimco.com/app/mototaxi',
+            'motocarga': 'https://taxi-a-cimco.com/app/motocarga',
+            'despachador_intermunicipal': 'https://taxi-a-cimco.com/app/despachador_intermunicipal',
+            'conductor_intermunicipal': 'https://taxi-a-cimco.com/app/conductor_intermunicipal',
+        };
 
-            const roles = {
-                'pasajero': 'Pasajero',
-                'mototaxi': 'Mototaxi',
-                'motoparrillero': 'Motoparrillero',
-                'motocarga': 'Motocarga',
-                'despachadorinter': 'Despachador Intermunicipal',
-                'conductorinter': 'Conductor Intermunicipal'
-            };
+        // Mapa para mostrar el nombre del rol como título
+        const roleNames = {
+            'pasajero': 'Pasajero',
+            'mototaxi': 'Mototaxi',
+            'motocarga': 'Motocarga',
+            'despachador_intermunicipal': 'Despachador Intermunicipal',
+            'conductor_intermunicipal': 'Conductor Intermunicipal',
+        };
 
-            const roleTitle = document.getElementById('role-title');
-            const canvas = document.getElementById('qr-canvas');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const container = document.getElementById('content-container');
-            const overlayText = document.getElementById('qr-text-overlay');
-
-            if (role && url && roles[role]) {
-                roleTitle.textContent = roles[role];
-
-                // Animación de entrada
-                setTimeout(() => {
-                    container.classList.remove('opacity-0', '-translate-y-10');
-                    container.classList.add('opacity-100', 'translate-y-0');
-                }, 100);
-
-                // Generar el código QR
-                QRCode.toCanvas(canvas, url, {
-                    width: 320,
-                    margin: 2,
-                    color: {
-                        dark: '#000000',
-                        light: '#ffffff'
-                    }
-                }, function (error) {
-                    if (error) {
-                        console.error('Error al generar el código QR:', error);
-                        roleTitle.textContent = 'Error';
-                        return;
-                    }
-                    console.log('Código QR generado con éxito.');
-                    // Ocultar el texto superpuesto si se genera correctamente
-                    overlayText.style.display = 'none'; 
-                });
-
-                // Manejar la descarga del QR
-                downloadBtn.addEventListener('click', function() {
-                    const link = document.createElement('a');
-                    link.download = `taxia-cimco-${role}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                    link.remove();
-                });
-            } else {
-                roleTitle.textContent = 'Error: Parámetros inválidos';
-                container.classList.remove('opacity-0', '-translate-y-10');
-                container.classList.add('opacity-100', 'translate-y-0');
-                downloadBtn.classList.add('hidden');
+        const canvas = document.getElementById('qr-canvas');
+        const message = document.getElementById('qr-message');
+        const container = document.getElementById('qr-code-container');
+        const actionButtons = document.getElementById('action-buttons');
+        const roleTitleElement = document.getElementById('qr-role-title');
+        
+        function generateQR(appType) {
+            const url = appUrls[appType];
+            if (!url) {
+                console.error("Tipo de aplicación no válido:", appType);
+                return;
             }
+
+            // Actualizar y mostrar el título del rol
+            roleTitleElement.textContent = `Código QR para: ${roleNames[appType]}`;
+            roleTitleElement.classList.remove('hidden');
+
+            // Ocultar mensaje y mostrar contenedor
+            message.classList.add('hidden');
+            container.classList.remove('hidden');
+            actionButtons.classList.remove('hidden');
+
+            // Generar el código QR base
+            const qr = new QRious({
+                element: canvas,
+                value: url,
+                size: 256,
+                padding: 10,
+                background: 'white',
+                foreground: '#1d4ed8' // Tailwind blue-600
+            });
+
+            // Dibujar el texto completo de la empresa en el centro del QR
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const logoSize = 60; 
+            const logoText = "TAXIA CIMCO"; // Texto completo de la empresa
+
+            // Rellenar el centro del QR para crear un área en blanco
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, logoSize / 2 + 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Dibujar el texto "TAXIA CIMCO"
+            ctx.fillStyle = '#1d4ed8'; // Color del texto
+            // Ajustar el tamaño de la fuente para que el texto largo quepa
+            const fontSize = logoSize * 0.3; // Un poco más pequeño para el texto completo
+            ctx.font = `bold ${fontSize}px Inter`; 
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Se usa un ancho máximo para evitar que el texto se salga de la zona central
+            ctx.fillText(logoText, centerX, centerY, logoSize * 2.5); 
+        }
+
+        function downloadQR() {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'codigo-qr-taxi-a-cimco.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function copyQRLink() {
+            // Usar una solución de fallback para asegurar la compatibilidad con iframes
+            const tempInput = document.createElement('input');
+            tempInput.value = appUrls[selectedAppType];
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            
+            // Reemplazar alert con un mensaje temporal en la interfaz
+            const copyMessage = document.createElement('div');
+            copyMessage.textContent = 'Enlace copiado al portapapeles!';
+            copyMessage.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-300 opacity-0';
+            document.body.appendChild(copyMessage);
+            
+            // Mostrar y luego desvanecer
+            setTimeout(() => {
+                copyMessage.style.opacity = '1';
+            }, 10);
+            setTimeout(() => {
+                copyMessage.style.opacity = '0';
+                setTimeout(() => copyMessage.remove(), 300);
+            }, 2000);
+        }
+
+        let selectedAppType = '';
+        document.querySelectorAll('.app-btn').forEach(button => {
+            button.addEventListener('click', (event) => {
+                // Obtener el valor de 'onclick' para determinar el tipo de aplicación
+                const onclickValue = event.currentTarget.getAttribute('onclick');
+                const match = onclickValue.match(/'(.*?)'/);
+                if (match && match[1]) {
+                    selectedAppType = match[1];
+                }
+            });
         });
     </script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+

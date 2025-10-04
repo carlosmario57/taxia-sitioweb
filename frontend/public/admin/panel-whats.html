@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
     <meta charset="UTF-8" />
@@ -55,7 +55,7 @@
                     <thead>
                         <tr>
                             <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Nombre</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Teléfono</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">TelÃ©fono</th>
                             <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Solicitud</th>
                             <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Estado</th>
                             <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Acciones</th>
@@ -77,7 +77,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getFirestore, collection, query, orderBy, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-    import { firebaseConfig } from "./firebase-config.js"; // Importa la configuración
+    import { firebaseConfig } from "./firebase-config.js"; // Importa la configuraciÃ³n
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -140,7 +140,7 @@
             try {
                 const docRef = doc(db, "solicitudes_whatsapp", id);
                 await updateDoc(docRef, { estado: "asignado" });
-                alert("Conductor asignado a la solicitud ✅");
+                alert("Conductor asignado a la solicitud âœ…");
                 cargarSolicitudes(); // Recargar la tabla
             } catch (error) {
                 console.error("Error al asignar conductor:", error);
@@ -152,5 +152,21 @@
     cargarSolicitudes();
 </script>
 
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+

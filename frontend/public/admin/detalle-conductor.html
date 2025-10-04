@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -53,7 +53,7 @@
 
       <!-- Info del conductor -->
       <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
-        <h2 class="text-2xl font-bold mb-4">Información del Conductor</h2>
+        <h2 class="text-2xl font-bold mb-4">InformaciÃ³n del Conductor</h2>
         <div id="infoConductor" class="space-y-2">
           <p id="nombreConductor" class="text-lg text-white">Nombre: Cargando...</p>
           <p id="idConductor" class="text-lg text-gray-400">ID: ...</p>
@@ -71,14 +71,14 @@
         </button>
       </div>
 
-      <!-- Gráfico -->
+      <!-- GrÃ¡fico -->
       <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
         <div class="flex flex-col md:flex-row justify-between items-center mb-4 space-y-2 md:space-y-0">
           <h2 class="text-2xl font-bold">Movimientos Financieros</h2>
           <select id="filtroFechas" class="bg-slate-700 text-white p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-neon-cyan">
-            <option value="7">Última semana</option>
-            <option value="30">Último mes</option>
-            <option value="365">Último año</option>
+            <option value="7">Ãšltima semana</option>
+            <option value="30">Ãšltimo mes</option>
+            <option value="365">Ãšltimo aÃ±o</option>
             <option value="all">Todos</option>
           </select>
         </div>
@@ -98,7 +98,7 @@
               <tr>
                 <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Monto</th>
                 <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Tipo</th>
-                <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Descripción</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">DescripciÃ³n</th>
                 <th class="px-6 py-3 text-left text-sm font-medium text-gray-400 uppercase">Fecha</th>
               </tr>
             </thead>
@@ -139,7 +139,7 @@
     </div>
   </footer>
 
-  <!-- Firebase + lógica -->
+  <!-- Firebase + lÃ³gica -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -314,5 +314,22 @@
       await cargarViajes();
     });
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

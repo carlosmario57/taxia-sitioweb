@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -21,13 +21,13 @@
 </head>
 <body>
   <div class="container">
-    <h1>📜 Historial de Viajes</h1>
+    <h1>ðŸ“œ Historial de Viajes</h1>
     <p>Conductor: <span id="userEmail"></span></p>
 
     <div id="viajesContainer"></div>
 
-    <button onclick="window.location.href='panel-conductor.html'">⬅️ Volver</button>
-    <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+    <button onclick="window.location.href='panel-conductor.html'">â¬…ï¸ Volver</button>
+    <button id="logoutBtn" class="logout-btn">Cerrar SesiÃ³n</button>
   </div>
 
   <script type="module">
@@ -46,7 +46,7 @@
 
     let currentUser = null;
 
-    // 🔹 Verificar sesión
+    // ðŸ”¹ Verificar sesiÃ³n
     onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUser = user;
@@ -57,7 +57,7 @@
       }
     });
 
-    // 🔹 Cargar historial de viajes (solo Finalizados)
+    // ðŸ”¹ Cargar historial de viajes (solo Finalizados)
     function cargarHistorial() {
       const q = query(
         collection(db, "viajes"),
@@ -68,7 +68,7 @@
       onSnapshot(q, (snapshot) => {
         viajesContainer.innerHTML = "";
         if (snapshot.empty) {
-          viajesContainer.innerHTML = "<p>No tienes viajes finalizados aún.</p>";
+          viajesContainer.innerHTML = "<p>No tienes viajes finalizados aÃºn.</p>";
           return;
         }
 
@@ -78,7 +78,7 @@
           const card = document.createElement("div");
           card.className = "viaje-card";
           card.innerHTML = `
-            <h3>🛣️ Viaje Finalizado</h3>
+            <h3>ðŸ›£ï¸ Viaje Finalizado</h3>
             <p><strong>Pasajero:</strong> ${viaje.emailPasajero || "N/A"}</p>
             <p><strong>Origen:</strong> ${viaje.origen}</p>
             <p><strong>Destino:</strong> ${viaje.destino}</p>
@@ -90,11 +90,28 @@
       });
     }
 
-    // 🔹 Logout
+    // ðŸ”¹ Logout
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await signOut(auth);
       window.location.href = "login-conductor.html";
     });
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

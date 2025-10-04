@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -37,8 +37,8 @@
       <nav class="flex space-x-8 text-gray-400 font-semibold">
         <a href="ceo-panel.html" class="hover:text-neon-cyan transition duration-300">Resumen</a>
         <a href="ceo-mapa.html" class="hover:text-neon-cyan transition duration-300 font-bold">Mapa de Flota</a>
-        <a href="panel-credito.html" class="hover:text-neon-cyan transition duration-300">Créditos</a>
-        <a href="../index.html" class="hover:text-neon-cyan transition duration-300">Cerrar Sesión</a>
+        <a href="panel-credito.html" class="hover:text-neon-cyan transition duration-300">CrÃ©ditos</a>
+        <a href="../index.html" class="hover:text-neon-cyan transition duration-300">Cerrar SesiÃ³n</a>
       </nav>
     </div>
   </header>
@@ -50,23 +50,23 @@
         Mapa de Flota en Vivo
       </h2>
       <p class="text-center text-gray-400 mb-6">
-        Visualiza en tiempo real la ubicación de los vehículos, su rol y estado.
+        Visualiza en tiempo real la ubicaciÃ³n de los vehÃ­culos, su rol y estado.
       </p>
 
       <div id="map" class="map-container"></div>
 
-      <!-- Estadísticas -->
+      <!-- EstadÃ­sticas -->
       <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
-          <h3 class="text-2xl font-bold text-white mb-2">Vehículos Disponibles</h3>
+          <h3 class="text-2xl font-bold text-white mb-2">VehÃ­culos Disponibles</h3>
           <p id="disponibles" class="text-4xl font-extrabold text-neon-cyan">0</p>
         </div>
         <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
-          <h3 class="text-2xl font-bold text-white mb-2">Vehículos en Servicio</h3>
+          <h3 class="text-2xl font-bold text-white mb-2">VehÃ­culos en Servicio</h3>
           <p id="enServicio" class="text-4xl font-extrabold text-neon-purple">0</p>
         </div>
         <div class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
-          <h3 class="text-2xl font-bold text-white mb-2">Vehículos Inactivos</h3>
+          <h3 class="text-2xl font-bold text-white mb-2">VehÃ­culos Inactivos</h3>
           <p id="inactivos" class="text-4xl font-extrabold text-red-400">0</p>
         </div>
       </div>
@@ -76,7 +76,7 @@
   <!-- Footer -->
   <footer class="bg-slate-800 text-gray-400 py-8 px-4 mt-12">
     <div class="container mx-auto text-center">
-      <p>© 2025 TAXIA CIMCO. Todos los derechos reservados.</p>
+      <p>Â© 2025 TAXIA CIMCO. Todos los derechos reservados.</p>
     </div>
   </footer>
 
@@ -101,7 +101,7 @@
     // Inicializar Leaflet
     const map = L.map('map').setView([9.5649, -73.3345], 13); // La Jagua de Ibirico
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
+      attribution: 'Â© OpenStreetMap'
     }).addTo(map);
 
     let markers = {};
@@ -216,7 +216,7 @@
           else if (driver.status === "on-trip") enServicio++;
           else inactivos++;
 
-          // Popup con botón al detalle
+          // Popup con botÃ³n al detalle
           const info = new google.maps.InfoWindow({
             content: `
               <div class="text-slate-900 font-sans">
@@ -265,5 +265,22 @@
     }
   }
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

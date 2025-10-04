@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TAXIA CIMCO - Conductor Motoparrillero</title>
 
-  <!-- ✅ Manifest específico -->
+  <!-- âœ… Manifest especÃ­fico -->
   <link rel="manifest" href="/manifest-motoparrillero.webmanifest">
   <link rel="icon" href="/icons/motoparrillero-192.png">
 
@@ -79,7 +79,7 @@
 
       <!-- Acciones -->
       <div class="flex justify-around mt-4 space-x-4">
-        <button id="arrivedBtn" onclick="updateTripStatus('arrived')" class="w-full bg-green-500 text-white py-2 rounded-lg hidden">Llegué</button>
+        <button id="arrivedBtn" onclick="updateTripStatus('arrived')" class="w-full bg-green-500 text-white py-2 rounded-lg hidden">LleguÃ©</button>
         <button id="completedBtn" onclick="updateTripStatus('completed')" class="w-full bg-blue-500 text-white py-2 rounded-lg hidden">Completar Viaje</button>
       </div>
       <button onclick="cancelService()" class="w-full bg-red-500 text-white py-2 rounded-lg mt-3">Cancelar Viaje</button>
@@ -212,9 +212,26 @@
   <script>
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/service-worker.js")
-      .then(() => console.log("✅ SW registrado para esta app"))
-      .catch(err => console.error("❌ Error registrando SW:", err));
+      .then(() => console.log("âœ… SW registrado para esta app"))
+      .catch(err => console.error("âŒ Error registrando SW:", err));
   }
 </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

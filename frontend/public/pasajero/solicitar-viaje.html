@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -34,23 +34,23 @@
 </head>
 <body>
   <div class="container">
-    <h1>🚖 Solicitar Viaje</h1>
+    <h1>ðŸš– Solicitar Viaje</h1>
     <p>Bienvenido, <span id="userEmail"></span></p>
 
     <form id="viajeForm">
-      <label for="origen">📍 Origen</label>
+      <label for="origen">ðŸ“ Origen</label>
       <input type="text" id="origen" required placeholder="Escribe tu punto de partida">
 
-      <label for="destino">🏁 Destino</label>
+      <label for="destino">ðŸ Destino</label>
       <input type="text" id="destino" required placeholder="Escribe tu destino">
 
-      <button type="submit">✅ Solicitar</button>
+      <button type="submit">âœ… Solicitar</button>
     </form>
 
     <p id="message" class="message"></p>
 
-    <button onclick="window.location.href='panel-pasajero.html'">⬅️ Volver</button>
-    <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+    <button onclick="window.location.href='panel-pasajero.html'">â¬…ï¸ Volver</button>
+    <button id="logoutBtn" class="logout-btn">Cerrar SesiÃ³n</button>
   </div>
 
   <script type="module">
@@ -69,7 +69,7 @@
 
     let currentUser = null;
 
-    // Verificar sesión activa
+    // Verificar sesiÃ³n activa
     onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUser = user;
@@ -98,21 +98,38 @@
           timestamp: serverTimestamp()
         });
 
-        messageEl.textContent = "✅ Viaje solicitado con éxito.";
+        messageEl.textContent = "âœ… Viaje solicitado con Ã©xito.";
         messageEl.style.color = "green";
         viajeForm.reset();
       } catch (error) {
         console.error("Error al guardar viaje:", error);
-        messageEl.textContent = "❌ Hubo un error al solicitar el viaje.";
+        messageEl.textContent = "âŒ Hubo un error al solicitar el viaje.";
         messageEl.style.color = "red";
       }
     });
 
-    // Cerrar sesión
+    // Cerrar sesiÃ³n
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await signOut(auth);
       window.location.href = "login-pasajero.html";
     });
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -16,7 +16,7 @@
   <div class="w-full max-w-md p-8 bg-white rounded-lg shadow-xl">
     <div class="text-center mb-6">
       <i class="fas fa-user-plus text-5xl text-blue-600 mb-4"></i>
-      <h1 class="text-3xl font-bold text-gray-800">Regístrate como Pasajero</h1>
+      <h1 class="text-3xl font-bold text-gray-800">RegÃ­strate como Pasajero</h1>
     </div>
 
     <!-- FORMULARIO -->
@@ -30,11 +30,11 @@
         <input type="email" id="email" name="email" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required>
       </div>
       <div>
-        <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+        <label for="password" class="block text-sm font-medium text-gray-700">ContraseÃ±a</label>
         <input type="password" id="password" name="password" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required minlength="6">
       </div>
       <div>
-        <label for="telefono" class="block text-sm font-medium text-gray-700">Teléfono</label>
+        <label for="telefono" class="block text-sm font-medium text-gray-700">TelÃ©fono</label>
         <input type="tel" id="telefono" name="telefono" placeholder="+573123456789" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" required>
       </div>
       
@@ -48,7 +48,7 @@
 
   <!-- Firebase + Registro -->
   <script type="module">
-    // ✅ Configuración propia de pasajero
+    // âœ… ConfiguraciÃ³n propia de pasajero
     import { app, auth, db } from "/js/firebase-config-pasajero.js";
 
     // Registro del pasajero usando Cloud Function
@@ -60,7 +60,7 @@
         email: form.email.value,
         password: form.password.value,
         telefono: form.telefono.value,
-        rol: "pasajero"   // ✅ Campo clave para diferenciarlo en Firestore
+        rol: "pasajero"   // âœ… Campo clave para diferenciarlo en Firestore
       };
       
       const mensajeDiv = document.getElementById('mensaje');
@@ -80,7 +80,7 @@
         const result = await response.json();
 
         if (response.ok) {
-          mensajeDiv.textContent = "¡Registro exitoso! Bienvenido pasajero.";
+          mensajeDiv.textContent = "Â¡Registro exitoso! Bienvenido pasajero.";
           mensajeDiv.style.color = "green";
 
           setTimeout(() => {
@@ -91,16 +91,33 @@
         }
       } catch (error) {
         console.error("Error en el registro:", error);
-        let errorMessage = "Ocurrió un error en el registro. Intenta de nuevo.";
+        let errorMessage = "OcurriÃ³ un error en el registro. Intenta de nuevo.";
         if (error.message.includes("email-already-in-use")) {
-          errorMessage = "El email ya está en uso. Intenta iniciar sesión.";
+          errorMessage = "El email ya estÃ¡ en uso. Intenta iniciar sesiÃ³n.";
         } else if (error.message.includes("weak-password")) {
-          errorMessage = "La contraseña es muy débil. Debe tener al menos 6 caracteres.";
+          errorMessage = "La contraseÃ±a es muy dÃ©bil. Debe tener al menos 6 caracteres.";
         }
         mensajeDiv.textContent = errorMessage;
         mensajeDiv.style.color = "red";
       }
     });
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

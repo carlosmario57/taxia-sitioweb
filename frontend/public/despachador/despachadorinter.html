@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -53,7 +53,7 @@
       setTimeout(()=> box.classList.remove("show"), 3000);
     };
 
-    // 🚍 Render viaje en lista
+    // ðŸš Render viaje en lista
     const renderViaje = (id, data) => {
       const list = document.getElementById("viajes-list");
       let card = document.getElementById(`viaje-${id}`);
@@ -92,7 +92,7 @@
       } catch(err){ console.error(err); showMessage("Error al cancelar","error"); }
     };
 
-    // 🚍 Escuchar viajes intermunicipales de este despachador
+    // ðŸš Escuchar viajes intermunicipales de este despachador
     const listenViajes = () => {
       const q = query(collection(db,"viajes"), where("tipo","==","intermunicipal"));
       onSnapshot(q,snap=>{
@@ -102,7 +102,7 @@
       });
     };
 
-    // 🚍 Auth
+    // ðŸš Auth
     onAuthStateChanged(auth, async user=>{
       if(user){ 
         despachadorId = user.uid;
@@ -113,9 +113,26 @@
   <script>
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/service-worker.js")
-      .then(() => console.log("✅ SW registrado para esta app"))
-      .catch(err => console.error("❌ Error registrando SW:", err));
+      .then(() => console.log("âœ… SW registrado para esta app"))
+      .catch(err => console.error("âŒ Error registrando SW:", err));
   }
 </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

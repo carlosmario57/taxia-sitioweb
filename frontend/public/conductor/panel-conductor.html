@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🏍️ Panel del Conductor</h1>
+    <h1>ðŸï¸ Panel del Conductor</h1>
     <p>Bienvenido, <span id="userEmail"></span></p>
 
     <div class="panel-options">
@@ -16,7 +16,7 @@
       <button onclick="window.location.href='historial-viajes.html'">Historial de Viajes</button>
     </div>
 
-    <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+    <button id="logoutBtn" class="logout-btn">Cerrar SesiÃ³n</button>
   </div>
 
   <script type="module">
@@ -38,5 +38,22 @@
       window.location.href = "login-conductor.html";
     });
   </script>
+<!--  Botón oculto solo para desarrollo -->
+<button id="dev-clean-cache" style="display:none;position:fixed;bottom:10px;right:10px;z-index:9999;"></button>
+<script>
+document.addEventListener("keydown", async (e) => {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+    alert(" Caché y Service Workers eliminados.\nRecarga la página (Ctrl + F5).");
+  }
+});
+</script>
+<script src="/js/version-footer.js"></script>
 </body>
 </html>
+
+
+

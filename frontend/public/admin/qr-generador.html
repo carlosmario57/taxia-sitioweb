@@ -19,8 +19,6 @@
         .container {
             max-width: 95%;
         }
-        /* La superposición ya no es estrictamente necesaria para el texto centrado en canvas, 
-           pero se mantiene el estilo base para referencias. */
         .qr-container {
             position: relative;
             display: inline-block;
@@ -110,7 +108,7 @@
                 return;
             }
 
-            // Actualizar y mostrar el título del rol
+            // 1. Actualizar y mostrar el título del rol
             roleTitleElement.textContent = `Código QR para: ${roleNames[appType]}`;
             roleTitleElement.classList.remove('hidden');
 
@@ -119,7 +117,7 @@
             container.classList.remove('hidden');
             actionButtons.classList.remove('hidden');
 
-            // Generar el código QR base
+            // 2. Generar el código QR base (tamaño 256)
             const qr = new QRious({
                 element: canvas,
                 value: url,
@@ -129,28 +127,37 @@
                 foreground: '#1d4ed8' // Tailwind blue-600
             });
 
-            // Dibujar el texto completo de la empresa en el centro del QR
+            // 3. Dibujar el texto de la empresa en el centro del QR (mínima interferencia)
             const ctx = canvas.getContext('2d');
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            const logoSize = 60; 
-            const logoText = "TAXIA CIMCO"; // Texto completo de la empresa
-
+            // Reducimos el tamaño de la zona de texto permitido
+            const safeZoneRadius = 30; // 30 píxeles de radio (60x60 píxeles de área total)
+            
+            const textLine1 = "TAXIA";
+            const textLine2 = "CIMCO";
+            
             // Rellenar el centro del QR para crear un área en blanco
             ctx.fillStyle = 'white';
             ctx.beginPath();
-            ctx.arc(centerX, centerY, logoSize / 2 + 5, 0, 2 * Math.PI);
+            ctx.arc(centerX, centerY, safeZoneRadius, 0, 2 * Math.PI);
             ctx.fill();
 
-            // Dibujar el texto "TAXIA CIMCO"
+            // Dibujar la primera línea de texto "TAXIA"
             ctx.fillStyle = '#1d4ed8'; // Color del texto
-            // Ajustar el tamaño de la fuente para que el texto largo quepa
-            const fontSize = logoSize * 0.3; // Un poco más pequeño para el texto completo
-            ctx.font = `bold ${fontSize}px Inter`; 
+            ctx.font = `bold 16px Inter`; 
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            // Se usa un ancho máximo para evitar que el texto se salga de la zona central
-            ctx.fillText(logoText, centerX, centerY, logoSize * 2.5); 
+            // Dibujar la primera línea ligeramente por encima del centro
+            ctx.fillText(textLine1, centerX, centerY - 8); 
+
+            // Dibujar la segunda línea de texto "CIMCO"
+            ctx.font = `bold 14px Inter`; 
+            // Dibujar la segunda línea ligeramente por debajo del centro
+            ctx.fillText(textLine2, centerX, centerY + 12); 
+            
+            // Nota: Este tamaño de fuente y la zona de borrado (60x60) es una configuración segura
+            // que respeta el nivel de corrección de errores de la mayoría de los códigos QR.
         }
 
         function downloadQR() {
@@ -200,7 +207,5 @@
             });
         });
     </script>
-<script src="/js/version-footer.js"></script>
 </body>
 </html>
-
